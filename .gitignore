@@ -16,3 +16,9 @@ __pycache__/
 
 # 릴리스 워크플로우 임시 파일 (git add -A에 쓸려 들어감)
 pr_body.md
+
+# Superpowers 산출물 (스펙·계획 문서)
+docs/superpowers/
+
+# Subagent-Driven Development 워크스페이스
+.superpowers/

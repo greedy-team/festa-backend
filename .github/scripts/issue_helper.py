@@ -165,6 +165,21 @@ def render_commit_message(template: str, ctx: dict) -> str:
 
 
 # ── 설정 로드 (version.yml — pyyaml 없이 이 섹션만 파싱) ────────────────────
+def _strip_inline_comment(raw: str) -> str:
+    """따옴표 밖의 ` #...`만 주석으로 제거한다.
+
+    따옴표를 무시하고 자르면 `"... #${issueNumber}"` 같은 값이 통째로 잘린다 —
+    커밋 템플릿에 이슈 번호를 `#31` 형태로 넣는 순간 터지는 자리다.
+    """
+    raw = raw.strip()
+    if raw[:1] in ("'", '"'):
+        end = raw.find(raw[0], 1)
+        if end != -1:
+            return raw[:end + 1]
+        return raw
+    return re.sub(r"\s+#.*$", "", raw)
+
+
 def _unquote(value: str) -> str:
     value = value.strip()
     if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
@@ -205,7 +220,7 @@ def load_config(repo_root: str = ".") -> dict:
         m = re.match(r"""^["']?([^"':]+)["']?\s*:\s*(.*?)\s*$""", stripped)
         if not m:
             continue
-        key, raw = m.group(1).strip(), re.sub(r"\s+#.*$", "", m.group(2))
+        key, raw = m.group(1).strip(), _strip_inline_comment(m.group(2))
 
         if in_type_map and indent > type_map_indent:
             cfg["commit_type_map"][key] = _unquote(raw)
@@ -245,8 +260,8 @@ _GUIDE_ALWAYS = [
 
 _BRANCH_STRATEGY = (
     "**브랜치 전략**\n"
-    "- `main` — 릴리스 브랜치. 버전 태그·CHANGELOG가 여기서 확정됩니다\n"
-    "- `develop` — 배포 전 통합 브랜치\n"
+    "- `main` — 배포 트리거. 푸시하면 Vercel **Production** 자동 배포\n"
+    "- `develop` — 배포 전 통합. 푸시하면 Vercel **Preview** 자동 생성\n"
     "- 작업 브랜치는 `develop`에서 따고 `develop`으로 PR을 올립니다\n"
 )
 
