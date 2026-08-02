@@ -1,0 +1,74 @@
+# ===================================================================
+# 프로젝트 버전 관리 파일
+# ===================================================================
+#
+# 이 파일은 다양한 프로젝트 타입에서 버전 정보를 중앙 관리하기 위한 파일입니다.
+# GitHub Actions 워크플로우가 이 파일을 읽어 자동으로 버전을 관리합니다.
+#
+# 사용법:
+# 1. version: "1.0.0" - 사용자에게 표시되는 버전
+# 2. version_code: 1 - Play Store/App Store 빌드 번호 (1부터 자동 증가)
+# 3. project_types: 프로젝트 타입 배열 — 첫 항목이 primary
+# 4. project_paths: 타입별 프로젝트 폴더 (레포 루트 기준 상대경로, 모노레포용)
+#
+# 자동 버전 업데이트:
+# - patch: 자동으로 세 번째 자리 증가 (x.x.x -> x.x.x+1)
+# - version_code: 매 빌드마다 자동으로 1씩 증가
+# - minor/major: 수동으로 직접 수정 필요
+#
+# 프로젝트 타입별 동기화 파일:
+# - spring: build.gradle (version = "x.y.z")
+# - flutter: pubspec.yaml (version: x.y.z+i, buildNumber 포함)
+# - react/node: package.json ("version": "x.y.z")
+# - react-native: iOS Info.plist 또는 Android build.gradle
+# - react-native-expo: app.json (expo.version)
+# - python: pyproject.toml (version = "x.y.z")
+# - basic/기타: version.yml 파일만 사용
+#
+# 연관된 워크플로우:
+# - .github/workflows/PROJECT-VERSION-CONTROL.yaml
+# - .github/workflows/PROJECT-README-VERSION-UPDATE.yaml
+# - .github/workflows/PROJECT-RELEASE-CHANGELOG.yaml
+#
+# 주의사항:
+# - project_types는 최초 설정 후 변경하지 마세요
+# - 버전은 항상 높은 버전으로 자동 동기화됩니다
+# ===================================================================
+
+version: "0.0.1"
+version_code: 1  # app build number
+project_types: ["spring"]   # 멀티타입 배열 — 첫 항목이 primary, 직접 편집 가능
+project_paths:                # 타입별 프로젝트 폴더 (레포 루트 기준 상대경로)
+  spring: "."   # build.gradle
+metadata:
+  last_updated: "2026-08-02 14:19:15"
+  last_updated_by: "template_integrator"
+  default_branch: "main"
+  deploy_branch: "develop"
+  integrated_from: "projectops"
+  integration_date: "2026-08-02"
+
+deploy:                          # 마법사가 기억하는 배포 설정 (비민감 / 직접 수정 가능)
+  # 배포(CI/CD)는 백엔드팀이 직접 구성합니다. Docker/SSH 워크플로우와 그 설정값
+  # (SERVICE_DOMAIN·VOLUME_*·SSH_AUTH_METHOD·DEPLOY_PORT)은 제거했습니다.
+  # 아래 options.deploy를 "docker-ssh"로 되돌리면 npx projectops 업데이트 시
+  # Docker 워크플로우가 다시 설치되니 주의하세요.
+  spring:
+    PROJECT_NAME: "festa-backend"
+    JAVA_VERSION: "21"
+  template:
+    source: "projectops"
+    version: "4.2.44"
+    mode: "full"   # 통합 범위(full/version/workflows) — 업데이트 모드 재실행 기준
+    integrated_date: "2026-08-02"
+    last_update_date: "2026-08-02"
+    options:
+      intent: "app"   # 프로젝트 성격(app/library/both/none/manual) — 배포 질문 유도 기준
+      deploy: "none"   # 백엔드팀이 직접 구성 — 되돌리면 Docker 워크플로우가 재설치됨
+      publish: []
+      secret_backup: false
+      code_review:
+        coderabbit: false
+      changelog:
+        provider: "github-ai"
+        base_url: ""

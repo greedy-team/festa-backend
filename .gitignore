@@ -4,3 +4,15 @@ build/
 out/
 *.log
 .env
+
+# ====================================================================
+# projectops: Auto-added entries
+# ====================================================================
+/.claude/settings.local.json
+
+# Python (.github/scripts)
+__pycache__/
+*.py[cod]
+
+# 릴리스 워크플로우 임시 파일 (git add -A에 쓸려 들어감)
+pr_body.md
