@@ -1,14 +1,34 @@
 {
   "metadata": {
-    "lastUpdated": "2026-08-02T15:04:18Z",
-    "currentVersion": "0.0.2",
+    "lastUpdated": "2026-08-02T19:34:55Z",
+    "currentVersion": "0.0.3",
     "projectType": "spring",
     "projectTypes": [
       "spring"
     ],
-    "totalReleases": 1
+    "totalReleases": 2
   },
   "releases": [
+    {
+      "version": "0.0.3",
+      "project_type": "spring",
+      "project_types": [
+        "spring"
+      ],
+      "date": "2026-08-02",
+      "pr_number": 6,
+      "raw_summary": "## Summary by CodeRabbit\n\n## 릴리스 노트\n\n* **기타**\n  * Merge pull request from greedy-team/chore_4_프론트와_자동화_설정_정합\n  * chore : 프론트와 자동화 설정 정합",
+      "parsed_changes": {
+        "기타": {
+          "title": "기타",
+          "items": [
+            "Merge pull request from greedy-team/chore_4_프론트와_자동화_설정_정합",
+            "chore : 프론트와 자동화 설정 정합"
+          ]
+        }
+      },
+      "parse_method": "markdown"
+    },
     {
       "version": "0.0.2",
       "project_type": "spring",
