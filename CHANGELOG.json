@@ -1,0 +1,33 @@
+{
+  "metadata": {
+    "lastUpdated": "2026-08-02T15:04:18Z",
+    "currentVersion": "0.0.2",
+    "projectType": "spring",
+    "projectTypes": [
+      "spring"
+    ],
+    "totalReleases": 1
+  },
+  "releases": [
+    {
+      "version": "0.0.2",
+      "project_type": "spring",
+      "project_types": [
+        "spring"
+      ],
+      "date": "2026-08-02",
+      "pr_number": 3,
+      "raw_summary": "## Summary by CodeRabbit\n\n## 릴리스 노트\n\n* **기타**\n  * Merge pull request from greedy-team/docs_1_readme_프로젝트_개요_및_실행_방법_추가\n  * README 프로젝트 개요 및 실행 방법 추가 : docs : 기술 스택·로컬 실행·협업 규칙 섹션 추가",
+      "parsed_changes": {
+        "기타": {
+          "title": "기타",
+          "items": [
+            "Merge pull request from greedy-team/docs_1_readme_프로젝트_개요_및_실행_방법_추가",
+            "README 프로젝트 개요 및 실행 방법 추가 : docs : 기술 스택·로컬 실행·협업 규칙 섹션 추가"
+          ]
+        }
+      },
+      "parse_method": "markdown"
+    }
+  ]
+}
