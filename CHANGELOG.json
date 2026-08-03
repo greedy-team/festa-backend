@@ -1,14 +1,38 @@
 {
   "metadata": {
-    "lastUpdated": "2026-08-02T19:34:55Z",
-    "currentVersion": "0.0.3",
+    "lastUpdated": "2026-08-03T06:23:59Z",
+    "currentVersion": "0.0.4",
     "projectType": "spring",
     "projectTypes": [
       "spring"
     ],
-    "totalReleases": 2
+    "totalReleases": 3
   },
   "releases": [
+    {
+      "version": "0.0.4",
+      "project_type": "spring",
+      "project_types": [
+        "spring"
+      ],
+      "date": "2026-08-03",
+      "pr_number": 11,
+      "raw_summary": "## Summary by CodeRabbit\n\n## 릴리스 노트\n\n* **기타**\n  * Merge pull request from greedy-team/chore_9_agents_md_claude_md_작성\n  * Merge pull request from greedy-team/docs_7_projectops_마이그레이션_로그_제거\n  * chore : 작업 원칙·커맨드 7종 이식\n  * docs : TEAM-CONVENTIONS.md 커밋\n  * chore : AGENTS.md·CLAUDE.md 작성\n  * docs : projectops 마이그레이션 로그 제거",
+      "parsed_changes": {
+        "기타": {
+          "title": "기타",
+          "items": [
+            "Merge pull request from greedy-team/chore_9_agents_md_claude_md_작성",
+            "Merge pull request from greedy-team/docs_7_projectops_마이그레이션_로그_제거",
+            "chore : 작업 원칙·커맨드 7종 이식",
+            "docs : TEAM-CONVENTIONS.md 커밋",
+            "chore : AGENTS.md·CLAUDE.md 작성",
+            "docs : projectops 마이그레이션 로그 제거"
+          ]
+        }
+      },
+      "parse_method": "markdown"
+    },
     {
       "version": "0.0.3",
       "project_type": "spring",

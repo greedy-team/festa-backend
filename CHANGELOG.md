@@ -1,7 +1,21 @@
 # Changelog
 
-**현재 버전:** 0.0.3  
-**마지막 업데이트:** 2026-08-02T19:34:55Z  
+**현재 버전:** 0.0.4  
+**마지막 업데이트:** 2026-08-03T06:23:59Z  
+
+---
+
+## [0.0.4] - 2026-08-03
+
+**PR:** #11  
+
+**기타**
+- Merge pull request from greedy-team/chore_9_agents_md_claude_md_작성
+- Merge pull request from greedy-team/docs_7_projectops_마이그레이션_로그_제거
+- chore : 작업 원칙·커맨드 7종 이식
+- docs : TEAM-CONVENTIONS.md 커밋
+- chore : AGENTS.md·CLAUDE.md 작성
+- docs : projectops 마이그레이션 로그 제거
 
 ---
 

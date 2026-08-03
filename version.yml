@@ -35,13 +35,13 @@
 # - 버전은 항상 높은 버전으로 자동 동기화됩니다
 # ===================================================================
 
-version: "0.0.3"
-version_code: 3 # app build number
+version: "0.0.4"
+version_code: 4 # app build number
 project_types: ["spring"]   # 멀티타입 배열 — 첫 항목이 primary, 직접 편집 가능
 project_paths:                # 타입별 프로젝트 폴더 (레포 루트 기준 상대경로)
   spring: "."   # build.gradle
 metadata:
-  last_updated: "2026-08-02 19:34:54"
+  last_updated: "2026-08-03 06:23:59"
   last_updated_by: "EM-H20"
   default_branch: "main"
   deploy_branch: "develop"
