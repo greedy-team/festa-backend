@@ -2,6 +2,37 @@
 
 축제 정보 서비스 백엔드. Spring Boot 기반이며 배포는 아직 구성 전입니다.
 
+## 빠른 시작
+
+```bash
+./gradlew build       # 빌드 + 테스트
+./gradlew bootRun     # 애플리케이션 실행
+./gradlew test        # 테스트만
+```
+
+## 작업 원칙
+
+**코드를 만지기 전에 [`.claude/rules/coding-principles.md`](./.claude/rules/coding-principles.md)를 읽으세요.**
+
+가정을 말하고 시작하기 / 최소한으로 만들기 / 외과적으로 바꾸기 / 검증 기준 먼저 세우기 /
+같은 규칙을 두 곳에 적지 않기 — 다섯 가지이며, 각각 이 프로젝트에서 실제로 터진 사례가
+근거로 붙어 있습니다.
+
+## 지침 파일 지도
+
+**내용은 전부 `.claude/` 아래에 둡니다. 다른 도구는 그것을 읽습니다.**
+같은 규칙을 두 벌로 관리하면 반드시 어긋나기 때문입니다.
+
+| 파일 | 담는 것 | Claude Code | Codex |
+| --- | --- | --- | --- |
+| `AGENTS.md` | 프로젝트 사실·제약 (이 파일) | `CLAUDE.md`가 import | 세션 시작 시 자동 |
+| `.claude/rules/coding-principles.md` | 작업 원칙 | `CLAUDE.md`가 import | **이 파일의 링크를 따라 읽으세요** |
+| `TEAM-CONVENTIONS.md` | 이슈·브랜치·커밋·PR 규칙 | 필요 시 | 필요 시 |
+| `.claude/commands/*.md` | 커맨드 워크플로우 | 슬래시 커맨드 | `.agents/skills/`가 가리킴 |
+
+Codex는 `AGENTS.md`와 `.agents/skills/`만 자동으로 읽습니다. `.claude/` 아래 파일은
+자동으로 열리지 않으니, 위 표의 경로를 직접 읽으세요.
+
 ## 하드 제약
 
 깨면 안 되는 것들입니다. 어긴 채 진행하지 마세요.
@@ -10,14 +41,6 @@
 - **`version.yml`의 `options.deploy`는 `none`으로 유지.** `docker-ssh`로 되돌리면 `npx projectops` 업데이트 때 Docker 워크플로우 4종이 재설치됩니다
 - **커밋 메시지에 `Co-Authored-By` 금지**
 - **커밋·푸시는 사용자가 요청할 때만.** 알아서 하지 않습니다
-
-## 셋업
-
-```bash
-./gradlew build       # 빌드 + 테스트
-./gradlew bootRun     # 애플리케이션 실행
-./gradlew test        # 테스트만
-```
 
 ## 기술 스택
 
@@ -50,9 +73,24 @@
 
 ## 커맨드
 
-프론트에는 작업을 대신하는 커맨드 7종(`/issue` `/issue-branch` `/commit` `/report`
-`/pr-description` `/rp` `/cr`)이 있고, **이 레포에는 아직 이식 전**입니다.
-그때까지는 위 흐름을 직접 따릅니다.
+위 흐름을 대신 실행하는 커맨드가 있습니다.
+
+| | |
+| --- | --- |
+| Claude Code | `.claude/commands/*.md` — `/issue` `/issue-branch` `/commit` `/report` `/pr-description` `/rp` `/cr` |
+| Codex | `.agents/skills/*/SKILL.md` — 같은 파일을 읽습니다 |
+
+**규칙 원본은 `.claude/commands/` 한 곳뿐입니다.** Codex 스킬은 내용을 복사하지 않고 그 파일을 가리킵니다.
+
+산출물은 레포에 커밋합니다 (숨김 폴더 아님):
+
+```
+docs/issues/    이슈 초안
+docs/reports/   구현 보고서
+docs/pr/        PR 본문 초안
+```
+
+`/commit`의 포맷 단계는 비어 있습니다 — 포맷터(spotless 등) 도입 후 채웁니다.
 
 ## CI/CD
 
