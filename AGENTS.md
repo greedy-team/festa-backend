@@ -113,4 +113,5 @@ docs/pr/        PR 본문 초안
 
 - 릴리스 워크플로우는 `git add -A`로 커밋합니다. 워킹 트리에 남긴 임시 파일이 릴리스 커밋에 쓸려 들어갑니다
 - `.github/scripts/`와 워크플로우는 `npx projectops` 업데이트 시 덮어써집니다. 설정은 코드 기본값이 아니라 `version.yml`에 둡니다
+- `PROJECT-SPRING-CI.yaml`은 우리가 쓴 파일이지만 ProjectOps가 차지할 수 있는 이름입니다. 프론트의 `PROJECT-REACT-CI.yaml`이 ProjectOps 제공 템플릿이라 대칭을 택했습니다. 업데이트 후 이 파일이 낯설게 바뀌어 있다면 그 경우입니다
 - `version.yml`의 `deploy:` 블록은 런타임에 아무도 읽지 않습니다. `npx projectops` 재실행 때만 쓰이는 메모입니다
