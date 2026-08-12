@@ -1,0 +1,47 @@
+name: PROJECT-SPRING-CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: 빌드 검증
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v7
+
+      - name: JDK 21 설정
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: 빌드
+        run: ./gradlew build
+
+      - name: 테스트 결과 PR 코멘트
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: ${{ !cancelled() }}
+        with:
+          files: build/test-results/test/TEST-*.xml
+
+      - name: 테스트 실패 라인에 인라인 표시
+        uses: mikepenz/action-junit-report@v6
+        if: ${{ !cancelled() }}
+        with:
+          report_paths: build/test-results/test/TEST-*.xml
