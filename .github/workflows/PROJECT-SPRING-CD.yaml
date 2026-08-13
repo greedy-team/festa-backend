@@ -1,0 +1,135 @@
+name: PROJECT-SPRING-CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Docker image platform
+        required: true
+        default: linux/arm64
+        type: choice
+        options:
+          - linux/arm64
+          - linux/amd64
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: OCI 배포
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      IMAGE_NAME: festa-backend
+      TARGET_PLATFORM: ${{ inputs.platform || 'linux/arm64' }}
+      OCI_PORT: ${{ secrets.OCI_SSH_PORT || '22' }}
+      OCI_DEPLOY_PATH: ${{ vars.OCI_DEPLOY_PATH || '/opt/festa' }}
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: QEMU 설정
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        with:
+          platforms: arm64,amd64
+
+      - name: Docker Buildx 설정
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: 컨테이너 이미지 빌드
+        run: |
+          docker buildx build \
+            --platform "$TARGET_PLATFORM" \
+            --tag "$IMAGE_NAME:$GITHUB_SHA" \
+            --output "type=docker,dest=$RUNNER_TEMP/$IMAGE_NAME.tar" \
+            .
+          gzip "$RUNNER_TEMP/$IMAGE_NAME.tar"
+
+      - name: SSH와 실행 환경 준비
+        env:
+          OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          AES_KEY: ${{ secrets.AES_KEY }}
+        run: |
+          if [[ "$DB_URL" != jdbc:postgresql://postgres:5432/* ]]; then
+            echo "DB_URL은 Compose 네트워크의 postgres:5432를 가리켜야 합니다." >&2
+            exit 1
+          fi
+
+          install -m 700 -d "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$OCI_SSH_PRIVATE_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"
+          chmod 600 "$RUNNER_TEMP/ssh/key"
+          ssh-keyscan -p "$OCI_PORT" -H "$OCI_HOST" > "$RUNNER_TEMP/ssh/known_hosts"
+
+          umask 077
+          {
+            printf 'DB_URL=%s\n' "$DB_URL"
+            printf 'DB_USERNAME=%s\n' "$DB_USERNAME"
+            printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
+            printf 'GOOGLE_CLIENT_ID=%s\n' "$GOOGLE_CLIENT_ID"
+            printf 'GOOGLE_CLIENT_SECRET=%s\n' "$GOOGLE_CLIENT_SECRET"
+            printf 'JWT_SECRET=%s\n' "$JWT_SECRET"
+            printf 'AES_KEY=%s\n' "$AES_KEY"
+          } > "$RUNNER_TEMP/app.env"
+
+      - name: OCI 인스턴스로 전송
+        env:
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+        run: |
+          ssh \
+            -i "$RUNNER_TEMP/ssh/key" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+            -p "$OCI_PORT" \
+            "$OCI_USER@$OCI_HOST" \
+            "mkdir -p '$OCI_DEPLOY_PATH'"
+          scp \
+            -i "$RUNNER_TEMP/ssh/key" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+            -P "$OCI_PORT" \
+            "$RUNNER_TEMP/$IMAGE_NAME.tar.gz" \
+            "$RUNNER_TEMP/app.env" \
+            deploy/compose.yaml \
+            "$OCI_USER@$OCI_HOST:$OCI_DEPLOY_PATH/"
+
+      - name: 컨테이너 재기동
+        env:
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+        run: |
+          ssh \
+            -i "$RUNNER_TEMP/ssh/key" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+            -p "$OCI_PORT" \
+            "$OCI_USER@$OCI_HOST" \
+            "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' IMAGE_TAG='$GITHUB_SHA' bash -s" <<'REMOTE'
+          set -Eeuo pipefail
+          cd "$OCI_DEPLOY_PATH"
+          chmod 600 app.env
+          gzip -dc "$IMAGE_NAME.tar.gz" | docker load
+          APP_IMAGE="$IMAGE_NAME:$IMAGE_TAG" docker compose --env-file app.env up -d --wait --wait-timeout 180
+          curl --fail --silent --show-error --retry 10 --retry-delay 3 \
+            http://localhost:8080/actuator/health
+          rm -f "$IMAGE_NAME.tar.gz"
+          REMOTE
+
+      - name: 외부 헬스 체크
+        env:
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+        run: |
+          curl --fail --silent --show-error \
+            --retry 10 --retry-delay 5 --retry-all-errors \
+            "http://$OCI_HOST:8080/actuator/health"
