@@ -37,3 +37,12 @@ app:
     secret: ${JWT_SECRET}
   crypto:
     aes-key: ${AES_KEY}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
