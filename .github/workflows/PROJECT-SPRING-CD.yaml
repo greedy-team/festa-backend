@@ -2,20 +2,20 @@ name: PROJECT-SPRING-CD
 
 on:
   push:
-    branches: [main]
+    branches: [develop, main]
   workflow_dispatch:
     inputs:
-      platform:
-        description: Docker image platform
+      environment:
+        description: GitHub Environment
         required: true
-        default: linux/arm64
+        default: development
         type: choice
         options:
-          - linux/arm64
-          - linux/amd64
+          - development
+          - production
 
 concurrency:
-  group: production-deploy
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'production' || 'development') }}-deploy
   cancel-in-progress: false
 
 jobs:
@@ -23,15 +23,26 @@ jobs:
     name: OCI 배포
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    environment:
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'production' || 'development') }}
     permissions:
       contents: read
     env:
       IMAGE_NAME: festa-backend
-      TARGET_PLATFORM: ${{ inputs.platform || 'linux/arm64' }}
+      TARGET_PLATFORM: ${{ ((github.event_name == 'workflow_dispatch' && inputs.environment == 'production') || github.ref_name == 'main') && 'linux/arm64' || 'linux/amd64' }}
       OCI_PORT: ${{ secrets.OCI_SSH_PORT || '22' }}
       OCI_DEPLOY_PATH: ${{ vars.OCI_DEPLOY_PATH || '/opt/festa' }}
 
     steps:
+      - name: 배포 환경 활성화 확인
+        env:
+          DEPLOY_ENABLED: ${{ vars.DEPLOY_ENABLED }}
+        run: |
+          if [[ "$DEPLOY_ENABLED" != "true" ]]; then
+            echo "선택한 GitHub Environment의 DEPLOY_ENABLED가 true가 아닙니다." >&2
+            exit 1
+          fi
+
       - name: 코드 체크아웃
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
@@ -54,6 +65,7 @@ jobs:
 
       - name: SSH와 실행 환경 준비
         env:
+          DEPLOY_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'production' || 'development') }}
           OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
           OCI_HOST: ${{ secrets.OCI_HOST }}
           DB_URL: ${{ secrets.DB_URL }}
@@ -67,6 +79,11 @@ jobs:
           if [[ "$DB_URL" != jdbc:postgresql://postgres:5432/* ]]; then
             echo "DB_URL은 Compose 네트워크의 postgres:5432를 가리켜야 합니다." >&2
             exit 1
+          fi
+
+          if [[ "$DEPLOY_ENVIRONMENT" == "development" ]]; then
+            GOOGLE_CLIENT_ID="development-dummy-client"
+            GOOGLE_CLIENT_SECRET="development-dummy-secret"
           fi
 
           install -m 700 -d "$RUNNER_TEMP/ssh"

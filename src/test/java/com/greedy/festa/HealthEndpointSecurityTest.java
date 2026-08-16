@@ -10,6 +10,10 @@ import java.net.http.HttpResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import com.greedy.festa.host.repository.HostRepository;
 
 @SpringBootTest(properties = {
         "spring.autoconfigure.exclude="
@@ -25,6 +29,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 class HealthEndpointSecurityTest {
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
+
+    @MockitoBean
+    private HostRepository hostRepository;
+
+    @MockitoBean
+    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Value("${local.server.port}")
     private int port;
