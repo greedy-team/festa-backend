@@ -39,7 +39,7 @@ Codex는 `AGENTS.md`와 `.agents/skills/`만 자동으로 읽습니다. `.claude
 
 - **`main`에 직접 푸시 금지.** `main`은 릴리스 브랜치입니다
 - **`version.yml`의 `options.deploy`는 `none`으로 유지.** `docker-ssh`로 되돌리면 `npx projectops` 업데이트 때 Docker 워크플로우 4종이 재설치됩니다
-- **커밋 메시지에 `Co-Authored-By` 금지**
+- **커밋 메시지에 AI 태그 금지.** `Co-Authored-By: Claude`·`Generated with …`·GPT 서명 등 전부 — 규칙 원본은 [`TEAM-CONVENTIONS.md`](./TEAM-CONVENTIONS.md) §4
 - **커밋·푸시는 사용자가 요청할 때만.** 알아서 하지 않습니다
 
 ## 기술 스택
