@@ -33,7 +33,12 @@ spring:
               - profile
 
 app:
+  admin:
+    initial-username: ${ADMIN_INITIAL_USERNAME:}
+    initial-password: ${ADMIN_INITIAL_PASSWORD:}
   jwt:
     secret: ${JWT_SECRET}
+    admin-secret: ${ADMIN_JWT_SECRET}
+    admin-token-validity: PT1H
   crypto:
     aes-key: ${AES_KEY}
