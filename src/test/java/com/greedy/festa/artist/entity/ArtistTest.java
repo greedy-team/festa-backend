@@ -20,25 +20,27 @@ class ArtistTest {
     }
 
     @Test
-    void genre만_수정한다() {
+    void name만_수정한다() {
         Artist artist = artist();
 
-        artist.update(ArtistGenre.HIPHOP, null, null, null);
+        artist.update("변경된 아티스트", null, null, null);
 
-        assertThat(artist.getGenre()).isEqualTo(ArtistGenre.HIPHOP);
+        assertThat(artist.getName()).isEqualTo("변경된 아티스트");
+        assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
         assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
         assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
         assertThat(artist.isNeedsReview()).isTrue();
     }
 
     @Test
-    void imageUrl만_수정한다() {
+    void genre만_수정한다() {
         Artist artist = artist();
 
-        artist.update(null, "https://image.example.com/updated.jpg", null, null);
+        artist.update(null, ArtistGenre.HIPHOP, null, null);
 
-        assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
-        assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/updated.jpg");
+        assertThat(artist.getName()).isEqualTo("아티스트");
+        assertThat(artist.getGenre()).isEqualTo(ArtistGenre.HIPHOP);
+        assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
         assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
         assertThat(artist.isNeedsReview()).isTrue();
     }
@@ -49,10 +51,38 @@ class ArtistTest {
 
         artist.update(null, null, "https://instagram.com/updated", null);
 
+        assertThat(artist.getName()).isEqualTo("아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
         assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
         assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/updated");
         assertThat(artist.isNeedsReview()).isTrue();
+    }
+
+    @Test
+    void instagramUrl이_null이면_기존_값을_유지한다() {
+        Artist artist = artist();
+
+        artist.update("변경된 아티스트", null, null, null);
+
+        assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
+    }
+
+    @Test
+    void instagramUrl이_빈_문자열이면_null로_변경한다() {
+        Artist artist = artist();
+
+        artist.update(null, null, "", null);
+
+        assertThat(artist.getInstagramUrl()).isNull();
+    }
+
+    @Test
+    void instagramUrl이_공백_문자열이면_null로_변경한다() {
+        Artist artist = artist();
+
+        artist.update(null, null, "   ", null);
+
+        assertThat(artist.getInstagramUrl()).isNull();
     }
 
     @Test
@@ -61,6 +91,7 @@ class ArtistTest {
 
         artist.update(null, null, null, false);
 
+        assertThat(artist.getName()).isEqualTo("아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
         assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
         assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
@@ -68,17 +99,27 @@ class ArtistTest {
     }
 
     @Test
-    void 전달된_필드만_수정하고_나머지는_유지한다() {
+    void 일부_필드만_수정하고_나머지는_유지한다() {
         Artist artist = artist();
 
-        artist.update(ArtistGenre.DANCE, null,
-                "https://instagram.com/updated", false);
+        artist.update(null, ArtistGenre.DANCE,
+                "https://instagram.com/updated", null);
 
         assertThat(artist.getName()).isEqualTo("아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.DANCE);
         assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
         assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/updated");
-        assertThat(artist.isNeedsReview()).isFalse();
+        assertThat(artist.isNeedsReview()).isTrue();
+    }
+
+    @Test
+    void update해도_imageUrl은_기존_값을_유지한다() {
+        Artist artist = artist();
+
+        artist.update("변경된 아티스트", ArtistGenre.HIPHOP,
+                "https://instagram.com/updated", false);
+
+        assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
     }
 
     private Artist artist() {
