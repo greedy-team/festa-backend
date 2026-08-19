@@ -44,4 +44,20 @@ public class Artist extends BaseEntity {
         this.instagramUrl = instagramUrl;
         this.needsReview = needsReview;
     }
+
+    public void update(ArtistGenre genre, String imageUrl,
+                       String instagramUrl, Boolean needsReview) {
+        if (genre != null) {
+            this.genre = genre;
+        }
+        if (imageUrl != null) {
+            this.imageUrl = imageUrl;
+        }
+        if (instagramUrl != null) {
+            this.instagramUrl = instagramUrl;
+        }
+        if (needsReview != null) {
+            this.needsReview = needsReview;
+        }
+    }
 }
