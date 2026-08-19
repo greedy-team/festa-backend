@@ -52,7 +52,7 @@ CREATE TABLE import_batch (
     type                 varchar     NOT NULL,
     file_names           text[]      NOT NULL,
     on_conflict          varchar     NOT NULL,
-    preview              varchar,
+    preview              text,
     uploaded_by_admin_id bigint,
     uploaded_at          timestamptz NOT NULL,
     expires_at           timestamptz NOT NULL,
