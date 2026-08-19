@@ -35,6 +35,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
+    implementation("org.apache.commons:commons-csv:1.14.1")
 
     implementation("org.springframework.boot:spring-boot-flyway")
     implementation("org.flywaydb:flyway-core")
