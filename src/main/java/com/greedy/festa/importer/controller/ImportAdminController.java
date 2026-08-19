@@ -2,10 +2,13 @@ package com.greedy.festa.importer.controller;
 
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.importer.dto.ImportPreviewResponse;
+import com.greedy.festa.importer.dto.ImportCommitRequest;
+import com.greedy.festa.importer.dto.ImportCommitResponse;
 import com.greedy.festa.importer.entity.ImportConflictPolicy;
 import com.greedy.festa.importer.exception.ImportErrorCode;
 import com.greedy.festa.importer.model.ImportSection;
 import com.greedy.festa.importer.service.ImportPreviewService;
+import com.greedy.festa.importer.service.ImportCommitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,6 +29,15 @@ import java.time.Instant;
 public class ImportAdminController {
 
     private final ImportPreviewService importPreviewService;
+    private final ImportCommitService importCommitService;
+
+    @PostMapping("/{importId}/commit")
+    public ResponseEntity<ImportCommitResponse> commit(
+            @PathVariable("importId") Long importId,
+            @RequestBody(required = false) ImportCommitRequest request
+    ) {
+        return ResponseEntity.ok(importCommitService.commit(importId, request));
+    }
 
     @PostMapping(value = "/bundle", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImportPreviewResponse> previewBundle(

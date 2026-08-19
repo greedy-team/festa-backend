@@ -25,15 +25,27 @@ public class PreviewJsonCodec {
         try {
             StoredImportPreview preview = objectMapper.readValue(json, StoredImportPreview.class);
             if (preview.schemaVersion() != StoredImportPreview.CURRENT_SCHEMA_VERSION) {
-                throw new IllegalArgumentException(
+                throw new UnsupportedPreviewVersionException(
                         "지원하지 않는 preview schemaVersion입니다: " + preview.schemaVersion());
             }
             return preview;
         } catch (Exception e) {
-            if (e instanceof IllegalArgumentException illegalArgumentException) {
-                throw illegalArgumentException;
+            if (e instanceof UnsupportedPreviewVersionException unsupported) {
+                throw unsupported;
             }
-            throw new IllegalArgumentException("preview JSON을 읽을 수 없습니다", e);
+            throw new InvalidPreviewException("preview JSON을 읽을 수 없습니다", e);
+        }
+    }
+
+    public static class UnsupportedPreviewVersionException extends IllegalArgumentException {
+        public UnsupportedPreviewVersionException(String message) {
+            super(message);
+        }
+    }
+
+    public static class InvalidPreviewException extends IllegalArgumentException {
+        public InvalidPreviewException(String message, Throwable cause) {
+            super(message, cause);
         }
     }
 }

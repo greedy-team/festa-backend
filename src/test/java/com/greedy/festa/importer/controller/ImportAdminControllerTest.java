@@ -6,6 +6,11 @@ import com.greedy.festa.importer.entity.ImportConflictPolicy;
 import com.greedy.festa.importer.exception.ImportErrorCode;
 import com.greedy.festa.importer.model.ImportSection;
 import com.greedy.festa.importer.service.ImportPreviewService;
+import com.greedy.festa.importer.service.ImportCommitService;
+import com.greedy.festa.importer.dto.ImportCommitRequest;
+import com.greedy.festa.importer.dto.ImportCommitResponse;
+import com.greedy.festa.importer.dto.ImportCommitResult;
+import com.greedy.festa.importer.dto.ImportCommitSectionResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -28,6 +33,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
@@ -36,6 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ImportAdminControllerTest {
 
     @Mock ImportPreviewService importPreviewService;
+    @Mock ImportCommitService importCommitService;
     @InjectMocks ImportAdminController controller;
 
     @Test
@@ -130,5 +137,37 @@ class ImportAdminControllerTest {
         mockMvc.perform(multipart("/admin/imports/bundle").file(festivals))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("IMPORT_MISSING_FILE"));
+    }
+
+    @Test
+    void commit_API는_Long_importId와_lines를_binding하고_200을_반환한다() throws Exception {
+        ImportCommitSectionResult empty = new ImportCommitSectionResult(0, 0, 0, 0);
+        given(importCommitService.commit(eq(37L), any(ImportCommitRequest.class)))
+                .willReturn(new ImportCommitResponse(37L, Instant.EPOCH,
+                        new ImportCommitResult(empty, empty, empty), java.util.List.of()));
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+
+        mockMvc.perform(post("/admin/imports/37/commit")
+                        .contentType("application/json")
+                        .content("{\"lines\":{\"artists\":[1,2],\"festivals\":[1]}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.importId").value(37))
+                .andExpect(jsonPath("$.result.lineups.updated").value(0))
+                .andExpect(jsonPath("$.createdFestivalIds").isArray());
+    }
+
+    @Test
+    void commit_FestaException은_공통_ErrorResponse로_매핑한다() throws Exception {
+        given(importCommitService.commit(eq(37L), any()))
+                .willThrow(new FestaException(ImportErrorCode.IMPORT_PREVIEW_STALE));
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+
+        mockMvc.perform(post("/admin/imports/37/commit")
+                        .contentType("application/json").content("{}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("IMPORT_PREVIEW_STALE"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.instance").value("/admin/imports/37/commit"));
     }
 }
