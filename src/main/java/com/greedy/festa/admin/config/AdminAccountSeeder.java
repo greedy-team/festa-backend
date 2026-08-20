@@ -32,7 +32,22 @@ public class AdminAccountSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        if (!StringUtils.hasText(initialUsername) || !StringUtils.hasText(initialPassword)) {
+        boolean hasUsername = StringUtils.hasText(initialUsername);
+        boolean hasPassword = StringUtils.hasText(initialPassword);
+
+        if (hasUsername && !hasPassword) {
+            throw new IllegalStateException(
+                    "초기 관리자 환경변수 ADMIN_INITIAL_PASSWORD가 없습니다. "
+                            + "ADMIN_INITIAL_USERNAME과 함께 설정하거나 둘 다 비워야 합니다");
+        }
+
+        if (!hasUsername && hasPassword) {
+            throw new IllegalStateException(
+                    "초기 관리자 환경변수 ADMIN_INITIAL_USERNAME이 없습니다. "
+                            + "ADMIN_INITIAL_PASSWORD와 함께 설정하거나 둘 다 비워야 합니다");
+        }
+
+        if (!hasUsername) {
             log.info("초기 관리자 환경변수가 없어 시딩을 건너뜁니다");
             return;
         }
