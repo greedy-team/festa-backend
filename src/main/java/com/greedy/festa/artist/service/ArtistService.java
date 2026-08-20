@@ -36,24 +36,25 @@ public class ArtistService {
 
     @Transactional
     public ArtistResponse create(ArtistCreateRequest request) {
-        validateName(request.name());
+        String name = blankToNull(request.name());
+        validateName(name);
         List<String> otherNames = List.of();
         if (request.otherNames() != null) {
-            otherNames = normalizeAliases(request.otherNames(), request.name());
+            otherNames = normalizeAliases(request.otherNames(), name);
         }
         validateAlias(otherNames);
 
         Artist artist = artistRepository.save(Artist.builder()
-                .name(request.name())
+                .name(name)
                 .genre(request.genre())
                 .instagramUrl(blankToNull(request.instagramUrl()))
                 .needsReview(false)
                 .imageUrl(null).build());
 
         artistAliasRepository.saveAll(otherNames.stream()
-                .map(name -> ArtistAlias.builder()
+                .map(artistName -> ArtistAlias.builder()
                         .artist(artist)
-                        .name(name)
+                        .name(artistName)
                         .build())
                 .toList());
 
@@ -94,11 +95,15 @@ public class ArtistService {
         Artist artist = artistRepository.findById(id)
                 .orElseThrow(() -> new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
-        if (request.name() != null) {
-            validateNameForUpdate(request.name(), id);
+        String name = blankToNull(request.name());
+        if (name != null) {
+            validateNameForUpdate(name, id);
+        }
+        if (name != null && request.otherNames() == null) {
+            artistAliasRepository.deleteByArtistIdAndName(id, name);
         }
 
-        artist.update(request.name(), request.genre(), request.instagramUrl(), request.needsReview());
+        artist.update(name, request.genre(), request.instagramUrl(), request.needsReview());
 
         List<String> aliasNames;
         if (request.otherNames() != null) {
@@ -137,7 +142,8 @@ public class ArtistService {
             throw new FestaException(ArtistErrorCode.ARTIST_INVALID_NAME);
         }
 
-        if (artistRepository.existsByName(name)) {
+        if (artistRepository.existsByName(name)
+                || artistAliasRepository.existsByName(name)) {
             throw new FestaException(ArtistErrorCode.ARTIST_DUPLICATE_NAME);
         }
     }

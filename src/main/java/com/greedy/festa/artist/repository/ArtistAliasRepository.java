@@ -16,4 +16,6 @@ public interface ArtistAliasRepository extends JpaRepository<ArtistAlias, Long> 
     boolean existsByNameAndArtistIdNot(String name, Long artistId);
 
     void deleteByArtistId(Long artistId);
+
+    void deleteByArtistIdAndName(Long artistId, String name);
 }

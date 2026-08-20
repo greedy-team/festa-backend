@@ -120,6 +120,7 @@ public class ArtistServiceTest {
     void 별칭이_다른_아티스트의_별칭과_겹치면_등록에_실패한다() {
         // given
         ArtistCreateRequest request = 등록_요청(아티스트_이름, List.of("방탄"));
+        given(artistAliasRepository.existsByName(아티스트_이름)).willReturn(false);
         given(artistAliasRepository.existsByName("방탄")).willReturn(true);
 
         // when
@@ -129,6 +130,52 @@ public class ArtistServiceTest {
 
         // then
         assertThat(thrown.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_DUPLICATE_ALIAS);
+    }
+
+    @Test
+    void 대표명이_다른_아티스트의_별칭과_겹치면_등록에_실패한다() {
+        // given
+        ArtistCreateRequest request = 등록_요청("JANNABI", null);
+        given(artistAliasRepository.existsByName("JANNABI")).willReturn(true);
+
+        // when
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class, () -> artistService.create(request)
+        );
+
+        // then
+        assertThat(thrown.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_DUPLICATE_NAME);
+    }
+
+    @Test
+    void 대표명은_앞뒤_공백을_제거하고_중복을_검사한다() {
+        // given
+        ArtistCreateRequest request = 등록_요청("  " + 아티스트_이름 + "  ", null);
+        given(artistRepository.existsByName(아티스트_이름)).willReturn(true);
+
+        // when
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class, () -> artistService.create(request)
+        );
+
+        // then
+        assertThat(thrown.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_DUPLICATE_NAME);
+    }
+
+    @Test
+    void 대표명은_앞뒤_공백을_제거하고_저장한다() {
+        // given
+        ArtistCreateRequest request = 등록_요청("  " + 아티스트_이름 + "  ", List.of(아티스트_이름, "방탄"));
+        저장은_받은_엔티티를_그대로_돌려준다();
+
+        // when
+        ArtistResponse response = artistService.create(request);
+
+        // then
+        assertSoftly(softly -> {
+            softly.assertThat(response.name()).isEqualTo(아티스트_이름);
+            softly.assertThat(response.otherNames()).containsExactly("방탄");
+        });
     }
 
     @Test
@@ -296,6 +343,34 @@ public class ArtistServiceTest {
             softly.assertThat(artist.getInstagramUrl()).isEqualTo(아티스트_인스타);
             softly.assertThat(artist.isNeedsReview()).isTrue();
         });
+    }
+
+    @Test
+    void 이름을_자기_별칭과_같게_바꾸면_그_별칭을_지운다() {
+        // 다른 아티스트의 별칭은 validateNameForUpdate가 막지만, 자기 별칭은 제외되어 통과한다.
+        // 그대로 두면 대표명과 별칭이 같아져 임포트가 두 건을 찾는다.
+        // given
+        Artist artist = 수정할_아티스트가_있다();
+        별칭이_있다(artist, "방탄");
+
+        // when — 별칭은 보내지 않고 이름만 자기 별칭과 같게 바꾼다
+        artistService.update(아티스트_id, 수정_요청("방탄", null, null, null, null));
+
+        // then
+        verify(artistAliasRepository).deleteByArtistIdAndName(아티스트_id, "방탄");
+    }
+
+    @Test
+    void 별칭을_함께_보내면_이름과_같은_별칭은_따로_지우지_않는다() {
+        // given
+        Artist artist = 수정할_아티스트가_있다();
+        별칭이_있다(artist, "방탄");
+
+        // when
+        artistService.update(아티스트_id, 수정_요청("방탄", List.of("방탄"), null, null, null));
+
+        // then
+        verify(artistAliasRepository, never()).deleteByArtistIdAndName(any(), any());
     }
 
     @Test
