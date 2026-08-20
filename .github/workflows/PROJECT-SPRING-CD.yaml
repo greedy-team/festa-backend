@@ -76,6 +76,9 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           AES_KEY: ${{ secrets.AES_KEY }}
+          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
+          ADMIN_INITIAL_USERNAME: ${{ secrets.ADMIN_INITIAL_USERNAME }}
+          ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
         run: |
           if [[ "$DB_URL" != "jdbc:postgresql://postgres:5432/festa" ]]; then
             echo "DB_URL은 jdbc:postgresql://postgres:5432/festa와 정확히 일치해야 합니다." >&2
@@ -83,6 +86,18 @@ jobs:
           fi
           if [[ -z "$OCI_HOST_KEY" ]]; then
             echo "OCI_HOST_KEY Secret에 미리 검증한 서버 host key를 등록해야 합니다." >&2
+            exit 1
+          fi
+          if [[ -z "$ADMIN_JWT_SECRET" ]]; then
+            echo "ADMIN_JWT_SECRET Secret이 없습니다. 앱이 기동하지 못합니다." >&2
+            exit 1
+          fi
+          if [[ -n "$ADMIN_INITIAL_USERNAME" && -z "$ADMIN_INITIAL_PASSWORD" ]]; then
+            echo "ADMIN_INITIAL_USERNAME만 설정되어 있습니다. ADMIN_INITIAL_PASSWORD도 등록하거나 둘 다 비워야 합니다." >&2
+            exit 1
+          fi
+          if [[ -z "$ADMIN_INITIAL_USERNAME" && -n "$ADMIN_INITIAL_PASSWORD" ]]; then
+            echo "ADMIN_INITIAL_PASSWORD만 설정되어 있습니다. ADMIN_INITIAL_USERNAME도 등록하거나 둘 다 비워야 합니다." >&2
             exit 1
           fi
 
@@ -112,6 +127,9 @@ jobs:
             write_env GOOGLE_CLIENT_SECRET "$GOOGLE_CLIENT_SECRET"
             write_env JWT_SECRET "$JWT_SECRET"
             write_env AES_KEY "$AES_KEY"
+            write_env ADMIN_JWT_SECRET "$ADMIN_JWT_SECRET"
+            write_env ADMIN_INITIAL_USERNAME "$ADMIN_INITIAL_USERNAME"
+            write_env ADMIN_INITIAL_PASSWORD "$ADMIN_INITIAL_PASSWORD"
           } > "$RUNNER_TEMP/app.env"
 
       - name: OCI 인스턴스로 전송
