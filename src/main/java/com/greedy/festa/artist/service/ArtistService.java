@@ -3,6 +3,7 @@ package com.greedy.festa.artist.service;
 import com.greedy.festa.artist.dto.ArtistCreateRequest;
 import com.greedy.festa.artist.dto.ArtistResponse;
 import com.greedy.festa.artist.dto.ArtistSortType;
+import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistAlias;
 import com.greedy.festa.artist.entity.ArtistGenre;
@@ -36,19 +37,20 @@ public class ArtistService {
     @Transactional
     public ArtistResponse create(ArtistCreateRequest request) {
         validateName(request.name());
-        List<String> otherNames = normalizeAliases(request.otherNames(), request.name());
-        if (!otherNames.isEmpty()) {
-            validateAlias(otherNames);
+        List<String> otherNames = List.of();
+        if (request.otherNames() != null) {
+            otherNames = normalizeAliases(request.otherNames(), request.name());
         }
+        validateAlias(otherNames);
 
         Artist artist = artistRepository.save(Artist.builder()
                 .name(request.name())
                 .genre(request.genre())
-                .instagramUrl(request.instagramUrl())
+                .instagramUrl(blankToNull(request.instagramUrl()))
                 .needsReview(false)
                 .imageUrl(null).build());
 
-        List<ArtistAlias> artistAliases = artistAliasRepository.saveAll(otherNames.stream()
+        artistAliasRepository.saveAll(otherNames.stream()
                 .map(name -> ArtistAlias.builder()
                         .artist(artist)
                         .name(name)
@@ -85,6 +87,43 @@ public class ArtistService {
                         aliasesByArtistId.getOrDefault(row.getArtist().getId(), List.of()),
                         row.getAppearanceCount()
                 )));
+    }
+
+    @Transactional
+    public ArtistResponse update(Long id, ArtistUpdateRequest request) {
+        Artist artist = artistRepository.findById(id)
+                .orElseThrow(() -> new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND));
+
+        if (request.name() != null) {
+            validateNameForUpdate(request.name(), id);
+            artist.changeName(request.name());
+        }
+        if (request.genre() != null) {
+            artist.changeGenre(request.genre());
+        }
+        if (request.instagramUrl() != null) {
+            artist.changeInstagramUrl(blankToNull(request.instagramUrl()));
+        }
+        if (request.needsReview() != null) {
+            artist.changeNeedsReview(request.needsReview());
+        }
+
+        List<String> aliasNames;
+        if (request.otherNames() != null) {
+            aliasNames = normalizeAliases(request.otherNames(), artist.getName());
+            replaceAliases(artist, aliasNames);
+        }
+        else {
+            aliasNames = artistAliasRepository.findByArtistId(artist.getId()).stream()
+                    .map(ArtistAlias::getName)
+                    .toList();
+        }
+
+        return ArtistResponse.of(
+                artist,
+                aliasNames,
+                artistRepository.countAppearancesByArtistId(id)
+        );
     }
 
     @Transactional
@@ -129,6 +168,46 @@ public class ArtistService {
         }
     }
 
+    private void validateNameForUpdate(String name, Long id) {
+        if (name.isBlank() || name.length() > MAX_NAME_LENGTH) {
+            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_NAME);
+        }
+
+        if (artistRepository.existsByNameAndIdNot(name, id)
+            || artistAliasRepository.existsByNameAndArtistIdNot(name, id)) {
+            throw new FestaException(ArtistErrorCode.ARTIST_DUPLICATE_NAME);
+        }
+    }
+
+    private void validateAliasesForUpdate(List<String> aliasesToAdd, Long id) {
+        boolean tooLong = aliasesToAdd.stream()
+                .anyMatch(otherName -> otherName.length() > MAX_NAME_LENGTH);
+
+        if (tooLong) {
+            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_ALIAS);
+        }
+
+        boolean taken = aliasesToAdd.stream()
+                .anyMatch(otherName ->
+                        artistRepository.existsByNameAndIdNot(otherName, id)
+                                || artistAliasRepository.existsByNameAndArtistIdNot(otherName, id));
+
+        if (taken) {
+            throw new FestaException(ArtistErrorCode.ARTIST_DUPLICATE_ALIAS);
+        }
+    }
+
+    private String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmedValue = value.trim();
+        if (trimmedValue.isBlank()) {
+            return null;
+        }
+        return trimmedValue;
+    }
+
     private List<String> normalizeAliases(List<String> otherNames, String name) {
         if (otherNames == null) {
             return List.of();
@@ -140,6 +219,32 @@ public class ArtistService {
                 .filter(otherName -> !otherName.equals(name))
                 .distinct()
                 .toList();
+    }
+
+    private void replaceAliases(Artist artist, List<String> target) {
+        List<ArtistAlias> currentAliases = artistAliasRepository.findByArtistId(artist.getId());
+        List<String> currentAliasesNames = currentAliases.stream()
+                .map(ArtistAlias::getName)
+                .toList();
+
+        List<ArtistAlias> aliasesToRemove = currentAliases.stream()
+                .filter(alias -> !target.contains(alias.getName()))
+                .toList();
+
+        List<String> aliasesToAdd = target.stream()
+                .filter(otherName -> !currentAliasesNames.contains(otherName))
+                .toList();
+
+
+        validateAliasesForUpdate(aliasesToAdd, artist.getId());
+
+        artistAliasRepository.deleteAll(aliasesToRemove);
+        artistAliasRepository.saveAll(aliasesToAdd.stream()
+                .map(name -> ArtistAlias.builder()
+                        .artist(artist)
+                        .name(name)
+                        .build())
+                .toList());
     }
 
     private Map<Long, List<String>> loadAlias(Page<ArtistWithAppearanceCount> rows) {

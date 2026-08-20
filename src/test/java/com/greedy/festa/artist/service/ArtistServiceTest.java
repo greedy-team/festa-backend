@@ -2,7 +2,9 @@ package com.greedy.festa.artist.service;
 
 import com.greedy.festa.artist.dto.ArtistCreateRequest;
 import com.greedy.festa.artist.dto.ArtistResponse;
+import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.Artist;
+import com.greedy.festa.artist.entity.ArtistAlias;
 import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
@@ -46,19 +48,11 @@ public class ArtistServiceTest {
 
     private static final Long 아티스트_id = 1L;
     private static final String 아티스트_이름 = "BTS";
+    private static final String 아티스트_인스타 = "https://instagram.com/bts";
     private static final List<String> 아티스트_별칭 = List.of("방탄소년단", "방탄");
 
     private static List<String> 잘못된_아티스트_이름() {
         return Arrays.asList(null, "", "   ", "아".repeat(101));
-    }
-
-    private ArtistCreateRequest 등록_요청(String name, List<String> otherNames) {
-        return new ArtistCreateRequest(name, otherNames, ArtistGenre.DANCE, null);
-    }
-
-    private void 저장은_받은_엔티티를_그대로_돌려준다() {
-        given(artistRepository.save(any(Artist.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
     }
 
     @ParameterizedTest
@@ -229,6 +223,82 @@ public class ArtistServiceTest {
     }
 
     @Test
+    void 없는_아티스트는_수정할_수_없다() {
+        // given
+        given(artistRepository.findById(아티스트_id)).willReturn(Optional.empty());
+
+        // when
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class,
+                () -> artistService.update(아티스트_id, 수정_요청(null, null, null, null, null))
+        );
+
+        // then
+        assertThat(thrown.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_NOT_FOUND);
+    }
+
+    @Test
+    void 별칭을_보내지_않으면_별칭을_건드리지_않는다() {
+        // given
+        Artist artist = 수정할_아티스트가_있다();
+        별칭이_있다(artist, "방탄");
+
+        // when
+        ArtistResponse response = artistService.update(아티스트_id, 수정_요청(null, null, null, null, null));
+
+        // then
+        assertThat(response.otherNames()).containsExactly("방탄");
+        verify(artistAliasRepository, never()).deleteAll(any());
+        verify(artistAliasRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void 빈_배열을_보내면_별칭이_전부_지워진다() {
+        // given
+        Artist artist = 수정할_아티스트가_있다();
+        ArtistAlias 방탄 = 별칭이_있다(artist, "방탄");
+
+        // when
+        ArtistResponse response = artistService.update(아티스트_id, 수정_요청(null, List.of(), null, null, null));
+
+        // then
+        assertThat(response.otherNames()).isEmpty();
+        verify(artistAliasRepository).deleteAll(List.of(방탄));
+    }
+
+    @Test
+    void 같은_별칭을_다시_보내면_아무것도_저장하지_않는다() {
+        // given
+        Artist artist = 수정할_아티스트가_있다();
+        별칭이_있다(artist, "방탄");
+
+        // when
+        artistService.update(아티스트_id, 수정_요청(null, List.of("방탄"), null, null, null));
+
+        // then
+        verify(artistAliasRepository).deleteAll(List.of());
+        verify(artistAliasRepository).saveAll(List.of());
+    }
+
+    @Test
+    void 보내지_않은_필드는_그대로_남는다() {
+        // given
+        Artist artist = 수정할_아티스트가_있다();
+        별칭이_있다(artist, "방탄");
+
+        // when
+        artistService.update(아티스트_id, 수정_요청(null, null, null, null, true));
+
+        // then
+        assertSoftly(softly -> {
+            softly.assertThat(artist.getName()).isEqualTo(아티스트_이름);
+            softly.assertThat(artist.getGenre()).isEqualTo(ArtistGenre.DANCE);
+            softly.assertThat(artist.getInstagramUrl()).isEqualTo(아티스트_인스타);
+            softly.assertThat(artist.isNeedsReview()).isTrue();
+        });
+    }
+
+    @Test
     void 없는_아티스트는_삭제할_수_없다() {
         // given
         given(artistRepository.findById(아티스트_id)).willReturn(Optional.empty());
@@ -273,5 +343,36 @@ public class ArtistServiceTest {
         InOrder inOrder = inOrder(artistAliasRepository, artistRepository);
         inOrder.verify(artistAliasRepository).deleteByArtistId(아티스트_id);
         inOrder.verify(artistRepository).deleteById(아티스트_id);
+    }
+
+    private ArtistCreateRequest 등록_요청(String name, List<String> otherNames) {
+        return new ArtistCreateRequest(name, otherNames, ArtistGenre.DANCE, null);
+    }
+
+    private ArtistUpdateRequest 수정_요청(String name, List<String> otherNames,
+                                          ArtistGenre genre, String instagramUrl, Boolean needsReview) {
+        return new ArtistUpdateRequest(name, otherNames, genre, instagramUrl, needsReview);
+    }
+
+    private void 저장은_받은_엔티티를_그대로_돌려준다() {
+        given(artistRepository.save(any(Artist.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    private Artist 수정할_아티스트가_있다() {
+        Artist artist = Artist.builder()
+                .name(아티스트_이름)
+                .genre(ArtistGenre.DANCE)
+                .instagramUrl(아티스트_인스타)
+                .needsReview(false)
+                .build();
+        given(artistRepository.findById(아티스트_id)).willReturn(Optional.of(artist));
+        return artist;
+    }
+
+    private ArtistAlias 별칭이_있다(Artist artist, String name) {
+        ArtistAlias alias = ArtistAlias.builder().artist(artist).name(name).build();
+        given(artistAliasRepository.findByArtistId(any())).willReturn(List.of(alias));
+        return alias;
     }
 }
