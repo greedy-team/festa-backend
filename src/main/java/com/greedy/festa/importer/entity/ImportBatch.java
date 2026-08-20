@@ -21,6 +21,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Getter
@@ -67,8 +68,8 @@ public class ImportBatch {
         this.onConflict = onConflict;
         this.preview = preview;
         this.uploadedByAdmin = uploadedByAdmin;
-        this.uploadedAt = uploadedAt;
-        this.expiresAt = uploadedAt.plus(30, ChronoUnit.MINUTES);
+        this.uploadedAt = Objects.requireNonNull(uploadedAt, "uploadedAt");
+        this.expiresAt = this.uploadedAt.plus(30, ChronoUnit.MINUTES);
         this.committedAt = committedAt;
     }
 }

@@ -1,0 +1,246 @@
+name: PROJECT-SPRING-CD
+
+on:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment
+        required: true
+        default: development
+        type: choice
+        options:
+          - development
+          - production
+
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'production' || 'development') }}-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: OCI 배포
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'production' || 'development') }}
+    permissions:
+      contents: read
+    env:
+      IMAGE_NAME: festa-backend
+      TARGET_PLATFORM: ${{ (github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'production' || 'development')) == 'production' && 'linux/arm64' || 'linux/amd64' }}
+      OCI_PORT: ${{ secrets.OCI_SSH_PORT || '22' }}
+      OCI_DEPLOY_PATH: ${{ vars.OCI_DEPLOY_PATH || '/opt/festa' }}
+
+    steps:
+      - name: 배포 환경 활성화 확인
+        env:
+          DEPLOY_ENABLED: ${{ vars.DEPLOY_ENABLED }}
+        run: |
+          if [[ "$DEPLOY_ENABLED" != "true" ]]; then
+            echo "선택한 GitHub Environment의 DEPLOY_ENABLED가 true가 아닙니다." >&2
+            exit 1
+          fi
+
+      - name: 코드 체크아웃
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: QEMU 설정
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        with:
+          platforms: arm64,amd64
+
+      - name: Docker Buildx 설정
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: 컨테이너 이미지 빌드
+        run: |
+          docker buildx build \
+            --platform "$TARGET_PLATFORM" \
+            --tag "$IMAGE_NAME:$GITHUB_SHA" \
+            --output "type=docker,dest=$RUNNER_TEMP/$IMAGE_NAME.tar" \
+            .
+          gzip "$RUNNER_TEMP/$IMAGE_NAME.tar"
+
+      - name: SSH와 실행 환경 준비
+        env:
+          DEPLOY_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'production' || 'development') }}
+          OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          OCI_HOST_KEY: ${{ secrets.OCI_HOST_KEY }}
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          AES_KEY: ${{ secrets.AES_KEY }}
+        run: |
+          if [[ "$DB_URL" != "jdbc:postgresql://postgres:5432/festa" ]]; then
+            echo "DB_URL은 jdbc:postgresql://postgres:5432/festa와 정확히 일치해야 합니다." >&2
+            exit 1
+          fi
+          if [[ -z "$OCI_HOST_KEY" ]]; then
+            echo "OCI_HOST_KEY Secret에 미리 검증한 서버 host key를 등록해야 합니다." >&2
+            exit 1
+          fi
+
+          if [[ "$DEPLOY_ENVIRONMENT" == "development" ]]; then
+            GOOGLE_CLIENT_ID="development-dummy-client"
+            GOOGLE_CLIENT_SECRET="development-dummy-secret"
+          fi
+
+          install -m 700 -d "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$OCI_SSH_PRIVATE_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"
+          chmod 600 "$RUNNER_TEMP/ssh/key"
+          printf '%s\n' "$OCI_HOST_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/ssh/known_hosts"
+
+          umask 077
+          write_env() {
+            local key="$1"
+            local value="$2"
+            value="${value//\'/\\\'}"
+            printf "%s='%s'\n" "$key" "$value"
+          }
+          {
+            write_env DB_URL "$DB_URL"
+            write_env DB_USERNAME "$DB_USERNAME"
+            write_env DB_PASSWORD "$DB_PASSWORD"
+            write_env GOOGLE_CLIENT_ID "$GOOGLE_CLIENT_ID"
+            write_env GOOGLE_CLIENT_SECRET "$GOOGLE_CLIENT_SECRET"
+            write_env JWT_SECRET "$JWT_SECRET"
+            write_env AES_KEY "$AES_KEY"
+          } > "$RUNNER_TEMP/app.env"
+
+      - name: OCI 인스턴스로 전송
+        env:
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+        run: |
+          ssh \
+            -i "$RUNNER_TEMP/ssh/key" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+            -p "$OCI_PORT" \
+            "$OCI_USER@$OCI_HOST" \
+            "mkdir -p '$OCI_DEPLOY_PATH'"
+          scp \
+            -i "$RUNNER_TEMP/ssh/key" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+            -P "$OCI_PORT" \
+            "$RUNNER_TEMP/$IMAGE_NAME.tar.gz" \
+            "$RUNNER_TEMP/app.env" \
+            deploy/compose.yaml \
+            "$OCI_USER@$OCI_HOST:$OCI_DEPLOY_PATH/"
+
+      - name: 컨테이너 재기동
+        env:
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+        run: |
+          ssh \
+            -i "$RUNNER_TEMP/ssh/key" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+            -p "$OCI_PORT" \
+            "$OCI_USER@$OCI_HOST" \
+            "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' IMAGE_TAG='$GITHUB_SHA' bash -s" <<'REMOTE'
+          set -Eeuo pipefail
+          cd "$OCI_DEPLOY_PATH"
+          trap 'rm -f "$IMAGE_NAME.tar.gz"' EXIT
+          chmod 600 app.env
+          gzip -dc "$IMAGE_NAME.tar.gz" | docker load
+          if [[ ! -s .last-successful-image ]]; then
+            current_container="$(APP_IMAGE="$IMAGE_NAME:$IMAGE_TAG" docker compose --env-file app.env ps -q app)"
+            if [[ -n "$current_container" ]]; then
+              docker inspect --format '{{.Config.Image}}' "$current_container" > .last-successful-image
+            fi
+          fi
+          printf '%s\n' "$IMAGE_NAME:$IMAGE_TAG" > .deployment-in-progress
+
+          if ! APP_IMAGE="$IMAGE_NAME:$IMAGE_TAG" docker compose --env-file app.env up -d --wait --wait-timeout 180 \
+            || ! curl --fail --silent --show-error --retry 10 --retry-delay 3 \
+              http://localhost:8080/actuator/health; then
+            previous_image="$(cat .last-successful-image 2>/dev/null || true)"
+            if [[ -z "$previous_image" ]] || ! docker image inspect "$previous_image" >/dev/null 2>&1; then
+              echo "배포 실패: 롤백할 이전 정상 이미지가 없습니다." >&2
+              rm -f .deployment-in-progress
+              exit 1
+            fi
+
+            echo "새 이미지 배포 실패. $previous_image 로 롤백합니다." >&2
+            APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 180
+            curl --fail --silent --show-error --retry 10 --retry-delay 3 \
+              http://localhost:8080/actuator/health
+            rm -f .deployment-in-progress
+            exit 1
+          fi
+          REMOTE
+
+      - name: 외부 헬스 체크
+        env:
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+        run: |
+          if ! curl --fail --silent --show-error \
+            --retry 10 --retry-delay 5 --retry-all-errors \
+            "http://$OCI_HOST:8080/actuator/health"; then
+            ssh \
+              -i "$RUNNER_TEMP/ssh/key" \
+              -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+              -p "$OCI_PORT" \
+              "$OCI_USER@$OCI_HOST" \
+              "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' EXPECTED_IMAGE='$IMAGE_NAME:$GITHUB_SHA' bash -s" <<'REMOTE'
+            set -Eeuo pipefail
+            cd "$OCI_DEPLOY_PATH"
+            deploying_image="$(cat .deployment-in-progress 2>/dev/null || true)"
+            previous_image="$(cat .last-successful-image 2>/dev/null || true)"
+
+            if [[ "$deploying_image" != "$EXPECTED_IMAGE" ]]; then
+              echo "배포 상태가 예상과 달라 자동 롤백을 중단합니다." >&2
+              exit 1
+            fi
+            if [[ -z "$previous_image" ]] || ! docker image inspect "$previous_image" >/dev/null 2>&1; then
+              echo "외부 헬스 체크 실패: 롤백할 이전 정상 이미지가 없습니다." >&2
+              rm -f .deployment-in-progress
+              exit 1
+            fi
+
+            echo "외부 헬스 체크 실패. $previous_image 로 롤백합니다." >&2
+            APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 180
+            curl --fail --silent --show-error --retry 10 --retry-delay 3 \
+              http://localhost:8080/actuator/health
+            rm -f .deployment-in-progress
+          REMOTE
+            exit 1
+          fi
+
+      - name: 정상 배포 이미지 기록과 정리
+        env:
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+        run: |
+          ssh \
+            -i "$RUNNER_TEMP/ssh/key" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+            -p "$OCI_PORT" \
+            "$OCI_USER@$OCI_HOST" \
+            "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' EXPECTED_IMAGE='$IMAGE_NAME:$GITHUB_SHA' bash -s" <<'REMOTE'
+          set -Eeuo pipefail
+          cd "$OCI_DEPLOY_PATH"
+          deploying_image="$(cat .deployment-in-progress 2>/dev/null || true)"
+          if [[ "$deploying_image" != "$EXPECTED_IMAGE" ]]; then
+            echo "배포 상태가 예상과 달라 정상 이미지로 기록하지 않습니다." >&2
+            exit 1
+          fi
+          previous_image="$(cat .last-successful-image 2>/dev/null || true)"
+          printf '%s\n' "$EXPECTED_IMAGE" > .last-successful-image
+          rm -f .deployment-in-progress
+
+          while IFS= read -r image; do
+            if [[ -z "$image" || "$image" == "$EXPECTED_IMAGE" || "$image" == "$previous_image" ]]; then
+              continue
+            fi
+            docker image rm "$image" || true
+          done < <(docker image ls --filter "reference=$IMAGE_NAME:*" --format '{{.Repository}}:{{.Tag}}')
+          REMOTE

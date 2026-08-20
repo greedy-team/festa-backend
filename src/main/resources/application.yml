@@ -42,3 +42,12 @@ app:
     admin-token-validity: PT1H
   crypto:
     aes-key: ${AES_KEY}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
