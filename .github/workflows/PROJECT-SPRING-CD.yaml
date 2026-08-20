@@ -241,6 +241,6 @@ jobs:
             if [[ -z "$image" || "$image" == "$EXPECTED_IMAGE" || "$image" == "$previous_image" ]]; then
               continue
             fi
-            docker image rm "$image"
+            docker image rm "$image" || true
           done < <(docker image ls --filter "reference=$IMAGE_NAME:*" --format '{{.Repository}}:{{.Tag}}')
           REMOTE
