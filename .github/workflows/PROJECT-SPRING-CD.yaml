@@ -98,14 +98,20 @@ jobs:
           chmod 600 "$RUNNER_TEMP/ssh/known_hosts"
 
           umask 077
+          write_env() {
+            local key="$1"
+            local value="$2"
+            value="${value//\'/\\\'}"
+            printf "%s='%s'\n" "$key" "$value"
+          }
           {
-            printf 'DB_URL=%s\n' "$DB_URL"
-            printf 'DB_USERNAME=%s\n' "$DB_USERNAME"
-            printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
-            printf 'GOOGLE_CLIENT_ID=%s\n' "$GOOGLE_CLIENT_ID"
-            printf 'GOOGLE_CLIENT_SECRET=%s\n' "$GOOGLE_CLIENT_SECRET"
-            printf 'JWT_SECRET=%s\n' "$JWT_SECRET"
-            printf 'AES_KEY=%s\n' "$AES_KEY"
+            write_env DB_URL "$DB_URL"
+            write_env DB_USERNAME "$DB_USERNAME"
+            write_env DB_PASSWORD "$DB_PASSWORD"
+            write_env GOOGLE_CLIENT_ID "$GOOGLE_CLIENT_ID"
+            write_env GOOGLE_CLIENT_SECRET "$GOOGLE_CLIENT_SECRET"
+            write_env JWT_SECRET "$JWT_SECRET"
+            write_env AES_KEY "$AES_KEY"
           } > "$RUNNER_TEMP/app.env"
 
       - name: OCI 인스턴스로 전송
@@ -141,6 +147,7 @@ jobs:
             "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' IMAGE_TAG='$GITHUB_SHA' bash -s" <<'REMOTE'
           set -Eeuo pipefail
           cd "$OCI_DEPLOY_PATH"
+          trap 'rm -f "$IMAGE_NAME.tar.gz"' EXIT
           chmod 600 app.env
           gzip -dc "$IMAGE_NAME.tar.gz" | docker load
           if [[ ! -s .last-successful-image ]]; then
@@ -165,7 +172,7 @@ jobs:
             APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 180
             curl --fail --silent --show-error --retry 10 --retry-delay 3 \
               http://localhost:8080/actuator/health
-            rm -f .deployment-in-progress "$IMAGE_NAME.tar.gz"
+            rm -f .deployment-in-progress
             exit 1
           fi
           REMOTE
@@ -203,12 +210,12 @@ jobs:
             APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 180
             curl --fail --silent --show-error --retry 10 --retry-delay 3 \
               http://localhost:8080/actuator/health
-            rm -f .deployment-in-progress "$IMAGE_NAME.tar.gz"
+            rm -f .deployment-in-progress
           REMOTE
             exit 1
           fi
 
-      - name: 정상 배포 이미지 기록
+      - name: 정상 배포 이미지 기록과 정리
         env:
           OCI_HOST: ${{ secrets.OCI_HOST }}
           OCI_USER: ${{ secrets.OCI_USER }}
@@ -226,6 +233,14 @@ jobs:
             echo "배포 상태가 예상과 달라 정상 이미지로 기록하지 않습니다." >&2
             exit 1
           fi
+          previous_image="$(cat .last-successful-image 2>/dev/null || true)"
           printf '%s\n' "$EXPECTED_IMAGE" > .last-successful-image
-          rm -f .deployment-in-progress "$IMAGE_NAME.tar.gz"
+          rm -f .deployment-in-progress
+
+          while IFS= read -r image; do
+            if [[ -z "$image" || "$image" == "$EXPECTED_IMAGE" || "$image" == "$previous_image" ]]; then
+              continue
+            fi
+            docker image rm "$image"
+          done < <(docker image ls --filter "reference=$IMAGE_NAME:*" --format '{{.Repository}}:{{.Tag}}')
           REMOTE
