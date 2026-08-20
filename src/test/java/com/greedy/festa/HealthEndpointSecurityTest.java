@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.greedy.festa.admin.repository.AdminUserRepository;
 import com.greedy.festa.host.repository.HostRepository;
 
 @SpringBootTest(properties = {
@@ -24,6 +25,7 @@ import com.greedy.festa.host.repository.HostRepository;
         "spring.security.oauth2.client.registration.google.client-id=test-client",
         "spring.security.oauth2.client.registration.google.client-secret=test-secret",
         "app.jwt.secret=test-jwt-secret",
+        "app.jwt.admin-secret=ZmVzdGEtYWRtaW4tand0LXRlc3Qtc2VjcmV0LWtleS0zMg==",
         "app.crypto.aes-key=test-aes-key"
 }, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class HealthEndpointSecurityTest {
@@ -32,6 +34,9 @@ class HealthEndpointSecurityTest {
 
     @MockitoBean
     private HostRepository hostRepository;
+
+    @MockitoBean
+    private AdminUserRepository adminUserRepository;
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
