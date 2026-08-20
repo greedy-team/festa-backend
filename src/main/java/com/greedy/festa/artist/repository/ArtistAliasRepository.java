@@ -17,5 +17,7 @@ public interface ArtistAliasRepository extends JpaRepository<ArtistAlias, Long> 
 
     void deleteByArtistId(Long artistId);
 
+    void deleteByArtistIdIn(List<Long> artistIds);
+
     void deleteByArtistIdAndName(Long artistId, String name);
 }

@@ -1,11 +1,14 @@
 package com.greedy.festa.artist.controller;
 
 import com.greedy.festa.artist.dto.ArtistCreateRequest;
+import com.greedy.festa.artist.dto.ArtistMergeRequest;
+import com.greedy.festa.artist.dto.ArtistMergeResponse;
 import com.greedy.festa.artist.dto.ArtistResponse;
 import com.greedy.festa.artist.dto.ArtistSortType;
 import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.exception.ArtistErrorCode;
+import com.greedy.festa.artist.service.ArtistMergeService;
 import com.greedy.festa.artist.service.ArtistService;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.FestaException;
@@ -28,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ArtistAdminController {
 
     private final ArtistService artistService;
+    private final ArtistMergeService artistMergeService;
 
     @PostMapping
     public ResponseEntity<ArtistResponse> create(@RequestBody ArtistCreateRequest request) {
@@ -54,6 +58,11 @@ public class ArtistAdminController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         artistService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/merge")
+    public ResponseEntity<ArtistMergeResponse> merge(@RequestBody ArtistMergeRequest request) {
+        return ResponseEntity.ok(artistMergeService.merge(request));
     }
 
     private ArtistGenre toGenre(String value) {
