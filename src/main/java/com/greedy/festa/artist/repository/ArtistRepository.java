@@ -25,10 +25,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             WHERE (:needsReview IS NULL OR a.needsReview = :needsReview)
               AND (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
-                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', :q, '%'))
+                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
                               WHERE al.artist = a
-                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', :q, '%'))))
+                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))))
             GROUP BY a
             """,
             countQuery = """
@@ -37,10 +37,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             WHERE (:needsReview IS NULL OR a.needsReview = :needsReview)
               AND (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
-                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', :q, '%'))
+                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
                               WHERE al.artist = a
-                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', :q, '%'))))
+                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))))
             """)
     Page<ArtistWithAppearanceCount> findAllWithAppearanceCount(
             @Param("needsReview") Boolean needsReview,
