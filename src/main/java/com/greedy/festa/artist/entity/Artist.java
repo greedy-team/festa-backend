@@ -60,20 +60,4 @@ public class Artist extends BaseEntity {
             this.needsReview = needsReview;
         }
     }
-
-    public void changeName(String name) {
-        this.name = name;
-    }
-
-    public void changeGenre(ArtistGenre genre) {
-        this.genre = genre;
-    }
-
-    public void changeInstagramUrl(String instagramUrl) {
-        this.instagramUrl = instagramUrl;
-    }
-
-    public void changeNeedsReview(boolean needsReview) {
-        this.needsReview = needsReview;
-    }
 }

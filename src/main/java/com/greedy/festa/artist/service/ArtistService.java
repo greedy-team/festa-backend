@@ -96,17 +96,9 @@ public class ArtistService {
 
         if (request.name() != null) {
             validateNameForUpdate(request.name(), id);
-            artist.changeName(request.name());
         }
-        if (request.genre() != null) {
-            artist.changeGenre(request.genre());
-        }
-        if (request.instagramUrl() != null) {
-            artist.changeInstagramUrl(blankToNull(request.instagramUrl()));
-        }
-        if (request.needsReview() != null) {
-            artist.changeNeedsReview(request.needsReview());
-        }
+
+        artist.update(request.name(), request.genre(), request.instagramUrl(), request.needsReview());
 
         List<String> aliasNames;
         if (request.otherNames() != null) {
@@ -128,7 +120,7 @@ public class ArtistService {
 
     @Transactional
     public void delete(Long id) {
-        Artist artist = artistRepository.findById(id)
+        artistRepository.findById(id)
                 .orElseThrow(() -> new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
         if (artistRepository.countAppearancesByArtistId(id) > 0) {
