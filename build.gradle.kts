@@ -51,6 +51,16 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
+
+    // 실제 Postgres로 돌린다. Flyway 마이그레이션과 ddl-auto: validate가
+    // 함께 돌아야 스키마와 엔티티가 어긋난 것을 CI가 잡는다.
+    // Boot 4에서 테스트 슬라이스가 별도 모듈로 분리됐다 (@DataJpaTest, @AutoConfigureTestDatabase)
+    testImplementation("org.springframework.boot:spring-boot-data-jpa-test")
+    testImplementation("org.springframework.boot:spring-boot-jdbc-test")
+
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-postgresql")
 }
 
 tasks.withType<Test> {
