@@ -128,7 +128,7 @@ public class ArtistService {
         artistRepository.findById(id)
                 .orElseThrow(() -> new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
-        if (artistRepository.countAppearancesByArtistId(id) > 0) {
+        if (artistRepository.countLineupsByArtistId(id) > 0) {
             throw new FestaException(ArtistErrorCode.ARTIST_HAS_APPEARANCES);
         }
 

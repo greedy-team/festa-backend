@@ -19,9 +19,12 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     boolean existsByNameIn(Collection<String> names);
 
     @Query(value = """
-            SELECT a AS artist, COUNT(l) AS appearanceCount
+            SELECT a AS artist, COUNT(f) AS appearanceCount
             FROM Artist a
             LEFT JOIN Lineup l ON l.artist = a
+            LEFT JOIN Festival f ON f = l.festival
+                 AND f.publishedAt IS NOT NULL
+                 AND f.endDate < CURRENT_DATE
             WHERE (:needsReview IS NULL OR a.needsReview = :needsReview)
               AND (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
@@ -49,6 +52,14 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             Pageable pageable
     );
 
-    @Query("SELECT COUNT(l) FROM Lineup l WHERE l.artist.id = :artistId")
+    @Query("""
+            SELECT COUNT(l) FROM Lineup l
+            WHERE l.artist.id = :artistId
+              AND l.festival.publishedAt IS NOT NULL
+              AND l.festival.endDate < CURRENT_DATE
+            """)
     long countAppearancesByArtistId(@Param("artistId") Long artistId);
+
+    @Query("SELECT COUNT(l) FROM Lineup l WHERE l.artist.id = :artistId")
+    long countLineupsByArtistId(@Param("artistId") Long artistId);
 }

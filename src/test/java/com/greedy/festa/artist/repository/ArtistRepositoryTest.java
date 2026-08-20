@@ -20,6 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -42,19 +43,15 @@ class ArtistRepositoryTest extends PostgresTestSupport {
     @Autowired
     private EntityManager em;
 
+    private Host 주최;
     private Festival 축제;
     private int 다음_출연_순서 = 1;
 
     @BeforeEach
     void setUp() {
-        Host 주최 = em.merge(Host.builder().name("세종대학교").region("서울 광진구").build());
-        축제 = Festival.builder()
-                .host(주최)
-                .name("대동제")
-                .startDate(LocalDate.of(2026, 9, 1))
-                .endDate(LocalDate.of(2026, 9, 3))
-                .build();
-        em.persist(축제);
+        주최 = em.merge(Host.builder().name("세종대학교").region("서울 광진구").build());
+        // 출연 횟수는 발행되고 이미 끝난 축제만 센다 (DEC-0053).
+        축제 = 축제를_넣는다("대동제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3), true);
     }
 
     @Test
@@ -183,6 +180,38 @@ class ArtistRepositoryTest extends PostgresTestSupport {
     }
 
     @Test
+    void 미발행_축제와_끝나지_않은_축제의_출연은_세지_않는다() {
+        // given
+        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        라인업에_올린다(잔나비);
+        라인업에_올린다(잔나비, 축제를_넣는다("미발행 축제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3), false));
+        라인업에_올린다(잔나비, 축제를_넣는다("다가올 축제", LocalDate.of(2099, 5, 1), LocalDate.of(2099, 5, 3), true));
+        반영한다();
+
+        // when
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, null, ArtistSortType.NAME);
+
+        // then
+        assertThat(결과.getContent())
+                .extracting(ArtistWithAppearanceCount::getAppearanceCount)
+                .containsExactly(1L);
+        assertThat(artistRepository.countAppearancesByArtistId(잔나비.getId())).isEqualTo(1);
+    }
+
+    @Test
+    void 삭제_판정은_발행_여부와_무관하게_모든_라인업을_센다() {
+        // 삭제 가드는 FK 참조 유무를 묻는 것이라 미발행 축제의 출연도 막아야 한다.
+        // given
+        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        라인업에_올린다(잔나비, 축제를_넣는다("미발행 축제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3), false));
+        반영한다();
+
+        // then
+        assertThat(artistRepository.countAppearancesByArtistId(잔나비.getId())).isZero();
+        assertThat(artistRepository.countLineupsByArtistId(잔나비.getId())).isEqualTo(1);
+    }
+
+    @Test
     void 이름_묶음으로_중복을_확인한다() {
         아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
         반영한다();
@@ -228,9 +257,32 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         em.persist(ArtistAlias.builder().artist(아티스트).name(이름).build());
     }
 
+    // publishedAt은 빌더에 없어 네이티브 쿼리로 넣는다.
+    private Festival 축제를_넣는다(String 이름, LocalDate 시작, LocalDate 종료, boolean 발행됨) {
+        Festival festival = Festival.builder()
+                .host(주최)
+                .name(이름)
+                .startDate(시작)
+                .endDate(종료)
+                .build();
+        em.persist(festival);
+        em.flush();
+        if (발행됨) {
+            em.createNativeQuery("UPDATE festival SET published_at = :at WHERE id = :id")
+                    .setParameter("at", Instant.parse("2026-05-04T00:00:00Z"))
+                    .setParameter("id", festival.getId())
+                    .executeUpdate();
+        }
+        return festival;
+    }
+
     private void 라인업에_올린다(Artist 아티스트) {
+        라인업에_올린다(아티스트, 축제);
+    }
+
+    private void 라인업에_올린다(Artist 아티스트, Festival 대상축제) {
         em.persist(Lineup.builder()
-                .festival(축제)
+                .festival(대상축제)
                 .artist(아티스트)
                 .day(1)
                 .displayOrder(다음_출연_순서++)

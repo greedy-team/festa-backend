@@ -392,7 +392,7 @@ public class ArtistServiceTest {
         // given
         given(artistRepository.findById(아티스트_id))
                 .willReturn(Optional.of(Artist.builder().name(아티스트_이름).build()));
-        given(artistRepository.countAppearancesByArtistId(아티스트_id)).willReturn(1L);
+        given(artistRepository.countLineupsByArtistId(아티스트_id)).willReturn(1L);
 
         // when
         FestaException thrown = catchThrowableOfType(
