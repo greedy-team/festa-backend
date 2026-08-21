@@ -120,6 +120,7 @@ jobs:
             printf "%s='%s'\n" "$key" "$value"
           }
           {
+            write_env SPRING_PROFILES_ACTIVE "$DEPLOY_ENVIRONMENT"
             write_env DB_URL "$DB_URL"
             write_env DB_USERNAME "$DB_USERNAME"
             write_env DB_PASSWORD "$DB_PASSWORD"

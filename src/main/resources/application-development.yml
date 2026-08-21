@@ -1,0 +1,7 @@
+# 개발용 프로파일 — 로컬 실행과 develop 자동 배포가 함께 쓴다.
+# 운영(production)은 프로파일별 설정이 없고 공통 설정의 꺼짐을 그대로 따른다.
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
