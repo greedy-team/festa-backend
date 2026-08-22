@@ -273,8 +273,6 @@ public class ArtistServiceTest {
         });
     }
 
-
-
     @Test
     void 없는_아티스트는_수정할_수_없다() {
         // given
