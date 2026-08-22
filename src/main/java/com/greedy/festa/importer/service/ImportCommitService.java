@@ -398,8 +398,9 @@ public class ImportCommitService {
                 strings(row.normalized().get("otherNames"))
                         .forEach(alias -> execution.artistsByKey.put(alias, artist));
             }
-            execution.artistByRow.put(row, artist);
-            execution.actions.put(row, action);
+            RowKey rowKey = RowKey.from(row);
+            execution.artistByRow.put(rowKey, artist);
+            execution.actions.put(rowKey, action);
             execution.count(ImportSection.ARTISTS, action);
         }
     }
@@ -437,8 +438,9 @@ public class ImportCommitService {
                 }
             }
             execution.festivalsByKey.put(row.importKey(), festival);
-            execution.festivalByRow.put(row, festival);
-            execution.actions.put(row, action);
+            RowKey rowKey = RowKey.from(row);
+            execution.festivalByRow.put(rowKey, festival);
+            execution.actions.put(rowKey, action);
             execution.count(ImportSection.FESTIVALS, action);
         }
     }
@@ -498,9 +500,10 @@ public class ImportCommitService {
             if (skipLineupGroup(entry.getValue())) {
                 for (StoredPreviewRow row : entry.getValue()) {
                     Artist artist = resolveLineupArtist(row, state, execution);
-                    execution.lineupFestivalByRow.put(row, festival);
-                    execution.artistByRow.put(row, artist);
-                    execution.actions.put(row, ImportCommitAction.SKIP);
+                    RowKey rowKey = RowKey.from(row);
+                    execution.lineupFestivalByRow.put(rowKey, festival);
+                    execution.artistByRow.put(rowKey, artist);
+                    execution.actions.put(rowKey, ImportCommitAction.SKIP);
                     execution.count(ImportSection.LINEUPS, ImportCommitAction.SKIP);
                 }
                 continue;
@@ -511,9 +514,10 @@ public class ImportCommitService {
                 lineupRepository.save(Lineup.builder().festival(festival).artist(artist)
                         .day(integer(row.normalized(), "day"))
                         .displayOrder(integer(row.normalized(), "order")).build());
-                execution.lineupFestivalByRow.put(row, festival);
-                execution.artistByRow.put(row, artist);
-                execution.actions.put(row, ImportCommitAction.CREATE);
+                RowKey rowKey = RowKey.from(row);
+                execution.lineupFestivalByRow.put(rowKey, festival);
+                execution.artistByRow.put(rowKey, artist);
+                execution.actions.put(rowKey, ImportCommitAction.CREATE);
                 execution.count(ImportSection.LINEUPS, ImportCommitAction.CREATE);
             }
         }
@@ -546,13 +550,16 @@ public class ImportCommitService {
             ImportBatch batch, List<StoredPreviewRow> rows,
             Execution execution, Instant committedAt
     ) {
-        List<ImportCommitRow> audits = rows.stream().map(row -> ImportCommitRow.builder()
-                .batch(batch).section(ImportCommitSection.valueOf(row.section().name()))
-                .line(row.line()).importKey(row.importKey()).action(execution.actions.get(row))
-                .festival(row.section() == ImportSection.LINEUPS
-                        ? execution.lineupFestivalByRow.get(row) : execution.festivalByRow.get(row))
-                .artist(execution.artistByRow.get(row))
-                .payload(payload(row.payload())).committedAt(committedAt).build()).toList();
+        List<ImportCommitRow> audits = rows.stream().map(row -> {
+            RowKey rowKey = RowKey.from(row);
+            return ImportCommitRow.builder()
+                    .batch(batch).section(ImportCommitSection.valueOf(row.section().name()))
+                    .line(row.line()).importKey(row.importKey()).action(execution.actions.get(rowKey))
+                    .festival(row.section() == ImportSection.LINEUPS
+                            ? execution.lineupFestivalByRow.get(rowKey) : execution.festivalByRow.get(rowKey))
+                    .artist(execution.artistByRow.get(rowKey))
+                    .payload(payload(row.payload())).committedAt(committedAt).build();
+        }).toList();
         importCommitRowRepository.saveAll(audits);
     }
 
@@ -702,6 +709,9 @@ public class ImportCommitService {
     }
 
     private record RowKey(ImportSection section, int line) {
+        private static RowKey from(StoredPreviewRow row) {
+            return new RowKey(row.section(), row.line());
+        }
     }
 
     private record CurrentState(
@@ -716,10 +726,10 @@ public class ImportCommitService {
     private static final class Execution {
         private final Map<String, Artist> artistsByKey = new HashMap<>();
         private final Map<String, Festival> festivalsByKey = new HashMap<>();
-        private final Map<StoredPreviewRow, Artist> artistByRow = new HashMap<>();
-        private final Map<StoredPreviewRow, Festival> festivalByRow = new HashMap<>();
-        private final Map<StoredPreviewRow, Festival> lineupFestivalByRow = new HashMap<>();
-        private final Map<StoredPreviewRow, ImportCommitAction> actions = new HashMap<>();
+        private final Map<RowKey, Artist> artistByRow = new HashMap<>();
+        private final Map<RowKey, Festival> festivalByRow = new HashMap<>();
+        private final Map<RowKey, Festival> lineupFestivalByRow = new HashMap<>();
+        private final Map<RowKey, ImportCommitAction> actions = new HashMap<>();
         private final Map<ImportSection, int[]> counts = new EnumMap<>(ImportSection.class);
         private final List<Long> createdFestivalIds = new ArrayList<>();
 

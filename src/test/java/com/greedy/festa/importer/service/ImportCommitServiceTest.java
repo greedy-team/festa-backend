@@ -128,7 +128,12 @@ class ImportCommitServiceTest {
         given(artistRepository.findAllById(anyCollection())).willReturn(List.of(artist));
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(artist));
 
-        service.commit(39L, new ImportCommitRequest(Map.of("artists", List.of(2))));
+        var response = service.commit(39L,
+                new ImportCommitRequest(Map.of("artists", List.of(2))));
+        assertThat(response.result().artists().created()).isZero();
+        assertThat(response.result().artists().updated()).isZero();
+        assertThat(response.result().artists().skipped()).isOne();
+        assertThat(response.result().artists().failed()).isZero();
         verify(auditRepository).saveAll(any());
 
         prepare(preview(invalid, skip));
@@ -300,6 +305,8 @@ class ImportCommitServiceTest {
 
         assertThat(response.result().festivals().skipped()).isOne();
         assertThat(response.result().lineups().skipped()).isOne();
+        assertThat(response.result().festivals().failed()).isZero();
+        assertThat(response.result().lineups().failed()).isZero();
         verify(lineupRepository, never()).deleteAllByFestivalId(any());
         verify(lineupRepository, never()).save(any());
     }

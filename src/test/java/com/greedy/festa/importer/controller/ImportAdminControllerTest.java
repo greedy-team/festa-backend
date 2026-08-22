@@ -164,6 +164,7 @@ class ImportAdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.importId").value(37))
                 .andExpect(jsonPath("$.result.lineups.updated").value(0))
+                .andExpect(jsonPath("$.result.lineups.failed").value(0))
                 .andExpect(jsonPath("$.createdFestivalIds").isArray());
     }
 
