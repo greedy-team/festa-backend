@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -30,9 +29,16 @@ public class ArtistMergeService {
         List<Long> sourceIds = normalizeSourceIds(request.sourceIds());
         validateSourceIds(sourceIds);
         validateTargetNotInSources(request.targetId(), sourceIds);
-        Artist target = validateArtistsExist(request.targetId(), sourceIds);
+        List<Artist> artists = validateArtistsExist(request.targetId(), sourceIds);
+        Artist target = artists.stream()
+                .filter(artist -> artist.getId().equals(request.targetId()))
+                .findFirst()
+                .orElseThrow();
+        List<Artist> sources = artists.stream()
+                .filter(artist -> !artist.getId().equals(request.targetId()))
+                .toList();
 
-        List<String> absorbedNames = collectAbsorbedNames(sourceIds, request.keepAliases());
+        List<String> absorbedNames = collectAbsorbedNames(sources, sourceIds, request.keepAliases());
         int movedAppearances = lineupRepository.reassignArtist(target, sourceIds);
         int removedDuplicates = lineupRepository.removeDuplicates(target);
 
@@ -52,32 +58,41 @@ public class ArtistMergeService {
         );
     }
 
-    private List<String> collectAbsorbedNames(List<Long> sourceIds, boolean keepAliases) {
+    private List<String> collectAbsorbedNames(
+            List<Artist> sources, List<Long> sourceIds, boolean keepAliases
+    ) {
         if (!keepAliases) {
             return List.of();
         }
 
-        List<String> names = new ArrayList<>();
-        names.addAll(artistRepository.findAllById(sourceIds).stream()
-                .map(Artist::getName)
-                .toList());
-        names.addAll(artistAliasRepository.findByArtistIdIn(sourceIds).stream()
-                .map(ArtistAlias::getName)
-                .toList());
-
-        return names;
+        return Stream.concat(
+                sources.stream().map(Artist::getName),
+                artistAliasRepository.findByArtistIdIn(sourceIds).stream().map(ArtistAlias::getName)
+        ).toList();
     }
 
     private void addAliases(Artist target, List<String> absorbedNames) {
-        List<ArtistAlias> aliases = absorbedNames.stream()
+        List<String> candidates = absorbedNames.stream()
                 .distinct()
                 .filter(name -> !name.equals(target.getName()))
-                .filter(name -> !artistAliasRepository.existsByName(name))
-                .filter(name -> !artistRepository.existsByName(name))
-                .map(name -> ArtistAlias.builder().artist(target).name(name).build())
                 .toList();
 
-        artistAliasRepository.saveAll(aliases);
+        if (candidates.isEmpty()) {
+            return;
+        }
+
+        List<String> takenArtistNames = artistRepository.findByNameIn(candidates).stream()
+                .map(Artist::getName)
+                .toList();
+        List<String> takenAliasNames = artistAliasRepository.findByNameIn(candidates).stream()
+                .map(ArtistAlias::getName)
+                .toList();
+
+        artistAliasRepository.saveAll(candidates.stream()
+                .filter(name -> !takenArtistNames.contains(name))
+                .filter(name -> !takenAliasNames.contains(name))
+                .map(name -> ArtistAlias.builder().artist(target).name(name).build())
+                .toList());
     }
 
     private List<Long> normalizeSourceIds(List<Long> sourceIds) {
@@ -97,12 +112,15 @@ public class ArtistMergeService {
     }
 
     private void validateSourceIds(List<Long> sourceIds) {
-        if (sourceIds.isEmpty() || sourceIds.size() > 10) {
+        if (sourceIds.isEmpty() || sourceIds.size() > 10 || sourceIds.contains(null)) {
             throw new FestaException(ArtistErrorCode.ARTIST_INVALID_SOURCE_IDS);
         }
     }
 
-    private Artist validateArtistsExist(Long targetId, List<Long> sourceIds) {
+    private List<Artist> validateArtistsExist(Long targetId, List<Long> sourceIds) {
+        if (targetId == null) {
+            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_TARGET_ID);
+        }
         List<Long> ids = Stream.concat(Stream.of(targetId), sourceIds.stream()).toList();
         List<Artist> artists = artistRepository.findAllById(ids);
 
@@ -110,9 +128,6 @@ public class ArtistMergeService {
             throw new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND);
         }
 
-        return artists.stream()
-                .filter(artist -> artist.getId().equals(targetId))
-                .findFirst()
-                .orElseThrow();
+        return artists;
     }
 }

@@ -20,6 +20,6 @@ public interface LineupRepository extends JpaRepository<Lineup, Long> {
     @Query("DELETE FROM Lineup l " +
             "WHERE l.artist = :target " +
             "AND EXISTS (SELECT 1 FROM Lineup e " +
-            "WHERE e.artist = l.artist AND e.festival = l.festival AND e.day = l.day AND e.displayOrder < l.displayOrder)")
+            "WHERE e.artist = :target AND e.festival = l.festival AND e.day = l.day AND e.displayOrder < l.displayOrder)")
     int removeDuplicates(@Param("target") Artist target);
 }

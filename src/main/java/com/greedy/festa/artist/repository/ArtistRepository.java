@@ -9,8 +9,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface ArtistRepository extends JpaRepository<Artist, Long> {
+
+    List<Artist> findByNameIn(List<String> names);
 
     boolean existsByName(String name);
 

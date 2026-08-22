@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface ArtistAliasRepository extends JpaRepository<ArtistAlias, Long> {
 
+    List<ArtistAlias> findByNameIn(List<String> names);
+
     List<ArtistAlias> findByArtistId(Long artistId);
 
     List<ArtistAlias> findByArtistIdIn(List<Long> artistIds);
