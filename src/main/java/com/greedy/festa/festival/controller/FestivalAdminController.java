@@ -1,9 +1,11 @@
 package com.greedy.festa.festival.controller;
 
+import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalPublishResponse;
 import com.greedy.festa.festival.dto.FestivalReviewItem;
 import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.festival.service.FestivalAdminService;
+import com.greedy.festa.festival.service.FestivalCoverageService;
 import com.greedy.festa.global.dto.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class FestivalAdminController {
 
     private final FestivalAdminService festivalAdminService;
+    private final FestivalCoverageService festivalCoverageService;
 
     @GetMapping
     public PageResponse<FestivalReviewItem> findAll(
@@ -34,6 +37,16 @@ public class FestivalAdminController {
         return festivalAdminService.findAll(
                 published, hostId, year, q, discovery, FestivalSortType.from(sort), page, size
         );
+    }
+
+    @GetMapping("/coverage")
+    public FestivalCoverageResponse findCoverage(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return festivalCoverageService.findCoverage(year, status, page, size);
     }
 
     @PostMapping("/{id}/publish")

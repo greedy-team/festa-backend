@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
 
 @Repository
 public interface FestivalRepository extends JpaRepository<Festival, Long> {
@@ -55,4 +57,6 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
 
     @Query("SELECT COUNT(l) FROM Lineup l WHERE l.festival.id = :festivalId")
     long countLineupsByFestivalId(@Param("festivalId") Long festivalId);
+
+    List<Festival> findAllByImportKeyIn(Collection<String> importKeys);
 }

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface ArtistRepository extends JpaRepository<Artist, Long> {
 
@@ -17,6 +18,8 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     boolean existsByNameAndIdNot(String name, Long id);
 
     boolean existsByNameIn(Collection<String> names);
+
+    List<Artist> findAllByNameIn(Collection<String> names);
 
     @Query(value = """
             SELECT a AS artist, COUNT(f) AS appearanceCount
