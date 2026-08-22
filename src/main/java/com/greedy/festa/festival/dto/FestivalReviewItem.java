@@ -16,7 +16,6 @@ public record FestivalReviewItem(
         String hostName,
         LocalDate startDate,
         LocalDate endDate,
-        boolean published,
         Instant publishedAt,
         String discovery,
         String sourceUrl,
@@ -28,7 +27,6 @@ public record FestivalReviewItem(
     public static FestivalReviewItem of(
             Festival festival, Host host, long lineupCount, List<FestivalPublishBlocker> blockers
     ) {
-        Instant publishedAt = festival.getPublishedAt();
         return new FestivalReviewItem(
                 festival.getId(),
                 festival.getImportKey(),
@@ -37,8 +35,7 @@ public record FestivalReviewItem(
                 host == null ? null : host.getName(),
                 festival.getStartDate(),
                 festival.getEndDate(),
-                publishedAt != null,
-                publishedAt,
+                festival.getPublishedAt(),
                 festival.getDiscovery(),
                 festival.getSourceUrl(),
                 lineupCount,
