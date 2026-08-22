@@ -81,7 +81,7 @@ public class ArtistMergeService {
             return;
         }
 
-        List<String> takenArtistNames = artistRepository.findByNameIn(candidates).stream()
+        List<String> takenArtistNames = artistRepository.findAllByNameIn(candidates).stream()
                 .map(Artist::getName)
                 .toList();
         List<String> takenAliasNames = artistAliasRepository.findByNameIn(candidates).stream()
@@ -122,7 +122,7 @@ public class ArtistMergeService {
             throw new FestaException(ArtistErrorCode.ARTIST_INVALID_TARGET_ID);
         }
         List<Long> ids = Stream.concat(Stream.of(targetId), sourceIds.stream()).toList();
-        List<Artist> artists = artistRepository.findAllById(ids);
+        List<Artist> artists = artistRepository.findAllByIdInForUpdate(ids);
 
         if (artists.size() != ids.size()) {
             throw new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND);

@@ -2,9 +2,11 @@ package com.greedy.festa.artist.repository;
 
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistGenre;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,8 +14,6 @@ import java.util.Collection;
 import java.util.List;
 
 public interface ArtistRepository extends JpaRepository<Artist, Long> {
-
-    List<Artist> findByNameIn(List<String> names);
 
     boolean existsByName(String name);
 
@@ -67,4 +67,9 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
 
     @Query("SELECT COUNT(l) FROM Lineup l WHERE l.artist.id = :artistId")
     long countLineupsByArtistId(@Param("artistId") Long artistId);
+
+    // ORDER BY는 잠그는 순서를 고정해 서로 겹치는 병합 요청끼리 교착에 빠지지 않게 한다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Artist a WHERE a.id IN :ids ORDER BY a.id")
+    List<Artist> findAllByIdInForUpdate(@Param("ids") Collection<Long> ids);
 }
