@@ -16,7 +16,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.greedy.festa.admin.repository.AdminUserRepository;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
+import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.host.repository.HostRepository;
+import com.greedy.festa.importer.repository.ImportBatchRepository;
 
 /**
  * 프로파일을 지정하지 않은 상태 — 운영 배포가 이 상태다.
@@ -54,6 +56,12 @@ class SwaggerDisabledByDefaultTest {
 
     @MockitoBean
     private ArtistAliasRepository artistAliasRepository;
+
+    @MockitoBean
+    private FestivalRepository festivalRepository;
+
+    @MockitoBean
+    private ImportBatchRepository importBatchRepository;
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;

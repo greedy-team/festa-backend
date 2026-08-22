@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @Slf4j
 @RestControllerAdvice
@@ -27,6 +29,26 @@ public class GlobalExceptionHandler {
         return toResponse(
                 CommonErrorCode.INTERNAL_SERVER_ERROR,
                 CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
+                request);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException e, HttpServletRequest request) {
+
+        return toResponse(
+                CommonErrorCode.PAYLOAD_TOO_LARGE,
+                CommonErrorCode.PAYLOAD_TOO_LARGE.getMessage(),
+                request);
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ErrorResponse> handleMissingServletRequestPartException(
+            MissingServletRequestPartException e, HttpServletRequest request) {
+
+        return toResponse(
+                CommonErrorCode.INVALID_REQUEST_BODY,
+                CommonErrorCode.INVALID_REQUEST_BODY.getMessage(),
                 request);
     }
 

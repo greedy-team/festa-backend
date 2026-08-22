@@ -25,6 +25,8 @@ public enum CommonErrorCode implements ErrorCode {
 
     METHOD_NOT_ALLOWED("지원하지 않는 HTTP 메서드입니다", HttpStatus.METHOD_NOT_ALLOWED),
 
+    PAYLOAD_TOO_LARGE("업로드 가능한 파일 크기를 초과했습니다", HttpStatus.CONTENT_TOO_LARGE),
+
     INTERNAL_SERVER_ERROR("서버 내부 오류가 발생했습니다", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String message;

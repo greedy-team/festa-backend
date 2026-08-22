@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -16,6 +17,7 @@ public interface HostRepository extends JpaRepository<Host, Long> {
 
     boolean existsByName(String name);
     boolean existsByNameAndIdNot(String name, Long id);
+    List<Host> findAllByNameIn(Collection<String> names);
 
     @Query(value = "SELECT h AS host, COUNT(f) AS festivalCount " +
             "FROM Host h " +

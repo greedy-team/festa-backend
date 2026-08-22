@@ -36,6 +36,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
+    implementation("org.apache.commons:commons-csv:1.14.1")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 
     // API 문서 자동 생성. Boot BOM이 관리하지 않는 의존성이라 버전을 직접 적는다.
