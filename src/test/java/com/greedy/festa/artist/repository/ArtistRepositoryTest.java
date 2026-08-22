@@ -49,7 +49,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @BeforeEach
     void setUp() {
-        주최 = em.merge(Host.builder().name("세종대학교").region("서울 광진구").build());
+        주최 = em.merge(Host.builder().name("테스트대학교").region("서울 광진구").build());
         // 출연 횟수는 발행되고 이미 끝난 축제만 센다 (DEC-0053).
         축제 = 축제를_넣는다("대동제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3), true);
     }
