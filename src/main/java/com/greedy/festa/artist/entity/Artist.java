@@ -60,4 +60,8 @@ public class Artist extends BaseEntity {
             this.needsReview = needsReview;
         }
     }
+
+    public void markNeedsReview() {
+        this.needsReview = true;
+    }
 }
