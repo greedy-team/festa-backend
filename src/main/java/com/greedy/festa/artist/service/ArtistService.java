@@ -95,15 +95,20 @@ public class ArtistService {
         Artist artist = artistRepository.findById(id)
                 .orElseThrow(() -> new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
-        String name = blankToNull(request.name());
+        String name = request.name();
         if (name != null) {
+            name = name.trim();
             validateNameForUpdate(name, id);
         }
         if (name != null && request.otherNames() == null) {
             artistAliasRepository.deleteByArtistIdAndName(id, name);
         }
+        String instagramUrl = request.instagramUrl();
+        if (instagramUrl != null) {
+            instagramUrl = instagramUrl.trim();
+        }
 
-        artist.update(name, request.genre(), request.instagramUrl(), request.needsReview());
+        artist.update(name, request.genre(), instagramUrl, request.needsReview());
 
         List<String> aliasNames;
         if (request.otherNames() != null) {

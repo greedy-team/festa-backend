@@ -51,12 +51,16 @@ public class ArtistServiceTest {
     private static final String 아티스트_인스타 = "https://instagram.com/bts";
     private static final List<String> 아티스트_별칭 = List.of("방탄소년단", "방탄");
 
-    private static List<String> 잘못된_아티스트_이름() {
+    private static List<String> 등록할_수_없는_아티스트_이름() {
         return Arrays.asList(null, "", "   ", "아".repeat(101));
     }
 
+    private static List<String> 수정할_수_없는_아티스트_이름() {
+        return List.of("", "   ", "아".repeat(101));
+    }
+
     @ParameterizedTest
-    @MethodSource("잘못된_아티스트_이름")
+    @MethodSource("등록할_수_없는_아티스트_이름")
     void 아티스트_이름이_비었거나_100자를_넘으면_등록에_실패한다(String name) {
         // given
         ArtistCreateRequest request = 등록_요청(name, 아티스트_별칭);
@@ -269,6 +273,8 @@ public class ArtistServiceTest {
         });
     }
 
+
+
     @Test
     void 없는_아티스트는_수정할_수_없다() {
         // given
@@ -282,6 +288,28 @@ public class ArtistServiceTest {
 
         // then
         assertThat(thrown.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_NOT_FOUND);
+    }
+
+    @ParameterizedTest
+    @MethodSource("수정할_수_없는_아티스트_이름")
+    void 아티스트_이름이_공백이거나_100자를_넘으면_수정에_실패한다(String name) {
+        // given
+        Artist artist = 수정할_아티스트가_있다();
+
+        // when
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class,
+                () -> artistService.update(아티스트_id, 수정_요청(name, null, null, null, null))
+        );
+
+        // then
+        assertThat(thrown)
+                .as("공백 이름은 미전달이 아니라 잘못된 입력이므로 거부해야 한다")
+                .isNotNull();
+        assertSoftly(softly -> {
+            softly.assertThat(thrown.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_INVALID_NAME);
+            softly.assertThat(artist.getName()).isEqualTo(아티스트_이름);
+        });
     }
 
     @Test
