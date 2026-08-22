@@ -1,6 +1,7 @@
 package com.greedy.festa.importer.controller;
 
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.GlobalExceptionHandler;
 import com.greedy.festa.importer.entity.ImportConflictPolicy;
 import com.greedy.festa.importer.exception.ImportErrorCode;
@@ -12,19 +13,23 @@ import com.greedy.festa.importer.dto.ImportCommitResponse;
 import com.greedy.festa.importer.dto.ImportCommitResult;
 import com.greedy.festa.importer.dto.ImportCommitSectionResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.mock.web.MockHttpServletRequest;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -43,7 +48,13 @@ class ImportAdminControllerTest {
 
     @Mock ImportPreviewService importPreviewService;
     @Mock ImportCommitService importCommitService;
-    @InjectMocks ImportAdminController controller;
+    ImportAdminController controller;
+
+    @BeforeEach
+    void setUp() {
+        controller = new ImportAdminController(importPreviewService, importCommitService,
+                Clock.fixed(Instant.EPOCH, ZoneOffset.UTC));
+    }
 
     @Test
     void bundle_onConflict를_생략하면_UPDATE로_요청한다() {
@@ -169,5 +180,28 @@ class ImportAdminControllerTest {
                 .andExpect(jsonPath("$.errorCode").value("IMPORT_PREVIEW_STALE"))
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.instance").value("/admin/imports/37/commit"));
+    }
+
+    @Test
+    void 빈_selection은_400으로_매핑한다() throws Exception {
+        given(importCommitService.commit(eq(37L), any()))
+                .willThrow(new FestaException(ImportErrorCode.IMPORT_INVALID_LINE_SELECTION));
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+
+        mockMvc.perform(post("/admin/imports/37/commit")
+                        .contentType("application/json").content("{\"lines\":{}}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("IMPORT_INVALID_LINE_SELECTION"));
+    }
+
+    @Test
+    void 일반_multipart_part_누락은_Import_전용_오류로_매핑하지_않는다() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+        var response = handler.handleMissingServletRequestPartException(
+                new MissingServletRequestPartException("file"), new MockHttpServletRequest());
+
+        assertThat(response.getBody().errorCode()).isEqualTo(CommonErrorCode.INVALID_REQUEST_BODY.name());
     }
 }

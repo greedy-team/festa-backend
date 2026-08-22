@@ -6,6 +6,7 @@ import com.greedy.festa.importer.entity.ImportConflictPolicy;
 import com.greedy.festa.importer.model.ArtistMatchStatus;
 import com.greedy.festa.importer.model.ImportPreviewAction;
 import com.greedy.festa.importer.model.ImportSection;
+import com.greedy.festa.importer.model.PreviewProblem;
 import com.greedy.festa.importer.model.StoredPreviewRow;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -50,5 +51,30 @@ class ImportPreviewResponseTest {
         assertThat(root.get("rows").get(0).has("matchedArtistId")).isTrue();
         assertThat(root.get("rows").get(0).has("artistMatchStatus")).isTrue();
         assertThat(root.toString()).doesNotContain("rowNumber");
+    }
+
+    @Test
+    void blocker_JSON은_type이_아닌_code를_사용하고_ARTIST_UNRESOLVED는_raw값을_보여준다() throws Exception {
+        ImportBatch batch = ImportBatch.builder()
+                .type(ImportBatchType.LINEUPS).fileNames(List.of("lineups.csv"))
+                .onConflict(ImportConflictPolicy.UPDATE).preview("{}")
+                .uploadedAt(Instant.EPOCH).build();
+        ReflectionTestUtils.setField(batch, "id", 2L);
+        StoredPreviewRow row = new StoredPreviewRow(
+                ImportSection.LINEUPS, 1, "festival-key", ImportPreviewAction.INVALID,
+                ImportConflictPolicy.UPDATE,
+                Map.of("artistCanonical", "", "artistRaw", "확인할 아티스트"), Map.of(),
+                null, null, null, ArtistMatchStatus.UNRESOLVED,
+                List.of(new PreviewProblem("ARTIST_UNRESOLVED", "확인이 필요합니다", true)),
+                List.of(), null, null, List.of(), null);
+
+        String json = JsonMapper.builder().findAndAddModules().build()
+                .writeValueAsString(ImportPreviewResponse.of(batch, List.of(row)));
+        JsonNode blocker = JsonMapper.builder().findAndAddModules().build()
+                .readTree(json).get("blockers").get(0);
+
+        assertThat(blocker.get("code").asText()).isEqualTo("ARTIST_UNRESOLVED");
+        assertThat(blocker.has("type")).isFalse();
+        assertThat(blocker.get("values").get(0).asText()).isEqualTo("확인할 아티스트");
     }
 }

@@ -1,6 +1,7 @@
 package com.greedy.festa.importer.parser;
 
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.importer.exception.ImportErrorCode;
 import com.greedy.festa.importer.model.ImportSection;
 import com.greedy.festa.importer.model.ParsedCsvRow;
@@ -70,7 +71,7 @@ public class ImportCsvParser {
             throw new FestaException(ImportErrorCode.IMPORT_EMPTY_CSV);
         }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new FestaException(ImportErrorCode.PAYLOAD_TOO_LARGE);
+            throw new FestaException(CommonErrorCode.PAYLOAD_TOO_LARGE);
         }
         try {
             return file.getBytes();

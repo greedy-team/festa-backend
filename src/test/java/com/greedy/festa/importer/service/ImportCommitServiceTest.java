@@ -149,6 +149,32 @@ class ImportCommitServiceTest {
     }
 
     @Test
+    void 빈_selection은_거부한다() {
+        StoredPreviewRow row = artistRow(1, ImportPreviewAction.CREATE, null);
+        prepare(preview(row));
+
+        assertError(() -> service.commit(39L, new ImportCommitRequest(Map.of())),
+                ImportErrorCode.IMPORT_INVALID_LINE_SELECTION);
+        verify(auditRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void 같은_Festival에_INVALID_Lineup이_있으면_정상_Lineup만_선택해도_거부한다() {
+        StoredPreviewRow valid = lineup(1, "university-2026", 1, 1, 20L, 30L, true);
+        StoredPreviewRow invalid = row(ImportSection.LINEUPS, 2, "university-2026",
+                ImportPreviewAction.INVALID,
+                Map.of("day", 1, "order", 2, "artistRaw", "bad", "revealed", true),
+                null, null, 30L, ArtistMatchStatus.UNRESOLVED,
+                List.of(new PreviewProblem("ARTIST_UNRESOLVED", "", true)), true);
+        prepare(preview(valid, invalid));
+
+        assertError(() -> service.commit(39L,
+                        new ImportCommitRequest(Map.of("lineups", List.of(1)))),
+                ImportErrorCode.IMPORT_UNCOMMITTABLE);
+        verify(lineupRepository, never()).deleteAllByFestivalId(any());
+    }
+
+    @Test
     void 존재하지_않는_section_line은_거부하고_Artist_row_부분선택만_감사한다() {
         StoredPreviewRow first = row(ImportSection.ARTISTS, 1, "first",
                 ImportPreviewAction.SKIP, Map.of("name", "first", "otherNames", List.of()),
@@ -236,7 +262,7 @@ class ImportCommitServiceTest {
     }
 
     @Test
-    void preview_이후_발행된_UPDATE_Festival은_SKIP으로_감사하고_Lineup_선택은_거부한다() {
+    void preview_이후_발행된_Festival과_Lineup은_stale로_거부한다() {
         Host host = host(1L, "university");
         Festival existing = festivalEntity(30L, host, true);
         StoredPreviewRow festival = festival(1, ImportPreviewAction.UPDATE, 30L, 1L);
@@ -244,18 +270,38 @@ class ImportCommitServiceTest {
         given(hostRepository.findAllById(anyCollection())).willReturn(List.of(host));
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
 
-        var response = service.commit(39L, null);
-        assertThat(response.result().festivals().skipped()).isOne();
+        assertError(() -> service.commit(39L, null), ImportErrorCode.IMPORT_PREVIEW_STALE);
         verify(hashtagRepository, never()).deleteAllByFestivalId(any());
-        ArgumentCaptor<List<ImportCommitRow>> audits = ArgumentCaptor.forClass(List.class);
-        verify(auditRepository).saveAll(audits.capture());
-        assertThat(audits.getValue().getFirst().getAction()).isEqualTo(ImportCommitAction.SKIP);
+        verify(auditRepository, never()).saveAll(any());
 
         StoredPreviewRow lineup = lineup(1, "university-2026", 1, 1, null, 30L, false);
         prepare(preview(festival, lineup));
         given(hostRepository.findAllById(anyCollection())).willReturn(List.of(host));
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
         assertError(() -> service.commit(39L, null), ImportErrorCode.IMPORT_PREVIEW_STALE);
+    }
+
+    @Test
+    void conflictPolicy_SKIP_Festival의_Lineup은_전체_SKIP하고_기존_Lineup을_유지한다() {
+        Host host = host(1L, "university");
+        Artist artist = artist(20L, "new artist");
+        Festival existing = festivalEntity(30L, host, false);
+        StoredPreviewRow festival = withPolicy(
+                festival(1, ImportPreviewAction.SKIP, 30L, 1L), ImportConflictPolicy.SKIP);
+        StoredPreviewRow lineup = withPolicy(
+                lineup(1, "university-2026", 1, 1, 20L, 30L, true), ImportConflictPolicy.SKIP);
+        prepare(preview(festival, lineup));
+        given(hostRepository.findAllById(anyCollection())).willReturn(List.of(host));
+        given(artistRepository.findAllById(anyCollection())).willReturn(List.of(artist));
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(artist));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
+
+        var response = service.commit(39L, null);
+
+        assertThat(response.result().festivals().skipped()).isOne();
+        assertThat(response.result().lineups().skipped()).isOne();
+        verify(lineupRepository, never()).deleteAllByFestivalId(any());
+        verify(lineupRepository, never()).save(any());
     }
 
     @Test
@@ -301,6 +347,84 @@ class ImportCommitServiceTest {
 
         assertError(() -> service.commit(39L, null), ImportErrorCode.IMPORT_UNCOMMITTABLE);
         verify(artistRepository, never()).save(any());
+    }
+
+    @Test
+    void 신규_Artist의_대표명이_preview_이후_기존_alias와_충돌하면_stale이다() {
+        Artist owner = artist(20L, "owner");
+        ArtistAlias alias = ArtistAlias.builder().artist(owner).name("new artist").build();
+        prepare(preview(artistRow(1, ImportPreviewAction.CREATE, null)));
+        given(aliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of(alias));
+        given(artistRepository.findAllById(anyCollection())).willReturn(List.of(owner));
+
+        assertError(() -> service.commit(39L, null), ImportErrorCode.IMPORT_PREVIEW_STALE);
+        verify(artistRepository, never()).save(any());
+    }
+
+    @Test
+    void 신규_Artist의_alias가_preview_이후_기존_대표명과_충돌하면_stale이다() {
+        Artist owner = artist(20L, "new alias");
+        prepare(preview(artistRow(1, ImportPreviewAction.CREATE, null)));
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(owner));
+
+        assertError(() -> service.commit(39L, null), ImportErrorCode.IMPORT_PREVIEW_STALE);
+        verify(artistRepository, never()).save(any());
+    }
+
+    @Test
+    void 신규_Artist의_alias가_preview_이후_기존_alias와_충돌하면_stale이다() {
+        Artist owner = artist(20L, "owner");
+        ArtistAlias alias = ArtistAlias.builder().artist(owner).name("new alias").build();
+        prepare(preview(artistRow(1, ImportPreviewAction.CREATE, null)));
+        given(aliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of(alias));
+        given(artistRepository.findAllById(anyCollection())).willReturn(List.of(owner));
+
+        assertError(() -> service.commit(39L, null), ImportErrorCode.IMPORT_PREVIEW_STALE);
+        verify(artistRepository, never()).save(any());
+    }
+
+    @Test
+    void 신규_Artist는_저장_preview값이_false여도_needsReview_true로_생성한다() {
+        StoredPreviewRow source = artistRow(1, ImportPreviewAction.CREATE, null);
+        Map<String, Object> normalized = new LinkedHashMap<>(source.normalized());
+        normalized.put("needsReview", false);
+        StoredPreviewRow row = row(ImportSection.ARTISTS, 1, "new artist",
+                ImportPreviewAction.CREATE, normalized, null, null, null,
+                ArtistMatchStatus.NEW, List.of(), false);
+        prepare(preview(row));
+        given(artistRepository.save(any(Artist.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        service.commit(39L, null);
+
+        ArgumentCaptor<Artist> saved = ArgumentCaptor.forClass(Artist.class);
+        verify(artistRepository).save(saved.capture());
+        assertThat(saved.getValue().isNeedsReview()).isTrue();
+    }
+
+    @Test
+    void malformed_raw_date가_있는_SKIP_row도_감사하고_commit한다() {
+        Host host = host(1L, "university");
+        Festival existing = festivalEntity(30L, host, false);
+        StoredPreviewRow source = festival(1, ImportPreviewAction.SKIP, 30L, 1L);
+        Map<String, String> malformed = new LinkedHashMap<>(source.payload());
+        malformed.put("start_date", "not-a-date");
+        malformed.put("end_date", "also-not-a-date");
+        StoredPreviewRow row = new StoredPreviewRow(source.section(), source.line(),
+                source.importKey(), source.action(), source.conflictPolicy(), source.normalized(),
+                malformed, source.matchedHostId(), source.matchedArtistId(),
+                source.matchedFestivalId(), source.artistMatchStatus(), source.errors(),
+                source.warnings(), source.skipReason(), source.revealed(), source.imageUrls(),
+                source.ticketOpenAtRaw());
+        prepare(preview(row));
+        given(hostRepository.findAllById(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
+
+        service.commit(39L, null);
+
+        ArgumentCaptor<List<ImportCommitRow>> audits = ArgumentCaptor.forClass(List.class);
+        verify(auditRepository).saveAll(audits.capture());
+        assertThat(audits.getValue().getFirst().getPayload().startDate()).isNull();
+        assertThat(audits.getValue().getFirst().getPayload().endDate()).isNull();
     }
 
     @Test
@@ -452,6 +576,13 @@ class ImportCommitServiceTest {
         return new StoredPreviewRow(section, line, importKey, action, ImportConflictPolicy.UPDATE,
                 normalized, payload(section, importKey), hostId, artistId, festivalId, matchStatus,
                 errors, List.of(), null, revealed, List.of(), null);
+    }
+
+    private StoredPreviewRow withPolicy(StoredPreviewRow row, ImportConflictPolicy policy) {
+        return new StoredPreviewRow(row.section(), row.line(), row.importKey(), row.action(), policy,
+                row.normalized(), row.payload(), row.matchedHostId(), row.matchedArtistId(),
+                row.matchedFestivalId(), row.artistMatchStatus(), row.errors(), row.warnings(),
+                row.skipReason(), row.revealed(), row.imageUrls(), row.ticketOpenAtRaw());
     }
 
     private Map<String, String> payload(ImportSection section, String importKey) {

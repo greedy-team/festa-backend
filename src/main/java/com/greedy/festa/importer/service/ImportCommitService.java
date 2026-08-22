@@ -26,6 +26,7 @@ import com.greedy.festa.importer.entity.ImportCommitAction;
 import com.greedy.festa.importer.entity.ImportCommitPayload;
 import com.greedy.festa.importer.entity.ImportCommitRow;
 import com.greedy.festa.importer.entity.ImportCommitSection;
+import com.greedy.festa.importer.entity.ImportConflictPolicy;
 import com.greedy.festa.importer.exception.ImportErrorCode;
 import com.greedy.festa.importer.model.ArtistMatchStatus;
 import com.greedy.festa.importer.model.ImportPreviewAction;
@@ -41,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -70,13 +72,13 @@ public class ImportCommitService {
     private final FestivalHashtagRepository festivalHashtagRepository;
     private final LineupRepository lineupRepository;
     private final PreviewJsonCodec previewJsonCodec;
-    private final Clock importClock;
+    private final Clock clock;
 
     @Transactional
     public ImportCommitResponse commit(Long importId, ImportCommitRequest request) {
         ImportBatch batch = importBatchRepository.findByIdForUpdate(importId)
                 .orElseThrow(() -> error(ImportErrorCode.IMPORT_NOT_FOUND));
-        Instant committedAt = importClock.instant();
+        Instant committedAt = clock.instant();
         validateBatch(batch, committedAt);
         StoredImportPreview preview = deserialize(batch.getPreview());
         List<StoredPreviewRow> selected = selectRows(preview.rows(), request);
@@ -112,7 +114,7 @@ public class ImportCommitService {
             return previewJsonCodec.deserialize(preview);
         } catch (PreviewJsonCodec.UnsupportedPreviewVersionException e) {
             throw error(ImportErrorCode.IMPORT_UNSUPPORTED_PREVIEW_VERSION);
-        } catch (PreviewJsonCodec.InvalidPreviewException | NullPointerException e) {
+        } catch (PreviewJsonCodec.InvalidPreviewException e) {
             throw error(ImportErrorCode.IMPORT_INVALID_PREVIEW);
         }
     }
@@ -151,6 +153,9 @@ public class ImportCommitService {
     private void validateSelectedRows(
             List<StoredPreviewRow> allRows, List<StoredPreviewRow> selected
     ) {
+        if (selected.isEmpty()) {
+            throw error(ImportErrorCode.IMPORT_INVALID_LINE_SELECTION);
+        }
         if (selected.stream().anyMatch(this::uncommittable)) {
             throw error(ImportErrorCode.IMPORT_UNCOMMITTABLE);
         }
@@ -168,6 +173,13 @@ public class ImportCommitService {
                 .filter(row -> row.section() == ImportSection.LINEUPS)
                 .map(StoredPreviewRow::importKey).collect(Collectors.toSet());
         selectedFestivalKeys.forEach(importKey -> {
+            boolean hasInvalidSibling = allRows.stream()
+                    .filter(row -> row.section() == ImportSection.LINEUPS)
+                    .filter(row -> Objects.equals(row.importKey(), importKey))
+                    .anyMatch(this::uncommittable);
+            if (hasInvalidSibling) {
+                throw error(ImportErrorCode.IMPORT_UNCOMMITTABLE);
+            }
             if (!selectedKeys.containsAll(allCommitableLineups.getOrDefault(importKey, Set.of()))) {
                 throw error(ImportErrorCode.IMPORT_INVALID_LINE_SELECTION);
             }
@@ -324,6 +336,9 @@ public class ImportCommitService {
             if (festivals.size() != 1 || !festivals.getFirst().getId().equals(row.matchedFestivalId())) {
                 throw error(ImportErrorCode.IMPORT_PREVIEW_STALE);
             }
+            if (festivals.getFirst().getPublishedAt() != null) {
+                throw error(ImportErrorCode.IMPORT_PREVIEW_STALE);
+            }
         }
     }
 
@@ -364,13 +379,13 @@ public class ImportCommitService {
                         .name(text(row.normalized(), "name"))
                         .genre(enumValue(row.normalized(), "genre", ArtistGenre.class))
                         .imageUrl(nullableText(row.normalized(), "imageUrl"))
-                        .needsReview(booleanValue(row.normalized(), "needsReview"))
+                        .needsReview(true)
                         .build());
             } else {
                 artist = state.artistsById().get(row.matchedArtistId());
                 if (action == ImportCommitAction.UPDATE) {
                     Boolean needsReview = nullableBoolean(row.normalized(), "needsReview");
-                    artist.update(enumValue(row.normalized(), "genre", ArtistGenre.class),
+                    artist.updateFromImport(enumValue(row.normalized(), "genre", ArtistGenre.class),
                             nullableText(row.normalized(), "imageUrl"),
                             needsReview == null ? artist.isNeedsReview() : needsReview);
                 }
@@ -410,10 +425,6 @@ public class ImportCommitService {
             Festival festival = row.matchedFestivalId() == null ? null
                     : first(state.festivalsByKey().get(row.importKey()));
             ImportCommitAction action = action(row.action());
-            if (festival != null && festival.getPublishedAt() != null
-                    && action == ImportCommitAction.UPDATE) {
-                action = ImportCommitAction.SKIP;
-            }
             if (action == ImportCommitAction.CREATE) {
                 festival = festivalRepository.save(buildFestival(row, host, committedAt));
                 execution.createdFestivalIds.add(festival.getId());
@@ -484,6 +495,16 @@ public class ImportCommitService {
             if (festival == null) {
                 festival = first(state.festivalsByKey().get(entry.getKey()));
             }
+            if (skipLineupGroup(entry.getValue())) {
+                for (StoredPreviewRow row : entry.getValue()) {
+                    Artist artist = resolveLineupArtist(row, state, execution);
+                    execution.lineupFestivalByRow.put(row, festival);
+                    execution.artistByRow.put(row, artist);
+                    execution.actions.put(row, ImportCommitAction.SKIP);
+                    execution.count(ImportSection.LINEUPS, ImportCommitAction.SKIP);
+                }
+                continue;
+            }
             lineupRepository.deleteAllByFestivalId(festival.getId());
             for (StoredPreviewRow row : entry.getValue()) {
                 Artist artist = resolveLineupArtist(row, state, execution);
@@ -496,6 +517,11 @@ public class ImportCommitService {
                 execution.count(ImportSection.LINEUPS, ImportCommitAction.CREATE);
             }
         }
+    }
+
+    private boolean skipLineupGroup(List<StoredPreviewRow> rows) {
+        return rows.stream().anyMatch(row -> row.conflictPolicy() == ImportConflictPolicy.SKIP
+                && row.matchedFestivalId() != null);
     }
 
     private Artist resolveLineupArtist(StoredPreviewRow row, CurrentState state, Execution execution) {
@@ -511,7 +537,7 @@ public class ImportCommitService {
         }
         Artist artist = execution.artistsByKey.get(key);
         if (artist == null) {
-            throw error(ImportErrorCode.IMPORT_INVALID_LINE_SELECTION);
+            throw new IllegalStateException("검증을 통과한 Lineup의 Artist 의존성을 찾을 수 없습니다");
         }
         return artist;
     }
@@ -576,7 +602,12 @@ public class ImportCommitService {
     }
 
     private ImportCommitAction action(ImportPreviewAction action) {
-        return ImportCommitAction.valueOf(action.name());
+        return switch (action) {
+            case CREATE -> ImportCommitAction.CREATE;
+            case UPDATE -> ImportCommitAction.UPDATE;
+            case SKIP -> ImportCommitAction.SKIP;
+            case INVALID -> throw error(ImportErrorCode.IMPORT_UNCOMMITTABLE);
+        };
     }
 
     private String text(Map<String, Object> map, String key) {
@@ -648,7 +679,14 @@ public class ImportCommitService {
     }
 
     private LocalDate optionalDate(String value) {
-        return value == null || value.isBlank() ? null : LocalDate.parse(value.trim());
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     private Integer optionalInteger(String value) {
