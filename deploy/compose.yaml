@@ -22,6 +22,8 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      # 비어 있으면 프로파일 없이 뜬다 — API 문서가 꺼진 쪽이 기본값이다
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
       DB_URL: ${DB_URL:?DB_URL is required}
       DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
