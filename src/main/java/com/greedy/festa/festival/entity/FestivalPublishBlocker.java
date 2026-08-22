@@ -1,5 +1,7 @@
 package com.greedy.festa.festival.entity;
 
+import com.greedy.festa.festival.exception.FestivalErrorCode;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,5 +27,13 @@ public enum FestivalPublishBlocker {
         }
 
         return List.copyOf(blockers);
+    }
+
+    public FestivalErrorCode toErrorCode() {
+        return switch (this) {
+            case LINEUP_EMPTY -> FestivalErrorCode.FESTIVAL_PUBLISH_LINEUP_EMPTY;
+            case HOST_NOT_LINKED -> FestivalErrorCode.FESTIVAL_PUBLISH_HOST_NOT_LINKED;
+            case COORDINATES_MISSING -> FestivalErrorCode.FESTIVAL_PUBLISH_COORDINATES_MISSING;
+        };
     }
 }
