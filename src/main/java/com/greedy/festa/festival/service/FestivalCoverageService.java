@@ -34,6 +34,7 @@ public class FestivalCoverageService {
     ) {
         LocalDate today = LocalDate.now(clock.withZone(SEOUL));
         int year = requestedYear == null ? today.getYear() : requestedYear;
+        validateYear(year, today.getYear());
         FestivalCoverageStatus statusFilter = parseStatus(requestedStatus);
 
         List<HostCoverageRow> rows = hostRepository.findCoverageRows(
@@ -44,8 +45,9 @@ public class FestivalCoverageService {
         FestivalCoverageSummary summary = summarize(rows);
         List<FestivalCoverageItem> filteredItems = rows.stream()
                 .map(row -> FestivalCoverageItem.of(row, resolveStatus(row)))
-                .filter(item -> item.status() != FestivalCoverageStatus.PUBLISHED)
-                .filter(item -> statusFilter == null || item.status() == statusFilter)
+                .filter(item -> statusFilter == null
+                        ? item.status() != FestivalCoverageStatus.PUBLISHED
+                        : item.status() == statusFilter)
                 .sorted(Comparator
                         .comparingInt((FestivalCoverageItem item) -> statusOrder(item.status()))
                         .thenComparing(FestivalCoverageItem::hostName))
@@ -75,13 +77,17 @@ public class FestivalCoverageService {
         if (requestedStatus == null) {
             return null;
         }
-        if (FestivalCoverageStatus.REVIEW_PENDING.name().equals(requestedStatus)) {
-            return FestivalCoverageStatus.REVIEW_PENDING;
+        try {
+            return FestivalCoverageStatus.valueOf(requestedStatus);
+        } catch (IllegalArgumentException e) {
+            throw new FestaException(FestivalCoverageErrorCode.FESTIVAL_COVERAGE_INVALID_STATUS);
         }
-        if (FestivalCoverageStatus.NEEDS_CHECK.name().equals(requestedStatus)) {
-            return FestivalCoverageStatus.NEEDS_CHECK;
+    }
+
+    private void validateYear(int year, int currentYear) {
+        if (year < 2026 || year > currentYear + 1) {
+            throw new FestaException(FestivalCoverageErrorCode.FESTIVAL_COVERAGE_INVALID_YEAR);
         }
-        throw new FestaException(FestivalCoverageErrorCode.FESTIVAL_COVERAGE_INVALID_STATUS);
     }
 
     private FestivalCoverageSummary summarize(List<HostCoverageRow> rows) {
@@ -90,7 +96,7 @@ public class FestivalCoverageService {
         long needsCheck = count(rows, FestivalCoverageStatus.NEEDS_CHECK);
         int coverageRate = rows.isEmpty()
                 ? 0
-                : (int) Math.round((published + reviewPending) * 100.0 / rows.size());
+                : (int) Math.round(published * 100.0 / rows.size());
 
         return new FestivalCoverageSummary(
                 rows.size(), published, reviewPending, needsCheck, coverageRate
@@ -112,6 +118,10 @@ public class FestivalCoverageService {
     }
 
     private int statusOrder(FestivalCoverageStatus status) {
-        return status == FestivalCoverageStatus.REVIEW_PENDING ? 0 : 1;
+        return switch (status) {
+            case REVIEW_PENDING -> 0;
+            case NEEDS_CHECK -> 1;
+            case PUBLISHED -> 2;
+        };
     }
 }

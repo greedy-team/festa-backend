@@ -4,7 +4,10 @@ import com.greedy.festa.festival.dto.FestivalCoverageItem;
 import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageStatus;
 import com.greedy.festa.festival.dto.FestivalCoverageSummary;
+import com.greedy.festa.festival.exception.FestivalCoverageErrorCode;
 import com.greedy.festa.festival.service.FestivalCoverageService;
+import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
@@ -35,6 +38,7 @@ class FestivalCoverageAdminControllerTest {
         service = mock(FestivalCoverageService.class);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new FestivalCoverageAdminController(service))
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .build();
     }
@@ -92,5 +96,43 @@ class FestivalCoverageAdminControllerTest {
                         hasProperty("pageSize", is(10))
                 ))
         );
+    }
+
+    @Test
+    void published_status도_조회할_수_있다() throws Exception {
+        FestivalCoverageResponse response = new FestivalCoverageResponse(
+                2026,
+                new FestivalCoverageSummary(1, 1, 0, 0, 100),
+                List.of(new FestivalCoverageItem(
+                        1L, null, "Published Host", null, null, null,
+                        FestivalCoverageStatus.PUBLISHED, null)),
+                0, 20, 1, 1, false, false);
+        given(service.findCoverage(
+                org.mockito.ArgumentMatchers.eq(2026),
+                org.mockito.ArgumentMatchers.eq("PUBLISHED"),
+                org.mockito.ArgumentMatchers.any()
+        )).willReturn(response);
+
+        mockMvc.perform(get("/admin/festivals/coverage")
+                        .param("year", "2026")
+                        .param("status", "PUBLISHED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].status").value("PUBLISHED"))
+                .andExpect(jsonPath("$.summary.coverageRate").value(100))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void 허용_범위를_벗어난_year는_400을_반환한다() throws Exception {
+        given(service.findCoverage(
+                org.mockito.ArgumentMatchers.eq(2025),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.any()
+        )).willThrow(new FestaException(FestivalCoverageErrorCode.FESTIVAL_COVERAGE_INVALID_YEAR));
+
+        mockMvc.perform(get("/admin/festivals/coverage").param("year", "2025"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode")
+                        .value("FESTIVAL_COVERAGE_INVALID_YEAR"));
     }
 }

@@ -1,6 +1,6 @@
 # festa-backend
 
-축제 정보 서비스 백엔드. Spring Boot 기반이며 배포는 아직 구성 전입니다.
+축제 정보 서비스 백엔드. Spring Boot 기반이며 OCI 인스턴스에 Docker Compose로 배포합니다.
 
 ## 빠른 시작
 
@@ -100,14 +100,34 @@ docs/pr/        PR 본문 초안
 | PR → `develop` 머지 | 이슈 자동 종료 |
 | `develop` → `main` PR | CHANGELOG 생성 후 자동 머지 |
 | push `main` | 버전 태그 + README 갱신 |
-| **배포** | **미설정** — 백엔드팀이 구성합니다 |
+| push `develop` | `PROJECT-SPRING-CD` — OCI E2 인스턴스로 배포 (`development` 환경) |
+| push `main` | `PROJECT-SPRING-CD` — OCI A1 인스턴스로 배포 (`production` 환경) |
 
-**배포를 붙일 자리는 `main` push입니다.** `on: push: branches: [main]` 워크플로우를
-추가하면 릴리스 자동 머지가 일으키는 `main` 푸시에서 함께 실행됩니다. 프론트의 Vercel
-배포가 정확히 그 자리에 있습니다.
+배포는 `PROJECT-SPRING-CD.yaml`이 담당합니다. GitHub 러너에서 Docker 이미지를 빌드해 SSH로
+인스턴스에 전달하고, 서버는 `deploy/compose.yaml`로 app과 postgres를 함께 띄웁니다 — 서버는
+컴파일하지 않습니다. 헬스체크에 실패하면 직전 성공 이미지로 자동 롤백하되, **되돌리는 것은
+이미지뿐이고 이미 적용된 DB 스키마는 그대로 남습니다.**
+
+`production` Environment는 아직 만들어져 있지 않습니다. 그 상태로 `main`에 푸시되면
+`DEPLOY_ENABLED` 가드에서 배포가 중단됩니다.
 
 `push` 이벤트는 **푸시된 커밋에서** 워크플로우를 읽으므로, CD 워크플로우 자체도 `main`에
 올라가 있어야 합니다. 같은 릴리스 흐름을 타면 자연히 해결됩니다.
+
+### 앱에 환경변수를 추가할 때
+
+`application.yml`에 **기본값 없는** `${VAR}`를 추가하면 세 곳을 함께 고쳐야 합니다.
+하나라도 빠지면 앱이 기동하지 못해 배포가 실패하고 롤백됩니다.
+
+1. GitHub Environment(`development`)에 Secret 등록
+2. `.github/workflows/PROJECT-SPRING-CD.yaml` — `env:` 블록과 `write_env` 목록
+3. `deploy/compose.yaml` — app 서비스의 `environment:`
+
+테스트는 이런 값을 인라인으로 주입하므로 **CI는 통과합니다.** 누락은 실제 배포에서만
+드러납니다 (이슈 #47).
+
+기본값을 주면(`${VAR:}`) 이 절차 없이도 앱은 뜨지만, 그 값에 의존하는 기능은 동작하지
+않습니다.
 
 ## 주의할 점
 

@@ -9,6 +9,8 @@ import com.greedy.festa.host.repository.HostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +26,7 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -152,7 +155,7 @@ class FestivalCoverageServiceTest {
             softly.assertThat(response.summary().published()).isEqualTo(1);
             softly.assertThat(response.summary().reviewPending()).isEqualTo(1);
             softly.assertThat(response.summary().needsCheck()).isEqualTo(1);
-            softly.assertThat(response.summary().coverageRate()).isEqualTo(67);
+            softly.assertThat(response.summary().coverageRate()).isEqualTo(33);
         });
     }
 
@@ -194,14 +197,92 @@ class FestivalCoverageServiceTest {
     }
 
     @Test
-    void 지원하지_않는_status는_거부한다() {
-        FestaException thrown = catchThrowableOfType(
-                FestaException.class,
-                () -> service.findCoverage(2026, "PUBLISHED", PageRequest.of(0, 20))
+    void published_status로_조회하면_published_host를_반환한다() {
+        givenRows(
+                row(1L, "Charlie", false, true, null, null),
+                row(2L, "Needs Check Host", false, false, null, null),
+                row(3L, "Alpha", false, true, null, null),
+                row(4L, "Bravo", false, true, null, null)
         );
+
+        FestivalCoverageResponse first = service.findCoverage(
+                2026, "PUBLISHED", PageRequest.of(0, 2));
+        FestivalCoverageResponse second = service.findCoverage(
+                2026, "PUBLISHED", PageRequest.of(1, 2));
+
+        assertSoftly(softly -> {
+            softly.assertThat(first.items()).extracting(item -> item.hostName())
+                    .containsExactly("Alpha", "Bravo");
+            softly.assertThat(second.items()).extracting(item -> item.hostName())
+                    .containsExactly("Charlie");
+            softly.assertThat(first.items()).allMatch(
+                    item -> item.status() == FestivalCoverageStatus.PUBLISHED);
+            softly.assertThat(first.totalElements()).isEqualTo(3);
+            softly.assertThat(first.totalPages()).isEqualTo(2);
+            softly.assertThat(first.hasNext()).isTrue();
+            softly.assertThat(second.hasPrevious()).isTrue();
+            softly.assertThat(first.summary().published()).isEqualTo(3);
+        });
+    }
+
+    @Test
+    void 지원하지_않는_status는_거부한다() {
+        FestaException thrown = catchThrowableOfType(FestaException.class,
+                () -> service.findCoverage(2026, "UNKNOWN", PageRequest.of(0, 20)));
 
         assertThat(thrown.getErrorCode())
                 .isEqualTo(FestivalCoverageErrorCode.FESTIVAL_COVERAGE_INVALID_STATUS);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "true,true,REVIEW_PENDING",
+            "true,false,REVIEW_PENDING",
+            "false,true,PUBLISHED",
+            "false,false,NEEDS_CHECK"
+    })
+    void 상태는_두_repository_projection값의_조합으로_판정한다(
+            boolean hasUnpublishedFestival,
+            boolean hasCurrentFestival,
+            FestivalCoverageStatus expected
+    ) {
+        givenRows(row(1L, "Host", hasUnpublishedFestival, hasCurrentFestival, 10L, null));
+
+        FestivalCoverageResponse response = service.findCoverage(
+                2026, expected.name(), PageRequest.of(0, 20));
+
+        assertThat(response.items()).singleElement()
+                .extracting(item -> item.status()).isEqualTo(expected);
+    }
+
+    @Test
+    void year가_null이면_clock의_현재_연도를_사용한다() {
+        service.findCoverage(null, null, PageRequest.of(0, 20));
+
+        verify(hostRepository).findCoverageRows(
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2027, 1, 1),
+                LocalDate.of(2026, 1, 1));
+    }
+
+    @Test
+    void 최소_연도_2026은_허용한다() {
+        service.findCoverage(2026, null, PageRequest.of(0, 20));
+
+        verify(hostRepository).findCoverageRows(
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2027, 1, 1),
+                LocalDate.of(2026, 1, 1));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"2025", "2028"})
+    void 허용_범위를_벗어난_year는_거부한다(int year) {
+        FestaException thrown = catchThrowableOfType(FestaException.class,
+                () -> service.findCoverage(year, null, PageRequest.of(0, 20)));
+
+        assertThat(thrown.getErrorCode())
+                .isEqualTo(FestivalCoverageErrorCode.FESTIVAL_COVERAGE_INVALID_YEAR);
     }
 
     @Test
@@ -234,10 +315,8 @@ class FestivalCoverageServiceTest {
         HostCoverageRow row = mock(HostCoverageRow.class);
         given(row.getHostId()).willReturn(hostId);
         given(row.getHostName()).willReturn(hostName);
-        given(row.getHasUnpublishedFestival()).willReturn(hasUnpublishedFestival);
-        if (!hasUnpublishedFestival) {
-            given(row.getHasCurrentFestival()).willReturn(hasCurrentFestival);
-        }
+        lenient().when(row.getHasUnpublishedFestival()).thenReturn(hasUnpublishedFestival);
+        lenient().when(row.getHasCurrentFestival()).thenReturn(hasCurrentFestival);
         given(row.getFestivalId()).willReturn(festivalId);
         given(row.getInstagramUrl()).willReturn(instagramUrl);
         return row;

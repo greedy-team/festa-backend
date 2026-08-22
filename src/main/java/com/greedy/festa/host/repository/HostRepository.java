@@ -55,6 +55,7 @@ public interface HostRepository extends JpaRepository<Host, Long> {
                   AND f.start_date >= :yearStart
                   AND f.start_date < :nextYearStart
                   AND f.end_date >= :today
+                  AND f.published_at IS NOT NULL
                 ORDER BY f.start_date ASC, f.id ASC
                 LIMIT 1
             ) current_festival ON TRUE

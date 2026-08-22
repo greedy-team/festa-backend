@@ -10,7 +10,11 @@ import org.springframework.http.HttpStatus;
 public enum FestivalCoverageErrorCode implements ErrorCode {
 
     FESTIVAL_COVERAGE_INVALID_STATUS(
-            "status는 REVIEW_PENDING 또는 NEEDS_CHECK만 사용할 수 있습니다.",
+            "status는 PUBLISHED, REVIEW_PENDING 또는 NEEDS_CHECK만 사용할 수 있습니다.",
+            HttpStatus.BAD_REQUEST
+    ),
+    FESTIVAL_COVERAGE_INVALID_YEAR(
+            "year는 2026년부터 현재 연도의 다음 연도까지만 사용할 수 있습니다.",
             HttpStatus.BAD_REQUEST
     );
 
