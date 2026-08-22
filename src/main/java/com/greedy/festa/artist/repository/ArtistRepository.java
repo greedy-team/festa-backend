@@ -21,6 +21,8 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
 
     boolean existsByNameIn(Collection<String> names);
 
+    List<Artist> findAllByNameIn(Collection<String> names);
+
     @Query(value = """
             SELECT a AS artist, COUNT(f) AS appearanceCount
             FROM Artist a
