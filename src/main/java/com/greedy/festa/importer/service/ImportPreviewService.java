@@ -115,7 +115,7 @@ public class ImportPreviewService {
             ImportConflictPolicy onConflict,
             Instant uploadedAt
     ) {
-        ImportConflictPolicy policy = onConflict == null ? ImportConflictPolicy.UPDATE : onConflict;
+        ImportConflictPolicy policy = onConflict;
         EnumMap<ImportSection, List<ParsedCsvRow>> parsed = new EnumMap<>(ImportSection.class);
         files.forEach((section, file) -> parsed.put(section, csvParser.parse(file, section)));
 
@@ -287,8 +287,8 @@ public class ImportPreviewService {
         normalized.put("importKey", importKey);
         normalized.put("hostName", hostName);
         normalized.put("name", keepExisting(name, existing == null ? null : existing.getName()));
-        normalized.put("startDate", startDate);
-        normalized.put("endDate", endDate);
+        normalized.put("startDate", isoDate(startDate));
+        normalized.put("endDate", isoDate(endDate));
         normalized.put("venueName", keepExisting(trim(payload.get("venue_name")),
                 existing == null ? null : existing.getVenueName()));
         normalized.put("posterUrl", keepExisting(posterCandidate,
@@ -306,8 +306,8 @@ public class ImportPreviewService {
         normalized.put("ticketType", keepExisting(trim(payload.get("ticket_type")),
                 existing == null || existing.getTicketType() == null
                         ? null : existing.getTicketType().name()));
-        normalized.put("ticketOpenAt", keepExisting(ticketOpenAt,
-                existing == null ? null : existing.getTicketOpenAt()));
+        normalized.put("ticketOpenAt", keepExisting(isoInstant(ticketOpenAt),
+                existing == null ? null : isoInstant(existing.getTicketOpenAt())));
         normalized.put("ticketOpenAtRaw", payload.get("ticket_open_at"));
         normalized.put("admissionRaw", keepExisting(trim(payload.get("admission_raw")),
                 existing == null ? null : existing.getAdmissionRaw()));
@@ -351,6 +351,10 @@ public class ImportPreviewService {
 
         List<String> inputAliases = pipeValues(payload.get("other_names"));
         Long matchedArtistId = match.artist() == null ? null : match.artist().getId();
+        if (claimsExistingAliasAsRepresentative(name, inputAliases, match, lookup)) {
+            errors.add(blocker("ARTIST_DUPLICATE_NAME",
+                    "Artist 대표명이 기존 Artist의 별칭과 중복됩니다"));
+        }
         for (String alias : inputAliases) {
             if (ownedByAnotherArtist(alias, matchedArtistId, lookup)) {
                 errors.add(blocker("ARTIST_DUPLICATE_NAME",
@@ -490,6 +494,23 @@ public class ImportPreviewService {
                 || lookup.aliases().getOrDefault(name, List.of()).stream()
                 .map(Artist::getId)
                 .anyMatch(id -> expectedArtistId == null || !Objects.equals(id, expectedArtistId));
+    }
+
+    private boolean claimsExistingAliasAsRepresentative(
+            String name, List<String> inputAliases, ArtistMatch match, Lookup lookup
+    ) {
+        if (match.status() != ArtistMatchStatus.MATCHED || match.artist() == null) {
+            return false;
+        }
+        Long matchedArtistId = match.artist().getId();
+        boolean matchesRepresentative = lookup.artists().getOrDefault(name, List.of()).stream()
+                .anyMatch(artist -> Objects.equals(artist.getId(), matchedArtistId));
+        if (matchesRepresentative) {
+            return false;
+        }
+        boolean matchesAlias = lookup.aliases().getOrDefault(name, List.of()).stream()
+                .anyMatch(artist -> Objects.equals(artist.getId(), matchedArtistId));
+        return matchesAlias && !inputAliases.contains(match.artist().getName());
     }
 
     private Set<Integer> conflictingArtistLines(List<ParsedCsvRow> rows) {
@@ -703,6 +724,14 @@ public class ImportPreviewService {
 
     private Object keepExisting(Object incoming, Object existing) {
         return incoming == null || incoming.toString().isBlank() ? existing : incoming;
+    }
+
+    private String isoDate(LocalDate value) {
+        return value == null ? null : value.toString();
+    }
+
+    private String isoInstant(Instant value) {
+        return value == null ? null : value.toString();
     }
 
     private PreviewProblem error(String code, String message) {

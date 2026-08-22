@@ -156,7 +156,7 @@ class ImportPreviewServiceTest {
         ImportPreviewResponse response = service.previewBundle(
                 festivalFile("연세대학교", "", "https://cdn.example.com/1.jpg|https://cdn.example.com/2.jpg",
                         "2026-05-07T14:00:00+09:00"),
-                lineupFile("false", "", ""), null, null, uploadedAt);
+                lineupFile("false", "", ""), null, ImportConflictPolicy.UPDATE, uploadedAt);
 
         assertSoftly(softly -> {
             softly.assertThat(response.importId()).isEqualTo(99L);
@@ -208,7 +208,7 @@ class ImportPreviewServiceTest {
     @Test
     void Artist는_name_alias_NEW_UNRESOLVED를_구분하고_alias를_합집합한다() {
         Artist direct = artist(10L, "10CM");
-        Artist aliasTarget = artist(20L, "십센치 정식명");
+        Artist aliasTarget = artist(20L, "권정열");
         Artist conflict = artist(30L, "충돌 이름");
         ArtistAlias fallback = alias(aliasTarget, "십센치");
         ArtistAlias conflictingAlias = alias(conflict, "10CM");
@@ -250,8 +250,12 @@ class ImportPreviewServiceTest {
 
         assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.UPDATE);
         assertThat(response.rows().getFirst().values())
+                .containsEntry("startDate", "2026-05-30")
+                .containsEntry("endDate", "2026-06-01")
                 .containsEntry("posterUrl", "https://example.com/old.jpg")
-                .containsEntry("ticketOpenAt", Instant.parse("2026-05-07T05:00:00Z"));
+                .containsEntry("ticketOpenAt", "2026-05-07T05:00:00Z");
+        assertThat(response.rows().getFirst().values().get("startDate")).isInstanceOf(String.class);
+        assertThat(response.rows().getFirst().values().get("ticketOpenAt")).isInstanceOf(String.class);
     }
 
     @Test
@@ -348,6 +352,28 @@ class ImportPreviewServiceTest {
         assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
         assertThat(response.rows().getFirst().errors()).extracting("code")
                 .contains("ARTIST_DUPLICATE_NAME");
+    }
+
+    @Test
+    void 신규_Artist_대표명이_기존_Artist_alias와_같으면_INVALID다() {
+        Artist existing = artist(10L, "다이나믹 듀오");
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
+        given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection()))
+                .willReturn(List.of(alias(existing, "다듀")));
+        given(artistAliasRepository.findAllByArtistIdIn(anyCollection())).willReturn(List.of());
+        String csv = String.join(",", ImportSection.ARTISTS.headers())
+                + "\n다듀,,HIPHOP,,false\n";
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.ARTISTS, csv("file", "artists.csv", csv),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
+        assertThat(response.rows().getFirst().errors()).extracting("code")
+                .contains("ARTIST_DUPLICATE_NAME");
+        assertThat(response.blockers()).anyMatch(blocker ->
+                blocker.code().equals("ARTIST_DUPLICATE_NAME")
+                        && blocker.values().contains("다듀"));
     }
 
     @Test
