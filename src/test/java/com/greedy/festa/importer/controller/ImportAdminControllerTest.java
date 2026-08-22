@@ -1,6 +1,7 @@
 package com.greedy.festa.importer.controller;
 
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.GlobalExceptionHandler;
 import com.greedy.festa.importer.entity.ImportConflictPolicy;
 import com.greedy.festa.importer.exception.ImportErrorCode;
@@ -18,6 +19,8 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.time.Instant;
 
@@ -130,5 +133,15 @@ class ImportAdminControllerTest {
         mockMvc.perform(multipart("/admin/imports/bundle").file(festivals))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("IMPORT_MISSING_FILE"));
+    }
+
+    @Test
+    void 일반_multipart_part_누락은_Import_전용_오류로_매핑하지_않는다() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+        var response = handler.handleMissingServletRequestPartException(
+                new MissingServletRequestPartException("file"), new MockHttpServletRequest());
+
+        assertThat(response.getBody().errorCode()).isEqualTo(CommonErrorCode.INVALID_REQUEST_BODY.name());
     }
 }

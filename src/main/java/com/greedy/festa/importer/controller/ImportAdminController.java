@@ -28,11 +28,12 @@ public class ImportAdminController {
 
     @PostMapping(value = "/bundle", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImportPreviewResponse> previewBundle(
-            @RequestPart("festivals") MultipartFile festivals,
-            @RequestPart("lineups") MultipartFile lineups,
+            @RequestPart(name = "festivals", required = false) MultipartFile festivals,
+            @RequestPart(name = "lineups", required = false) MultipartFile lineups,
             @RequestPart(name = "artists", required = false) MultipartFile artists,
             @RequestPart(name = "onConflict", required = false) String onConflict
     ) {
+        requireFiles(festivals, lineups);
         return ResponseEntity.status(HttpStatus.CREATED).body(importPreviewService.previewBundle(
                 festivals, lineups, artists, conflictPolicy(onConflict), Instant.now()));
     }
@@ -40,9 +41,10 @@ public class ImportAdminController {
     @PostMapping(value = "/{type}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImportPreviewResponse> previewSingle(
             @PathVariable("type") String type,
-            @RequestPart("file") MultipartFile file,
+            @RequestPart(name = "file", required = false) MultipartFile file,
             @RequestPart(name = "onConflict", required = false) String onConflict
     ) {
+        requireFiles(file);
         ImportSection section = ImportSection.fromPath(type);
         if (section == null) {
             throw new FestaException(ImportErrorCode.IMPORT_INVALID_TYPE);
@@ -59,6 +61,14 @@ public class ImportAdminController {
             return ImportConflictPolicy.valueOf(value.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new FestaException(ImportErrorCode.IMPORT_INVALID_CONFLICT_POLICY);
+        }
+    }
+
+    private void requireFiles(MultipartFile... files) {
+        for (MultipartFile file : files) {
+            if (file == null) {
+                throw new FestaException(ImportErrorCode.IMPORT_MISSING_FILE);
+            }
         }
     }
 }

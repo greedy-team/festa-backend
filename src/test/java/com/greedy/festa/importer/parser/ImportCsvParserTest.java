@@ -1,6 +1,7 @@
 package com.greedy.festa.importer.parser;
 
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.importer.exception.ImportErrorCode;
 import com.greedy.festa.importer.model.ImportSection;
 import com.greedy.festa.importer.model.ParsedCsvRow;
@@ -75,7 +76,7 @@ class ImportCsvParserTest {
         FestaException thrown = catchThrowableOfType(
                 FestaException.class, () -> parser.parse(file, ImportSection.ARTISTS));
 
-        assertThat(thrown.getErrorCode()).isEqualTo(ImportErrorCode.PAYLOAD_TOO_LARGE);
+        assertThat(thrown.getErrorCode()).isEqualTo(CommonErrorCode.PAYLOAD_TOO_LARGE);
     }
 
     @Test

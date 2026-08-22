@@ -8,8 +8,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
-import com.greedy.festa.importer.exception.ImportErrorCode;
-
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -39,8 +37,8 @@ public class GlobalExceptionHandler {
             MaxUploadSizeExceededException e, HttpServletRequest request) {
 
         return toResponse(
-                ImportErrorCode.PAYLOAD_TOO_LARGE,
-                ImportErrorCode.PAYLOAD_TOO_LARGE.getMessage(),
+                CommonErrorCode.PAYLOAD_TOO_LARGE,
+                CommonErrorCode.PAYLOAD_TOO_LARGE.getMessage(),
                 request);
     }
 
@@ -49,8 +47,8 @@ public class GlobalExceptionHandler {
             MissingServletRequestPartException e, HttpServletRequest request) {
 
         return toResponse(
-                ImportErrorCode.IMPORT_MISSING_FILE,
-                ImportErrorCode.IMPORT_MISSING_FILE.getMessage(),
+                CommonErrorCode.INVALID_REQUEST_BODY,
+                CommonErrorCode.INVALID_REQUEST_BODY.getMessage(),
                 request);
     }
 

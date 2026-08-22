@@ -50,6 +50,9 @@ public record ImportPreviewResponse(
             if (value == null) {
                 value = row.normalized().get("artistCanonical");
             }
+            if (value == null || value.toString().isBlank()) {
+                value = row.normalized().get("artistRaw");
+            }
             return value == null || value.toString().isBlank() ? row.importKey() : value.toString();
         }
         return row.importKey();
