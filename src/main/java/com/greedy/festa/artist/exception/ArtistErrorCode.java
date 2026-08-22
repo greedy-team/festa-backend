@@ -13,6 +13,7 @@ public enum ArtistErrorCode implements ErrorCode {
     ARTIST_INVALID_NAME("아티스트 이름이 올바르지 않습니다", HttpStatus.BAD_REQUEST),
     ARTIST_INVALID_ALIAS("아티스트 별칭이 올바르지 않습니다", HttpStatus.BAD_REQUEST),
     ARTIST_INVALID_QUERY("검색어가 올바르지 않습니다", HttpStatus.BAD_REQUEST),
+    ARTIST_INVALID_LIMIT("조회 개수가 올바르지 않습니다", HttpStatus.BAD_REQUEST),
     ARTIST_INVALID_GENRE_TYPE("지원하지 않는 장르입니다", HttpStatus.BAD_REQUEST),
     ARTIST_INVALID_SORT_TYPE("지원하지 않는 정렬 기준입니다", HttpStatus.BAD_REQUEST),
     ARTIST_INVALID_TARGET_ID("남길 아티스트가 올바르지 않습니다", HttpStatus.BAD_REQUEST),

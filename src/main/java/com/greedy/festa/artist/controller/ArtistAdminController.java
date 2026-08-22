@@ -1,6 +1,7 @@
 package com.greedy.festa.artist.controller;
 
 import com.greedy.festa.artist.dto.ArtistCreateRequest;
+import com.greedy.festa.artist.dto.ArtistMergeCandidateResponse;
 import com.greedy.festa.artist.dto.ArtistMergeRequest;
 import com.greedy.festa.artist.dto.ArtistMergeResponse;
 import com.greedy.festa.artist.dto.ArtistResponse;
@@ -8,6 +9,7 @@ import com.greedy.festa.artist.dto.ArtistSortType;
 import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.exception.ArtistErrorCode;
+import com.greedy.festa.artist.service.ArtistMergeCandidateService;
 import com.greedy.festa.artist.service.ArtistMergeService;
 import com.greedy.festa.artist.service.ArtistService;
 import com.greedy.festa.global.dto.PageResponse;
@@ -32,6 +34,7 @@ public class ArtistAdminController {
 
     private final ArtistService artistService;
     private final ArtistMergeService artistMergeService;
+    private final ArtistMergeCandidateService artistMergeCandidateService;
 
     @PostMapping
     public ResponseEntity<ArtistResponse> create(@RequestBody ArtistCreateRequest request) {
@@ -47,6 +50,13 @@ public class ArtistAdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return artistService.findAll(needsReview, q, toGenre(genre), toSortType(sort), page, size);
+    }
+
+    @GetMapping("/{id}/merge-candidates")
+    public ArtistMergeCandidateResponse findMergeCandidates(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "5") Long limit) {
+        return artistMergeCandidateService.findAll(id, limit);
     }
 
     @PatchMapping("/{id}")
