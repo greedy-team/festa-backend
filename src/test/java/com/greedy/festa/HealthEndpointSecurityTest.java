@@ -16,6 +16,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.greedy.festa.admin.repository.AdminUserRepository;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
+import com.greedy.festa.artist.repository.LineupRepository;
 import com.greedy.festa.host.repository.HostRepository;
 
 @SpringBootTest(properties = {
@@ -45,6 +46,9 @@ class HealthEndpointSecurityTest {
 
     @MockitoBean
     private ArtistAliasRepository artistAliasRepository;
+
+    @MockitoBean
+    private LineupRepository lineupRepository;
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
