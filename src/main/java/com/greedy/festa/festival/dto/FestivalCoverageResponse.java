@@ -1,16 +1,10 @@
 package com.greedy.festa.festival.dto;
 
-import java.util.List;
+import com.greedy.festa.global.dto.PageResponse;
 
 public record FestivalCoverageResponse(
         int year,
         FestivalCoverageSummary summary,
-        List<FestivalCoverageItem> items,
-        int page,
-        int size,
-        long totalElements,
-        int totalPages,
-        boolean hasNext,
-        boolean hasPrevious
+        PageResponse<FestivalCoverageItem> hosts
 ) {
 }

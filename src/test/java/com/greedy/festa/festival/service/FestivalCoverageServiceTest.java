@@ -2,7 +2,8 @@ package com.greedy.festa.festival.service;
 
 import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageStatus;
-import com.greedy.festa.festival.exception.FestivalCoverageErrorCode;
+import com.greedy.festa.festival.exception.FestivalErrorCode;
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.repository.HostCoverageRow;
 import com.greedy.festa.host.repository.HostRepository;
@@ -13,7 +14,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -56,16 +56,16 @@ class FestivalCoverageServiceTest {
                 LocalDate.of(2026, 1, 1)
         )).willReturn(List.of(row));
 
-        FestivalCoverageResponse response = service.findCoverage(null, null, PageRequest.of(0, 20));
+        FestivalCoverageResponse response = service.findCoverage(null, null, 0, 20);
 
-        assertThat(response.items().getFirst().status()).isEqualTo(FestivalCoverageStatus.NEEDS_CHECK);
+        assertThat(response.hosts().items().getFirst().status()).isEqualTo(FestivalCoverageStatus.NEEDS_CHECK);
     }
 
     @Test
     void 과거_발행_festival만_있는_host는_needs_check이다() {
         givenRows(row(1L, "가대학교", false, false, null, null));
 
-        FestivalCoverageResponse response = service.findCoverage(2026, null, PageRequest.of(0, 20));
+        FestivalCoverageResponse response = service.findCoverage(2026, null, 0, 20);
 
         assertThat(response.summary().needsCheck()).isEqualTo(1);
     }
@@ -74,11 +74,11 @@ class FestivalCoverageServiceTest {
     void 미래나_진행중인_발행_festival이_있으면_published이다() {
         givenRows(row(1L, "가대학교", false, true, null, null));
 
-        FestivalCoverageResponse response = service.findCoverage(2026, null, PageRequest.of(0, 20));
+        FestivalCoverageResponse response = service.findCoverage(2026, null, 0, 20);
 
         assertSoftly(softly -> {
             softly.assertThat(response.summary().published()).isEqualTo(1);
-            softly.assertThat(response.items()).isEmpty();
+            softly.assertThat(response.hosts().items()).isEmpty();
         });
     }
 
@@ -88,9 +88,9 @@ class FestivalCoverageServiceTest {
         HostCoverageRow futureUnpublished = row(2L, "미래대학교", true, true, 12L, null);
         givenRows(pastUnpublished, futureUnpublished);
 
-        FestivalCoverageResponse response = service.findCoverage(2026, null, PageRequest.of(0, 20));
+        FestivalCoverageResponse response = service.findCoverage(2026, null, 0, 20);
 
-        assertThat(response.items())
+        assertThat(response.hosts().items())
                 .extracting(item -> item.status())
                 .containsOnly(FestivalCoverageStatus.REVIEW_PENDING);
     }
@@ -99,9 +99,9 @@ class FestivalCoverageServiceTest {
     void 발행과_미발행_festival이_동시에_있으면_review_pending이_우선한다() {
         givenRows(row(1L, "가대학교", true, true, 10L, null));
 
-        FestivalCoverageResponse response = service.findCoverage(2026, null, PageRequest.of(0, 20));
+        FestivalCoverageResponse response = service.findCoverage(2026, null, 0, 20);
 
-        assertThat(response.items().getFirst().status()).isEqualTo(FestivalCoverageStatus.REVIEW_PENDING);
+        assertThat(response.hosts().items().getFirst().status()).isEqualTo(FestivalCoverageStatus.REVIEW_PENDING);
     }
 
     @Test
@@ -112,7 +112,7 @@ class FestivalCoverageServiceTest {
         given(row.getEndDate()).willReturn(LocalDate.of(2026, 4, 3));
         givenRows(row);
 
-        var item = service.findCoverage(2026, null, PageRequest.of(0, 20)).items().getFirst();
+        var item = service.findCoverage(2026, null, 0, 20).hosts().items().getFirst();
 
         assertSoftly(softly -> {
             softly.assertThat(item.festivalId()).isEqualTo(20L);
@@ -125,7 +125,7 @@ class FestivalCoverageServiceTest {
     void needs_check의_festival_필드는_null이다() {
         givenRows(row(1L, "가대학교", false, false, null, "https://instagram.com/ga"));
 
-        var item = service.findCoverage(2026, null, PageRequest.of(0, 20)).items().getFirst();
+        var item = service.findCoverage(2026, null, 0, 20).hosts().items().getFirst();
 
         assertSoftly(softly -> {
             softly.assertThat(item.festivalId()).isNull();
@@ -144,12 +144,12 @@ class FestivalCoverageServiceTest {
         );
 
         FestivalCoverageResponse response = service.findCoverage(
-                2026, "NEEDS_CHECK", PageRequest.of(0, 20)
+                2026, "NEEDS_CHECK", 0, 20
         );
 
         assertSoftly(softly -> {
-            softly.assertThat(response.items()).hasSize(1);
-            softly.assertThat(response.items().getFirst().status())
+            softly.assertThat(response.hosts().items()).hasSize(1);
+            softly.assertThat(response.hosts().items().getFirst().status())
                     .isEqualTo(FestivalCoverageStatus.NEEDS_CHECK);
             softly.assertThat(response.summary().totalHosts()).isEqualTo(3);
             softly.assertThat(response.summary().published()).isEqualTo(1);
@@ -163,7 +163,7 @@ class FestivalCoverageServiceTest {
     void total_hosts가_0이면_coverage_rate도_0이다() {
         givenRows();
 
-        FestivalCoverageResponse response = service.findCoverage(2026, null, PageRequest.of(0, 20));
+        FestivalCoverageResponse response = service.findCoverage(2026, null, 0, 20);
 
         assertSoftly(softly -> {
             softly.assertThat(response.summary().totalHosts()).isZero();
@@ -179,20 +179,20 @@ class FestivalCoverageServiceTest {
                 row(3L, "가대학교", true, false, 30L, null)
         );
 
-        FestivalCoverageResponse first = service.findCoverage(2026, null, PageRequest.of(0, 2));
-        FestivalCoverageResponse second = service.findCoverage(2026, null, PageRequest.of(1, 2));
+        FestivalCoverageResponse first = service.findCoverage(2026, null, 0, 2);
+        FestivalCoverageResponse second = service.findCoverage(2026, null, 1, 2);
 
         assertSoftly(softly -> {
-            softly.assertThat(first.items()).extracting(item -> item.hostName())
+            softly.assertThat(first.hosts().items()).extracting(item -> item.hostName())
                     .containsExactly("가대학교", "나대학교");
-            softly.assertThat(first.totalElements()).isEqualTo(3);
-            softly.assertThat(first.totalPages()).isEqualTo(2);
-            softly.assertThat(first.hasNext()).isTrue();
-            softly.assertThat(first.hasPrevious()).isFalse();
-            softly.assertThat(second.items()).extracting(item -> item.hostName())
+            softly.assertThat(first.hosts().totalElements()).isEqualTo(3);
+            softly.assertThat(first.hosts().totalPages()).isEqualTo(2);
+            softly.assertThat(first.hosts().hasNext()).isTrue();
+            softly.assertThat(first.hosts().hasPrevious()).isFalse();
+            softly.assertThat(second.hosts().items()).extracting(item -> item.hostName())
                     .containsExactly("다대학교");
-            softly.assertThat(second.hasNext()).isFalse();
-            softly.assertThat(second.hasPrevious()).isTrue();
+            softly.assertThat(second.hosts().hasNext()).isFalse();
+            softly.assertThat(second.hosts().hasPrevious()).isTrue();
         });
     }
 
@@ -206,21 +206,21 @@ class FestivalCoverageServiceTest {
         );
 
         FestivalCoverageResponse first = service.findCoverage(
-                2026, "PUBLISHED", PageRequest.of(0, 2));
+                2026, "PUBLISHED", 0, 2);
         FestivalCoverageResponse second = service.findCoverage(
-                2026, "PUBLISHED", PageRequest.of(1, 2));
+                2026, "PUBLISHED", 1, 2);
 
         assertSoftly(softly -> {
-            softly.assertThat(first.items()).extracting(item -> item.hostName())
+            softly.assertThat(first.hosts().items()).extracting(item -> item.hostName())
                     .containsExactly("Alpha", "Bravo");
-            softly.assertThat(second.items()).extracting(item -> item.hostName())
+            softly.assertThat(second.hosts().items()).extracting(item -> item.hostName())
                     .containsExactly("Charlie");
-            softly.assertThat(first.items()).allMatch(
+            softly.assertThat(first.hosts().items()).allMatch(
                     item -> item.status() == FestivalCoverageStatus.PUBLISHED);
-            softly.assertThat(first.totalElements()).isEqualTo(3);
-            softly.assertThat(first.totalPages()).isEqualTo(2);
-            softly.assertThat(first.hasNext()).isTrue();
-            softly.assertThat(second.hasPrevious()).isTrue();
+            softly.assertThat(first.hosts().totalElements()).isEqualTo(3);
+            softly.assertThat(first.hosts().totalPages()).isEqualTo(2);
+            softly.assertThat(first.hosts().hasNext()).isTrue();
+            softly.assertThat(second.hosts().hasPrevious()).isTrue();
             softly.assertThat(first.summary().published()).isEqualTo(3);
         });
     }
@@ -228,10 +228,10 @@ class FestivalCoverageServiceTest {
     @Test
     void 지원하지_않는_status는_거부한다() {
         FestaException thrown = catchThrowableOfType(FestaException.class,
-                () -> service.findCoverage(2026, "UNKNOWN", PageRequest.of(0, 20)));
+                () -> service.findCoverage(2026, "UNKNOWN", 0, 20));
 
         assertThat(thrown.getErrorCode())
-                .isEqualTo(FestivalCoverageErrorCode.FESTIVAL_COVERAGE_INVALID_STATUS);
+                .isEqualTo(FestivalErrorCode.FESTIVAL_COVERAGE_INVALID_STATUS);
     }
 
     @ParameterizedTest
@@ -249,15 +249,15 @@ class FestivalCoverageServiceTest {
         givenRows(row(1L, "Host", hasUnpublishedFestival, hasCurrentFestival, 10L, null));
 
         FestivalCoverageResponse response = service.findCoverage(
-                2026, expected.name(), PageRequest.of(0, 20));
+                2026, expected.name(), 0, 20);
 
-        assertThat(response.items()).singleElement()
+        assertThat(response.hosts().items()).singleElement()
                 .extracting(item -> item.status()).isEqualTo(expected);
     }
 
     @Test
     void year가_null이면_clock의_현재_연도를_사용한다() {
-        service.findCoverage(null, null, PageRequest.of(0, 20));
+        service.findCoverage(null, null, 0, 20);
 
         verify(hostRepository).findCoverageRows(
                 LocalDate.of(2026, 1, 1),
@@ -267,7 +267,7 @@ class FestivalCoverageServiceTest {
 
     @Test
     void 최소_연도_2026은_허용한다() {
-        service.findCoverage(2026, null, PageRequest.of(0, 20));
+        service.findCoverage(2026, null, 0, 20);
 
         verify(hostRepository).findCoverageRows(
                 LocalDate.of(2026, 1, 1),
@@ -276,18 +276,27 @@ class FestivalCoverageServiceTest {
     }
 
     @ParameterizedTest
+    @CsvSource({"-1,20,INVALID_PAGE", "0,0,INVALID_PAGE_SIZE", "0,51,INVALID_PAGE_SIZE"})
+    void page와_size_범위를_검증한다(int page, int size, CommonErrorCode expected) {
+        FestaException thrown = catchThrowableOfType(FestaException.class,
+                () -> service.findCoverage(2026, null, page, size));
+
+        assertThat(thrown.getErrorCode()).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
     @CsvSource({"2025", "2028"})
     void 허용_범위를_벗어난_year는_거부한다(int year) {
         FestaException thrown = catchThrowableOfType(FestaException.class,
-                () -> service.findCoverage(year, null, PageRequest.of(0, 20)));
+                () -> service.findCoverage(year, null, 0, 20));
 
         assertThat(thrown.getErrorCode())
-                .isEqualTo(FestivalCoverageErrorCode.FESTIVAL_COVERAGE_INVALID_YEAR);
+                .isEqualTo(FestivalErrorCode.FESTIVAL_COVERAGE_INVALID_YEAR);
     }
 
     @Test
     void 지정한_year의_범위와_asia_seoul의_오늘을_repository에_전달한다() {
-        service.findCoverage(2027, null, PageRequest.of(0, 20));
+        service.findCoverage(2027, null, 0, 20);
 
         verify(hostRepository).findCoverageRows(
                 LocalDate.of(2027, 1, 1),

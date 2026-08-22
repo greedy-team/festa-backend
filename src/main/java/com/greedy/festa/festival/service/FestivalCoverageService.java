@@ -4,12 +4,15 @@ import com.greedy.festa.festival.dto.FestivalCoverageItem;
 import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageStatus;
 import com.greedy.festa.festival.dto.FestivalCoverageSummary;
-import com.greedy.festa.festival.exception.FestivalCoverageErrorCode;
+import com.greedy.festa.festival.exception.FestivalErrorCode;
+import com.greedy.festa.global.dto.PageResponse;
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.repository.HostCoverageRow;
 import com.greedy.festa.host.repository.HostRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,17 +27,22 @@ import java.util.List;
 public class FestivalCoverageService {
 
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+    private static final int MAX_PAGE_SIZE = 50;
 
     private final HostRepository hostRepository;
     private final Clock clock;
 
     @Transactional(readOnly = true)
     public FestivalCoverageResponse findCoverage(
-            Integer requestedYear, String requestedStatus, Pageable pageable
+            Integer requestedYear, String requestedStatus, int page, int size
     ) {
         LocalDate today = LocalDate.now(clock.withZone(SEOUL));
-        int year = requestedYear == null ? today.getYear() : requestedYear;
+        int year = today.getYear();
+        if (requestedYear != null) {
+            year = requestedYear;
+        }
         validateYear(year, today.getYear());
+        validatePagination(page, size);
         FestivalCoverageStatus statusFilter = parseStatus(requestedStatus);
 
         List<HostCoverageRow> rows = hostRepository.findCoverageRows(
@@ -45,32 +53,29 @@ public class FestivalCoverageService {
         FestivalCoverageSummary summary = summarize(rows);
         List<FestivalCoverageItem> filteredItems = rows.stream()
                 .map(row -> FestivalCoverageItem.of(row, resolveStatus(row)))
-                .filter(item -> statusFilter == null
-                        ? item.status() != FestivalCoverageStatus.PUBLISHED
-                        : item.status() == statusFilter)
+                .filter(item -> shouldInclude(item, statusFilter))
                 .sorted(Comparator
                         .comparingInt((FestivalCoverageItem item) -> statusOrder(item.status()))
                         .thenComparing(FestivalCoverageItem::hostName))
                 .toList();
 
-        int fromIndex = (int) Math.min(pageable.getOffset(), filteredItems.size());
-        int toIndex = Math.min(fromIndex + pageable.getPageSize(), filteredItems.size());
+        PageRequest pageRequest = PageRequest.of(page, size);
+        int fromIndex = (int) Math.min(pageRequest.getOffset(), filteredItems.size());
+        int toIndex = Math.min(fromIndex + size, filteredItems.size());
         List<FestivalCoverageItem> items = filteredItems.subList(fromIndex, toIndex);
-        int totalPages = filteredItems.isEmpty()
-                ? 0
-                : (int) Math.ceil((double) filteredItems.size() / pageable.getPageSize());
+        PageResponse<FestivalCoverageItem> hosts = PageResponse.from(
+                new PageImpl<>(items, pageRequest, filteredItems.size()));
 
-        return new FestivalCoverageResponse(
-                year,
-                summary,
-                items,
-                pageable.getPageNumber(),
-                pageable.getPageSize(),
-                filteredItems.size(),
-                totalPages,
-                pageable.getPageNumber() + 1 < totalPages,
-                pageable.getPageNumber() > 0
-        );
+        return new FestivalCoverageResponse(year, summary, hosts);
+    }
+
+    private boolean shouldInclude(
+            FestivalCoverageItem item, FestivalCoverageStatus statusFilter
+    ) {
+        if (statusFilter == null) {
+            return item.status() != FestivalCoverageStatus.PUBLISHED;
+        }
+        return item.status() == statusFilter;
     }
 
     private FestivalCoverageStatus parseStatus(String requestedStatus) {
@@ -80,13 +85,22 @@ public class FestivalCoverageService {
         try {
             return FestivalCoverageStatus.valueOf(requestedStatus);
         } catch (IllegalArgumentException e) {
-            throw new FestaException(FestivalCoverageErrorCode.FESTIVAL_COVERAGE_INVALID_STATUS);
+            throw new FestaException(FestivalErrorCode.FESTIVAL_COVERAGE_INVALID_STATUS);
         }
     }
 
     private void validateYear(int year, int currentYear) {
         if (year < 2026 || year > currentYear + 1) {
-            throw new FestaException(FestivalCoverageErrorCode.FESTIVAL_COVERAGE_INVALID_YEAR);
+            throw new FestaException(FestivalErrorCode.FESTIVAL_COVERAGE_INVALID_YEAR);
+        }
+    }
+
+    private void validatePagination(int page, int size) {
+        if (page < 0) {
+            throw new FestaException(CommonErrorCode.INVALID_PAGE);
+        }
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
         }
     }
 
@@ -94,9 +108,10 @@ public class FestivalCoverageService {
         long published = count(rows, FestivalCoverageStatus.PUBLISHED);
         long reviewPending = count(rows, FestivalCoverageStatus.REVIEW_PENDING);
         long needsCheck = count(rows, FestivalCoverageStatus.NEEDS_CHECK);
-        int coverageRate = rows.isEmpty()
-                ? 0
-                : (int) Math.round(published * 100.0 / rows.size());
+        int coverageRate = 0;
+        if (!rows.isEmpty()) {
+            coverageRate = (int) Math.round(published * 100.0 / rows.size());
+        }
 
         return new FestivalCoverageSummary(
                 rows.size(), published, reviewPending, needsCheck, coverageRate

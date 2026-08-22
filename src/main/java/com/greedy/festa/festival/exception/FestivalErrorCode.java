@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum FestivalCoverageErrorCode implements ErrorCode {
+public enum FestivalErrorCode implements ErrorCode {
 
     FESTIVAL_COVERAGE_INVALID_STATUS(
             "status는 PUBLISHED, REVIEW_PENDING 또는 NEEDS_CHECK만 사용할 수 있습니다.",
