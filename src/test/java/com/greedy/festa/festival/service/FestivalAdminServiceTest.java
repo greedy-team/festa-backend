@@ -60,6 +60,7 @@ class FestivalAdminServiceTest {
 
         // then
         assertThat(festival.getPublishedAt()).isEqualTo(지금);
+        assertThat(response.published()).isTrue();
         assertThat(response.publishedAt()).isEqualTo(지금);
     }
 
@@ -141,6 +142,7 @@ class FestivalAdminServiceTest {
 
         // then
         assertThat(festival.getPublishedAt()).isNull();
+        assertThat(response.published()).isFalse();
         assertThat(response.publishedAt()).isNull();
     }
 
@@ -154,6 +156,7 @@ class FestivalAdminServiceTest {
         FestivalPublishResponse response = festivalAdminService.unpublish(축제_id);
 
         // then
+        assertThat(response.published()).isFalse();
         assertThat(response.publishedAt()).isNull();
     }
 
