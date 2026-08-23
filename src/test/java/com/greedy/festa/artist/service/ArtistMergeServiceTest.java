@@ -60,7 +60,7 @@ class ArtistMergeServiceTest extends PostgresTestSupport {
 
     @BeforeEach
     void setUp() {
-        Host 주최 = em.merge(Host.builder().name("세종대학교").region("서울 광진구").build());
+        Host 주최 = em.merge(Host.builder().name("테스트대학교").region("서울 광진구").build());
         대동제 = 축제를_넣는다(주최, "대동제");
         해변가요제 = 축제를_넣는다(주최, "해변가요제");
     }
