@@ -103,4 +103,12 @@ public class Festival extends BaseEntity {
         this.sourceUrl = sourceUrl;
         this.importedAt = importedAt;
     }
+
+    public void publish(Instant publishedAt) {
+        this.publishedAt = publishedAt;
+    }
+
+    public void unpublish() {
+        this.publishedAt = null;
+    }
 }

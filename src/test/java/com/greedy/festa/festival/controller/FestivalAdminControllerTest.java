@@ -5,6 +5,7 @@ import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageStatus;
 import com.greedy.festa.festival.dto.FestivalCoverageSummary;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
+import com.greedy.festa.festival.service.FestivalAdminService;
 import com.greedy.festa.festival.service.FestivalCoverageService;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
@@ -27,14 +28,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class FestivalAdminControllerTest {
 
+    private FestivalAdminService adminService;
     private FestivalCoverageService service;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
+        adminService = mock(FestivalAdminService.class);
         service = mock(FestivalCoverageService.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new FestivalAdminController(service))
+                .standaloneSetup(new FestivalAdminController(adminService, service))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
