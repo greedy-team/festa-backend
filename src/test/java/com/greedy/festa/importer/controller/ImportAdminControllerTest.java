@@ -91,7 +91,7 @@ class ImportAdminControllerTest {
         MockMultipartFile onConflict = new MockMultipartFile(
                 "onConflict", "", "text/plain", "SKIP".getBytes());
 
-        mockMvc.perform(multipart("/admin/imports/bundle")
+        mockMvc.perform(multipart("/api/admin/imports/bundle")
                         .file(festivals).file(lineups).file(artists).file(onConflict))
                 .andExpect(status().isCreated());
 
@@ -118,7 +118,7 @@ class ImportAdminControllerTest {
                 eq(festivals), eq(lineups), eq(null), eq(ImportConflictPolicy.UPDATE), any(Instant.class)))
                 .willThrow(new MaxUploadSizeExceededException(5L * 1024 * 1024));
 
-        mockMvc.perform(multipart("/admin/imports/bundle").file(festivals).file(lineups))
+        mockMvc.perform(multipart("/api/admin/imports/bundle").file(festivals).file(lineups))
                 .andExpect(status().isPayloadTooLarge())
                 .andExpect(jsonPath("$.errorCode").value("PAYLOAD_TOO_LARGE"))
                 .andExpect(jsonPath("$.status").value(413));
@@ -130,7 +130,7 @@ class ImportAdminControllerTest {
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         MockMultipartFile festivals = new MockMultipartFile("festivals", new byte[]{1});
 
-        mockMvc.perform(multipart("/admin/imports/bundle").file(festivals))
+        mockMvc.perform(multipart("/api/admin/imports/bundle").file(festivals))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("IMPORT_MISSING_FILE"));
     }

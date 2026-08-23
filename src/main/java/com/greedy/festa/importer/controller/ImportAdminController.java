@@ -20,7 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.Instant;
 
 @RestController
-@RequestMapping("/admin/imports")
+@RequestMapping("/api/admin/imports")
 @RequiredArgsConstructor
 public class ImportAdminController {
 

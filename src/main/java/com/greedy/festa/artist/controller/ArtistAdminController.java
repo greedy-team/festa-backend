@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/admin/artists")
+@RequestMapping("/api/admin/artists")
 @RequiredArgsConstructor
 public class ArtistAdminController {
 
