@@ -16,6 +16,8 @@ public interface ArtistAliasRepository extends JpaRepository<ArtistAlias, Long> 
     @Query("SELECT aa FROM ArtistAlias aa WHERE aa.artist.id IN :artistIds")
     List<ArtistAlias> findAllByArtistIdIn(@Param("artistIds") Collection<Long> artistIds);
 
+    List<ArtistAlias> findByNameIn(List<String> names);
+
     List<ArtistAlias> findByArtistId(Long artistId);
 
     List<ArtistAlias> findByArtistIdIn(List<Long> artistIds);
@@ -25,6 +27,8 @@ public interface ArtistAliasRepository extends JpaRepository<ArtistAlias, Long> 
     boolean existsByNameAndArtistIdNot(String name, Long artistId);
 
     void deleteByArtistId(Long artistId);
+
+    void deleteByArtistIdIn(List<Long> artistIds);
 
     void deleteByArtistIdAndName(Long artistId, String name);
 }
