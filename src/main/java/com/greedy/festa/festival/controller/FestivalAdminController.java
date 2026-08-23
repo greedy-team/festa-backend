@@ -56,7 +56,7 @@ public class FestivalAdminController {
         );
     }
 
-    @Operation(summary = "주최별 축제 데이터 구축 현황",
+    @Operation(summary = "대시보드 - 주최별 축제 데이터 구축 현황",
             description = "year를 생략하면 올해다. status는 PUBLISHED / REVIEW_PENDING / NEEDS_CHECK이며, "
                     + "생략하면 PUBLISHED를 뺀 나머지만 내려간다.")
     @ApiResponse(responseCode = "200", description = "연도·요약·주최별 현황")
