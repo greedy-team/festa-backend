@@ -1,5 +1,7 @@
 package com.greedy.festa.festival.controller;
 
+import com.greedy.festa.festival.dto.FestivalBatchPublishRequest;
+import com.greedy.festa.festival.dto.FestivalBatchPublishResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalPublishResponse;
 import com.greedy.festa.festival.dto.FestivalReviewItem;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,6 +50,11 @@ public class FestivalAdminController {
             @RequestParam(defaultValue = "20") int size
     ) {
         return festivalCoverageService.findCoverage(year, status, page, size);
+    }
+
+    @PostMapping("/publish")
+    public FestivalBatchPublishResponse batchPublish(@RequestBody FestivalBatchPublishRequest request) {
+        return festivalAdminService.batchPublish(request.festivalIds());
     }
 
     @PostMapping("/{id}/publish")
