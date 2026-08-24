@@ -4,10 +4,13 @@ import com.greedy.festa.global.config.SwaggerConfig;
 import com.greedy.festa.global.exception.ErrorResponse;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.importer.dto.ImportPreviewResponse;
+import com.greedy.festa.importer.dto.ImportCommitRequest;
+import com.greedy.festa.importer.dto.ImportCommitResponse;
 import com.greedy.festa.importer.entity.ImportConflictPolicy;
 import com.greedy.festa.importer.exception.ImportErrorCode;
 import com.greedy.festa.importer.model.ImportSection;
 import com.greedy.festa.importer.service.ImportPreviewService;
+import com.greedy.festa.importer.service.ImportCommitService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,9 +25,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Clock;
 import java.time.Instant;
 
 @Tag(name = "관리자 - 임포트", description = "CSV를 올려 반영 전 미리보기 배치를 만든다. 이 단계에서 데이터는 바뀌지 않는다. "
@@ -36,6 +41,16 @@ import java.time.Instant;
 public class ImportAdminController {
 
     private final ImportPreviewService importPreviewService;
+    private final ImportCommitService importCommitService;
+    private final Clock clock;
+
+    @PostMapping("/{importId}/commit")
+    public ResponseEntity<ImportCommitResponse> commit(
+            @PathVariable("importId") Long importId,
+            @RequestBody(required = false) ImportCommitRequest request
+    ) {
+        return ResponseEntity.ok(importCommitService.commit(importId, request));
+    }
 
     @Operation(summary = "임포트 묶음 미리보기",
             description = "festivals와 lineups는 필수, artists는 선택이다. onConflict는 UPDATE(기본) / SKIP.")
@@ -52,7 +67,7 @@ public class ImportAdminController {
     ) {
         requireFiles(festivals, lineups);
         return ResponseEntity.status(HttpStatus.CREATED).body(importPreviewService.previewBundle(
-                festivals, lineups, artists, conflictPolicy(onConflict), Instant.now()));
+                festivals, lineups, artists, conflictPolicy(onConflict), Instant.now(clock)));
     }
 
     @Operation(summary = "임포트 단건 미리보기",
@@ -73,7 +88,7 @@ public class ImportAdminController {
             throw new FestaException(ImportErrorCode.IMPORT_INVALID_TYPE);
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(importPreviewService.previewSingle(
-                section, file, conflictPolicy(onConflict), Instant.now()));
+                section, file, conflictPolicy(onConflict), Instant.now(clock)));
     }
 
     private ImportConflictPolicy conflictPolicy(String value) {

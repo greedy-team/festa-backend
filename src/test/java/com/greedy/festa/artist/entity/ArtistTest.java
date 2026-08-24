@@ -122,6 +122,20 @@ class ArtistTest {
         assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
     }
 
+    @Test
+    void updateFromImport_overwrites_only_import_fields() {
+        Artist artist = artist();
+
+        artist.updateFromImport(ArtistGenre.HIPHOP,
+                "https://image.example.com/imported.jpg", false);
+
+        assertThat(artist.getName()).isEqualTo("아티스트");
+        assertThat(artist.getGenre()).isEqualTo(ArtistGenre.HIPHOP);
+        assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/imported.jpg");
+        assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
+        assertThat(artist.isNeedsReview()).isFalse();
+    }
+
     private Artist artist() {
         return Artist.builder()
                 .name("아티스트")
