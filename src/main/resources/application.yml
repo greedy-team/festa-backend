@@ -47,6 +47,8 @@ app:
     admin-token-validity: PT1H
   crypto:
     aes-key: ${AES_KEY}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
 management:
   endpoints:
