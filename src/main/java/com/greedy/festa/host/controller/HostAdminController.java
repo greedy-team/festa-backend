@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
         + "토큰이 없거나 만료되면 401(UNAUTHORIZED / TOKEN_EXPIRED)이다.")
 @SecurityRequirement(name = SwaggerConfig.BEARER_AUTH)
 @RestController
-@RequestMapping("/admin/hosts")
+@RequestMapping("/api/admin/hosts")
 @RequiredArgsConstructor
 public class HostAdminController {
 

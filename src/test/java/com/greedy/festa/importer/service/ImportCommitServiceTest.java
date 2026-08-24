@@ -435,6 +435,23 @@ class ImportCommitServiceTest {
     }
 
     @Test
+    void SKIP_Festival은_발행_상태여도_stale이_아니다() {
+        Host host = host(1L, "university");
+        Festival published = festivalEntity(30L, host, true);
+        StoredPreviewRow row = festival(1, ImportPreviewAction.SKIP, 30L, 1L);
+        prepare(preview(row));
+        given(hostRepository.findAllById(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(published));
+
+        var response = service.commit(39L, null);
+
+        assertThat(response.result().festivals().skipped()).isOne();
+        assertThat(response.result().festivals().failed()).isZero();
+        verify(auditRepository).saveAll(any());
+        verify(hashtagRepository, never()).deleteAllByFestivalId(any());
+    }
+
+    @Test
     void FestivalHashtag는_값이_있으면_전체교체하고_비어있으면_유지한다() {
         Host host = host(1L, "university");
         Festival existing = festivalEntity(30L, host, false);

@@ -5,6 +5,7 @@ import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageStatus;
 import com.greedy.festa.festival.dto.FestivalCoverageSummary;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
+import com.greedy.festa.festival.service.FestivalAdminService;
 import com.greedy.festa.festival.service.FestivalCoverageService;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
@@ -27,14 +28,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class FestivalAdminControllerTest {
 
+    private FestivalAdminService adminService;
     private FestivalCoverageService service;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
+        adminService = mock(FestivalAdminService.class);
         service = mock(FestivalCoverageService.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new FestivalAdminController(service))
+                .standaloneSetup(new FestivalAdminController(adminService, service))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -51,7 +54,7 @@ class FestivalAdminControllerTest {
                 new PageResponse<>(List.of(item), 0, 10, 11, 2, true, false));
         given(service.findCoverage(2026, "REVIEW_PENDING", 0, 10)).willReturn(response);
 
-        mockMvc.perform(get("/admin/festivals/coverage")
+        mockMvc.perform(get("/api/admin/festivals/coverage")
                         .param("year", "2026")
                         .param("status", "REVIEW_PENDING")
                         .param("page", "0")
@@ -81,7 +84,7 @@ class FestivalAdminControllerTest {
                 new PageResponse<>(List.of(), 0, 20, 0, 0, false, false));
         given(service.findCoverage(2026, null, 0, 20)).willReturn(response);
 
-        mockMvc.perform(get("/admin/festivals/coverage")
+        mockMvc.perform(get("/api/admin/festivals/coverage")
                         .param("year", "2026")
                         .param("sort", "hostName,desc"))
                 .andExpect(status().isOk())
@@ -102,7 +105,7 @@ class FestivalAdminControllerTest {
                 new PageResponse<>(List.of(item), 0, 20, 1, 1, false, false));
         given(service.findCoverage(2026, "PUBLISHED", 0, 20)).willReturn(response);
 
-        mockMvc.perform(get("/admin/festivals/coverage")
+        mockMvc.perform(get("/api/admin/festivals/coverage")
                         .param("year", "2026")
                         .param("status", "PUBLISHED"))
                 .andExpect(status().isOk())
@@ -115,7 +118,7 @@ class FestivalAdminControllerTest {
         given(service.findCoverage(2025, null, 0, 20))
                 .willThrow(new FestaException(FestivalErrorCode.FESTIVAL_COVERAGE_INVALID_YEAR));
 
-        mockMvc.perform(get("/admin/festivals/coverage").param("year", "2025"))
+        mockMvc.perform(get("/api/admin/festivals/coverage").param("year", "2025"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("FESTIVAL_COVERAGE_INVALID_YEAR"));
     }
@@ -127,11 +130,11 @@ class FestivalAdminControllerTest {
         given(service.findCoverage(2026, null, 0, 51))
                 .willThrow(new FestaException(CommonErrorCode.INVALID_PAGE_SIZE));
 
-        mockMvc.perform(get("/admin/festivals/coverage")
+        mockMvc.perform(get("/api/admin/festivals/coverage")
                         .param("year", "2026").param("page", "-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("INVALID_PAGE"));
-        mockMvc.perform(get("/admin/festivals/coverage")
+        mockMvc.perform(get("/api/admin/festivals/coverage")
                         .param("year", "2026").param("size", "51"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("INVALID_PAGE_SIZE"));

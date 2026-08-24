@@ -52,6 +52,9 @@ class HealthEndpointSecurityTest {
     private ArtistAliasRepository artistAliasRepository;
 
     @MockitoBean
+    private LineupRepository lineupRepository;
+
+    @MockitoBean
     private FestivalRepository festivalRepository;
 
     @MockitoBean
@@ -62,9 +65,6 @@ class HealthEndpointSecurityTest {
 
     @MockitoBean
     private FestivalHashtagRepository festivalHashtagRepository;
-
-    @MockitoBean
-    private LineupRepository lineupRepository;
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;

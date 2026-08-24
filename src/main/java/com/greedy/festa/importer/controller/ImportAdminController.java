@@ -1,5 +1,7 @@
 package com.greedy.festa.importer.controller;
 
+import com.greedy.festa.global.config.SwaggerConfig;
+import com.greedy.festa.global.exception.ErrorResponse;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.importer.dto.ImportPreviewResponse;
 import com.greedy.festa.importer.dto.ImportCommitRequest;
@@ -9,6 +11,12 @@ import com.greedy.festa.importer.exception.ImportErrorCode;
 import com.greedy.festa.importer.model.ImportSection;
 import com.greedy.festa.importer.service.ImportPreviewService;
 import com.greedy.festa.importer.service.ImportCommitService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -24,8 +32,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.Clock;
 import java.time.Instant;
 
+@Tag(name = "관리자 - 임포트", description = "CSV를 올려 반영 전 미리보기 배치를 만든다. 이 단계에서 데이터는 바뀌지 않는다. "
+        + "토큰이 없거나 만료되면 401(UNAUTHORIZED / TOKEN_EXPIRED)이다.")
+@SecurityRequirement(name = SwaggerConfig.BEARER_AUTH)
 @RestController
-@RequestMapping("/admin/imports")
+@RequestMapping("/api/admin/imports")
 @RequiredArgsConstructor
 public class ImportAdminController {
 
@@ -41,6 +52,12 @@ public class ImportAdminController {
         return ResponseEntity.ok(importCommitService.commit(importId, request));
     }
 
+    @Operation(summary = "임포트 묶음 미리보기",
+            description = "festivals와 lineups는 필수, artists는 선택이다. onConflict는 UPDATE(기본) / SKIP.")
+    @ApiResponse(responseCode = "201", description = "생성된 미리보기 배치와 행 목록")
+    @ApiResponse(responseCode = "400", description = "IMPORT_MISSING_FILE / IMPORT_INVALID_CONFLICT_POLICY "
+            + "/ IMPORT_EMPTY_CSV / IMPORT_INVALID_CSV_ENCODING / IMPORT_INVALID_CSV_HEADER / IMPORT_INVALID_CSV",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping(value = "/bundle", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImportPreviewResponse> previewBundle(
             @RequestPart(name = "festivals", required = false) MultipartFile festivals,
@@ -53,6 +70,12 @@ public class ImportAdminController {
                 festivals, lineups, artists, conflictPolicy(onConflict), Instant.now(clock)));
     }
 
+    @Operation(summary = "임포트 단건 미리보기",
+            description = "type은 festivals / lineups / artists 중 하나다. onConflict는 UPDATE(기본) / SKIP.")
+    @ApiResponse(responseCode = "201", description = "생성된 미리보기 배치와 행 목록")
+    @ApiResponse(responseCode = "400", description = "IMPORT_INVALID_TYPE / IMPORT_MISSING_FILE "
+            + "/ IMPORT_INVALID_CONFLICT_POLICY / IMPORT_EMPTY_CSV / IMPORT_INVALID_CSV_ENCODING / IMPORT_INVALID_CSV_HEADER / IMPORT_INVALID_CSV",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping(value = "/{type}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImportPreviewResponse> previewSingle(
             @PathVariable("type") String type,

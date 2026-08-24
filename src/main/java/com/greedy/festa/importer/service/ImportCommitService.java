@@ -336,7 +336,8 @@ public class ImportCommitService {
             if (festivals.size() != 1 || !festivals.getFirst().getId().equals(row.matchedFestivalId())) {
                 throw error(ImportErrorCode.IMPORT_PREVIEW_STALE);
             }
-            if (festivals.getFirst().getPublishedAt() != null) {
+            if (row.action() == ImportPreviewAction.UPDATE
+                    && festivals.getFirst().getPublishedAt() != null) {
                 throw error(ImportErrorCode.IMPORT_PREVIEW_STALE);
             }
         }

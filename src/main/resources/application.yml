@@ -59,8 +59,14 @@ management:
 
 # API 문서는 꺼둔 것이 기본값이다. 프로파일을 지정하지 않으면 닫힌 채로 뜨므로,
 # 배포 설정을 손대지 않아도 외부에 노출되지 않는다. 여는 것은 development 프로파일뿐이다.
+#
+# 주소는 `/docs` 아래에 둔다. 서비스 API는 `/api`를 쓰므로 문서와 API가 URL만 보고 갈린다.
+# swagger-ui.path 는 진입 경로일 뿐 아니라 그 상위 디렉터리가 UI 리소스의 루트가 되므로,
+# `/docs/swagger-ui.html`로 두면 화면이 `/docs/swagger-ui/index.html`에서 열린다.
 springdoc:
   api-docs:
     enabled: false
+    path: /docs/v3/api-docs
   swagger-ui:
     enabled: false
+    path: /docs/swagger-ui.html

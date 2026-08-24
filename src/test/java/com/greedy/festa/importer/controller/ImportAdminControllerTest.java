@@ -106,7 +106,7 @@ class ImportAdminControllerTest {
         MockMultipartFile onConflict = new MockMultipartFile(
                 "onConflict", "", "text/plain", "SKIP".getBytes());
 
-        mockMvc.perform(multipart("/admin/imports/bundle")
+        mockMvc.perform(multipart("/api/admin/imports/bundle")
                         .file(festivals).file(lineups).file(artists).file(onConflict))
                 .andExpect(status().isCreated());
 
@@ -133,7 +133,7 @@ class ImportAdminControllerTest {
                 eq(festivals), eq(lineups), eq(null), eq(ImportConflictPolicy.UPDATE), any(Instant.class)))
                 .willThrow(new MaxUploadSizeExceededException(5L * 1024 * 1024));
 
-        mockMvc.perform(multipart("/admin/imports/bundle").file(festivals).file(lineups))
+        mockMvc.perform(multipart("/api/admin/imports/bundle").file(festivals).file(lineups))
                 .andExpect(status().isPayloadTooLarge())
                 .andExpect(jsonPath("$.errorCode").value("PAYLOAD_TOO_LARGE"))
                 .andExpect(jsonPath("$.status").value(413));
@@ -145,7 +145,7 @@ class ImportAdminControllerTest {
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         MockMultipartFile festivals = new MockMultipartFile("festivals", new byte[]{1});
 
-        mockMvc.perform(multipart("/admin/imports/bundle").file(festivals))
+        mockMvc.perform(multipart("/api/admin/imports/bundle").file(festivals))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("IMPORT_MISSING_FILE"));
     }
@@ -158,7 +158,7 @@ class ImportAdminControllerTest {
                         new ImportCommitResult(empty, empty, empty), java.util.List.of()));
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 
-        mockMvc.perform(post("/admin/imports/37/commit")
+        mockMvc.perform(post("/api/admin/imports/37/commit")
                         .contentType("application/json")
                         .content("{\"lines\":{\"artists\":[1,2],\"festivals\":[1]}}"))
                 .andExpect(status().isOk())
@@ -175,12 +175,12 @@ class ImportAdminControllerTest {
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
 
-        mockMvc.perform(post("/admin/imports/37/commit")
+        mockMvc.perform(post("/api/admin/imports/37/commit")
                         .contentType("application/json").content("{}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("IMPORT_PREVIEW_STALE"))
                 .andExpect(jsonPath("$.status").value(409))
-                .andExpect(jsonPath("$.instance").value("/admin/imports/37/commit"));
+                .andExpect(jsonPath("$.instance").value("/api/admin/imports/37/commit"));
     }
 
     @Test
@@ -190,7 +190,7 @@ class ImportAdminControllerTest {
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
 
-        mockMvc.perform(post("/admin/imports/37/commit")
+        mockMvc.perform(post("/api/admin/imports/37/commit")
                         .contentType("application/json").content("{\"lines\":{}}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("IMPORT_INVALID_LINE_SELECTION"));
