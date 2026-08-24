@@ -1,6 +1,8 @@
 package com.greedy.festa.importer.service;
 
+import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.importer.entity.ImportConflictPolicy;
+import com.greedy.festa.importer.exception.ImportErrorCode;
 import com.greedy.festa.importer.model.ImportPreviewAction;
 import com.greedy.festa.importer.model.ImportSection;
 import com.greedy.festa.importer.model.StoredImportPreview;
@@ -13,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SuppressWarnings("NonAsciiCharacters")
 class PreviewJsonCodecTest {
@@ -57,8 +60,17 @@ class PreviewJsonCodecTest {
     void 지원하지_않는_schemaVersion은_명시적으로_거부한다() {
         String json = "{\"schemaVersion\":2,\"conflictPolicy\":\"UPDATE\",\"rows\":[]}";
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> codec.deserialize(json))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("schemaVersion");
+        assertThatThrownBy(() -> codec.deserialize(json))
+                .isInstanceOf(FestaException.class)
+                .extracting(exception -> ((FestaException) exception).getErrorCode())
+                .isEqualTo(ImportErrorCode.IMPORT_UNSUPPORTED_PREVIEW_VERSION);
+    }
+
+    @Test
+    void 읽을_수_없는_JSON은_IMPORT_INVALID_PREVIEW로_거부한다() {
+        assertThatThrownBy(() -> codec.deserialize("not-json"))
+                .isInstanceOf(FestaException.class)
+                .extracting(exception -> ((FestaException) exception).getErrorCode())
+                .isEqualTo(ImportErrorCode.IMPORT_INVALID_PREVIEW);
     }
 }

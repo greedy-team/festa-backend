@@ -80,7 +80,7 @@ public class ImportCommitService {
                 .orElseThrow(() -> error(ImportErrorCode.IMPORT_NOT_FOUND));
         Instant committedAt = clock.instant();
         validateBatch(batch, committedAt);
-        StoredImportPreview preview = deserialize(batch.getPreview());
+        StoredImportPreview preview = previewJsonCodec.deserialize(batch.getPreview());
         List<StoredPreviewRow> selected = selectRows(preview.rows(), request);
         validateSelectedRows(preview.rows(), selected);
 
@@ -105,16 +105,6 @@ public class ImportCommitService {
             throw error(ImportErrorCode.IMPORT_EXPIRED);
         }
         if (batch.getPreview() == null || batch.getPreview().isBlank()) {
-            throw error(ImportErrorCode.IMPORT_INVALID_PREVIEW);
-        }
-    }
-
-    private StoredImportPreview deserialize(String preview) {
-        try {
-            return previewJsonCodec.deserialize(preview);
-        } catch (PreviewJsonCodec.UnsupportedPreviewVersionException e) {
-            throw error(ImportErrorCode.IMPORT_UNSUPPORTED_PREVIEW_VERSION);
-        } catch (PreviewJsonCodec.InvalidPreviewException e) {
             throw error(ImportErrorCode.IMPORT_INVALID_PREVIEW);
         }
     }
