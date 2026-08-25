@@ -1,0 +1,6 @@
+# api.every-festa.com 앞단. 인증서 발급과 갱신은 Caddy가 알아서 한다.
+# 발급받은 인증서는 compose의 caddy-data 볼륨에 남는다 — 볼륨이 없으면
+# 재배포마다 재발급을 시도해 Let's Encrypt 발급 한도에 걸린다.
+api.every-festa.com {
+	reverse_proxy app:8080
+}

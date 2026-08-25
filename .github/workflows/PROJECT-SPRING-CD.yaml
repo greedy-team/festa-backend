@@ -151,6 +151,7 @@ jobs:
             "$RUNNER_TEMP/$IMAGE_NAME.tar.gz" \
             "$RUNNER_TEMP/app.env" \
             deploy/compose.yaml \
+            deploy/Caddyfile \
             "$OCI_USER@$OCI_HOST:$OCI_DEPLOY_PATH/"
 
       - name: 컨테이너 재기동

@@ -8,4 +8,6 @@ springdoc:
 
 app:
   cors:
-    allowed-origins: "http://localhost:3000"
+    # 배포 프론트와 로컬을 함께 적는다. 값이 바뀌면 리뷰를 거치도록 리터럴로 두고,
+    # 급할 때만 CORS_ALLOWED_ORIGINS로 덮어쓴다.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://every-festa.com,https://www.every-festa.com}
