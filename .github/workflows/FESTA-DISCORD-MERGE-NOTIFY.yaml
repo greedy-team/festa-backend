@@ -1,0 +1,85 @@
+# ===================================================
+# FESTA-DISCORD-MERGE-NOTIFY
+# ===================================================
+#
+# develop 으로 PR 이 "머지될 때" 디스코드 채널로 알립니다.
+# 닫기만 하고 머지 안 한 PR 은 알리지 않습니다.
+#
+# 🔑 시크릿: DISCORD_WEBHOOK_URL (저장소 Settings > Secrets and variables > Actions)
+#   없으면 경고만 남기고 조용히 건너뜁니다.
+#
+# ⚠️ 파일명에 PROJECT- 접두어를 쓰지 않습니다.
+#   .github/workflows/PROJECT-* 는 `npx projectops` 업데이트에 덮어써집니다 (DOC-0003).
+#
+# ℹ️ pull_request 가 아니라 pull_request_target 을 씁니다.
+#   pull_request_target 은 워크플로우를 항상 base 브랜치(develop)에서 읽습니다 (DOC-0003).
+#   그래서 이 파일이 develop 에 올라가는 순간, 이 파일을 갖고 있지 않은
+#   기존 열린 PR 들(#65 · #63 · #61 · #40 · #42)이 머지될 때도 알림이 갑니다.
+#
+#   pull_request_target 의 통상적 위험은 "PR 코드를 checkout 해서 실행"하는 것인데
+#   이 워크플로우는 checkout 을 아예 하지 않고, 이벤트 페이로드만 읽어
+#   디스코드로 POST 합니다. PR 제목 같은 사용자 입력도 ${{ }} 로 셸에 넣지 않고
+#   jq 로 처리합니다.
+#
+# ===================================================
+
+name: FESTA-DISCORD-MERGE-NOTIFY
+
+on:
+  pull_request_target:
+    types: [closed]
+    branches: [develop]
+
+jobs:
+  notify:
+    name: 디스코드 알림
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # 닫기만 한 PR 은 제외 — 실제로 머지된 것만
+    if: ${{ github.event.pull_request.merged == true }}
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: 웹훅 전송
+        env:
+          # PR 제목·브랜치명은 사용자 입력이다. ${{ }} 로 run 블록에 넣지 않고
+          # 아래에서 $GITHUB_EVENT_PATH 를 jq 로 읽는다.
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DISCORD_WEBHOOK_URL}" ]; then
+            echo "::warning::DISCORD_WEBHOOK_URL 시크릿이 없어 알림을 건너뜁니다."
+            exit 0
+          fi
+
+          jq --arg repo "$REPO" '
+            .pull_request as $pr
+            | {
+                embeds: [{
+                  title:  (("#" + ($pr.number | tostring) + " " + $pr.title)[0:250]),
+                  url:    $pr.html_url,
+                  description: ("`" + $pr.head.ref + "` → `" + $pr.base.ref + "`"),
+                  color:  3447003,
+                  fields: [
+                    { name: "작성자", value: ($pr.user.login // "-"),       inline: true },
+                    { name: "머지",   value: ($pr.merged_by.login // "-"),  inline: true },
+                    { name: "변경",
+                      value: (($pr.changed_files | tostring) + "개 파일  "
+                              + "+" + ($pr.additions | tostring)
+                              + " −" + ($pr.deletions | tostring)),
+                      inline: true }
+                  ],
+                  footer: { text: $repo }
+                }]
+              }' "$GITHUB_EVENT_PATH" > payload.json
+
+          curl -sS --fail-with-body -X POST \
+            -H "Content-Type: application/json" \
+            -d @payload.json \
+            "$DISCORD_WEBHOOK_URL"
+
+          echo "디스코드 알림 전송 완료 — ${REPO} PR 머지"
