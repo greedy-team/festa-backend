@@ -235,6 +235,22 @@ jobs:
             exit 1
           fi
 
+      - name: HTTPS 서빙 확인
+        env:
+          PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL || 'https://api.every-festa.com' }}
+        run: |
+          # 실제 서비스 경로는 도메인 → 앞단(TLS 종단) → app:8080이다. 8080만 보면
+          # 인증서 발급 실패나 443 차단을 배포 성공으로 넘겨버린다.
+          # 첫 배포에서는 인증서를 받아오는 시간이 필요해 넉넉히 재시도한다.
+          if ! curl --fail --silent --show-error \
+            --retry 15 --retry-delay 4 --retry-all-errors --connect-timeout 10 \
+            "$PUBLIC_BASE_URL/actuator/health"; then
+            echo "HTTPS 서빙 확인 실패: $PUBLIC_BASE_URL 에 인증서 경고 없이 닿지 못했습니다." >&2
+            echo "앱 이미지는 되돌리지 않습니다 — 앱이 아니라 앞단 문제라 롤백해도 고쳐지지 않습니다." >&2
+            echo "서버에서 'docker compose --env-file app.env logs caddy'로 발급 로그를 확인하세요." >&2
+            exit 1
+          fi
+
       - name: 정상 배포 이미지 기록과 정리
         env:
           OCI_HOST: ${{ secrets.OCI_HOST }}
