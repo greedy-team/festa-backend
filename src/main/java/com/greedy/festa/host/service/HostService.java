@@ -1,122 +1,82 @@
 package com.greedy.festa.host.service;
 
-import com.greedy.festa.global.dto.PageResponse;
+import com.greedy.festa.artist.repository.ArtistRepository;
+import com.greedy.festa.artist.repository.ArtistWithAppearanceCount;
+import com.greedy.festa.festival.entity.Festival;
+import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.exception.FestaException;
-import com.greedy.festa.host.dto.HostCreateRequest;
-import com.greedy.festa.host.dto.HostResponse;
-import com.greedy.festa.host.dto.HostUpdateRequest;
+import com.greedy.festa.host.dto.HostDetailResponse;
+import com.greedy.festa.host.dto.HostDetailResponse.FestivalHistory;
+import com.greedy.festa.host.dto.HostDetailResponse.HistoryItem;
+import com.greedy.festa.host.dto.HostDetailResponse.UpcomingFestival;
+import com.greedy.festa.host.dto.HostDetailResponse.FrequentArtist;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
 import com.greedy.festa.host.repository.HostRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
 public class HostService {
 
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+    private static final int HISTORY_SIZE = 2;
+    private static final Limit FREQUENT_ARTIST_LIMIT = Limit.of(3);
+
+
+    private final Clock clock;
     private final HostRepository hostRepository;
-
-    @Transactional
-    public HostResponse create(HostCreateRequest request) {
-        validateName(request.name());
-        validateRegion(request.region());
-
-        if (hostRepository.existsByName(request.name())) {
-            throw new FestaException(HostErrorCode.HOST_DUPLICATE_NAME);
-        }
-
-        Host host = hostRepository.save(Host.builder()
-                .name(request.name())
-                .shortName(request.shortName())
-                .region(request.region())
-                .logoUrl(request.logoUrl())
-                .bannerUrl(request.bannerUrl())
-                .homepageUrl(request.homepageUrl())
-                .instagramUrl(request.instagramUrl())
-                .build());
-
-        return HostResponse.of(host, 0L);
-    }
+    private final FestivalRepository festivalRepository;
+    private final ArtistRepository artistRepository;
 
     @Transactional(readOnly = true)
-    public PageResponse<HostResponse> findAll(Pageable pageable) {
-        return PageResponse.from(
-                hostRepository.findAllWithFestivalCount(pageable)
-                        .map(row -> HostResponse.of(
-                                row.getHost(),
-                                row.getFestivalCount()
-                        ))
-        );
-    }
+    public HostDetailResponse getHostDetail(Long hostId) {
+        LocalDate today = LocalDate.now(clock.withZone(SEOUL));
 
-    @Transactional
-    public HostResponse update(Long id, HostUpdateRequest request) {
-        Host host = hostRepository.findById(id)
+        Host target = hostRepository.findById(hostId)
                 .orElseThrow(() -> new FestaException(HostErrorCode.HOST_NOT_FOUND));
 
-        if (request.name() != null) {
-            validateName(request.name());
-            if (hostRepository.existsByNameAndIdNot(request.name(), id)) {
-                throw new FestaException(HostErrorCode.HOST_DUPLICATE_NAME);
-            }
-            host.changeName(request.name());
-        }
+        List<Festival> published = festivalRepository.findAllByHostIdAndPublishedAtIsNotNull(hostId);
+        List<Integer> availableYears = published.stream()
+                .map(festival -> festival.getStartDate().getYear())
+                .distinct()
+                .sorted(Comparator.reverseOrder())
+                .toList();
+        List<UpcomingFestival> upcoming = published.stream()
+                .filter(festival -> !festival.getEndDate().isBefore(today))
+                .sorted(Comparator.comparing(Festival::getStartDate).thenComparing(Festival::getId))
+                .map(festival -> UpcomingFestival.of(festival, today))
+                .toList();
 
-        if (request.region() != null) {
-            validateRegion(request.region());
-            host.changeRegion(request.region());
-        }
+        List<Festival> ended = published.stream()
+                .filter(festival -> festival.getEndDate().isBefore(today))
+                .sorted(Comparator.comparing(Festival::getStartDate).reversed()
+                        .thenComparing(Comparator.comparing(Festival::getId).reversed()))
+                .toList();
+        FestivalHistory history = FestivalHistory.of(
+                ended.stream()
+                        .limit(HISTORY_SIZE).map(HistoryItem::from)
+                        .toList(),
+                ended.size());
 
-        if (request.shortName() != null) {
-            host.changeShortName(blankToNull(request.shortName()));
-        }
-        if (request.logoUrl() != null){
-            host.changeLogoUrl(blankToNull(request.logoUrl()));
-        }
-        if (request.bannerUrl() != null){
-            host.changeBannerUrl(blankToNull(request.bannerUrl()));
-        }
-        if (request.homepageUrl() != null) {
-            host.changeHomepageUrl(blankToNull(request.homepageUrl()));
-        }
-        if (request.instagramUrl() != null) {
-            host.changeInstagramUrl(blankToNull(request.instagramUrl()));
-        }
+        List<ArtistWithAppearanceCount> rows = artistRepository
+                .findFrequentArtistsByHostId(hostId, today, FREQUENT_ARTIST_LIMIT);
 
-        return HostResponse.of(host, hostRepository.countFestivalsByHostId(id));
-    }
+        List<FrequentArtist> frequentArtists = rows.stream()
+                .map(FrequentArtist::from)
+                .toList();
 
-    @Transactional
-    public void delete(Long id) {
-        Host host = hostRepository.findById(id)
-                .orElseThrow(() -> new FestaException(HostErrorCode.HOST_NOT_FOUND));
+        return HostDetailResponse.of(target, availableYears, upcoming, history, frequentArtists);
 
-        if (hostRepository.countFestivalsByHostId(id) > 0) {
-            throw new FestaException(HostErrorCode.HOST_HAS_FESTIVALS);
-        }
-
-        hostRepository.delete(host);
-    }
-
-    private void validateName(String name) {
-        if (name == null || name.isBlank() || name.length() > 100) {
-            throw new FestaException(HostErrorCode.HOST_INVALID_NAME);
-        }
-    }
-
-    private void validateRegion(String region) {
-        if (region == null || region.isBlank() || region.length() > 50) {
-            throw new FestaException(HostErrorCode.HOST_INVALID_REGION);
-        }
-    }
-
-    private String blankToNull(String value) {
-        if (value.isBlank()) {
-            return null;
-        }
-        return value;
     }
 }
