@@ -17,9 +17,11 @@ import com.greedy.festa.admin.repository.AdminUserRepository;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.artist.repository.LineupRepository;
+import com.greedy.festa.festival.repository.FestivalHashtagRepository;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.host.repository.HostRepository;
 import com.greedy.festa.importer.repository.ImportBatchRepository;
+import com.greedy.festa.importer.repository.ImportCommitRowRepository;
 
 @SpringBootTest(properties = {
         "spring.autoconfigure.exclude="
@@ -57,6 +59,12 @@ class HealthEndpointSecurityTest {
 
     @MockitoBean
     private ImportBatchRepository importBatchRepository;
+
+    @MockitoBean
+    private ImportCommitRowRepository importCommitRowRepository;
+
+    @MockitoBean
+    private FestivalHashtagRepository festivalHashtagRepository;
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;

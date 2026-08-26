@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,6 +24,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -57,7 +60,7 @@ public class SecurityConfigTest {
                 .willReturn(new AdminLoginResponse("발급된-토큰", 3600));
 
         // when & then
-        mockMvc.perform(post("/admin/auth/login")
+        mockMvc.perform(post("/api/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"username":"admin","password":"pw"}
@@ -68,7 +71,7 @@ public class SecurityConfigTest {
 
     @Test
     void 토큰_없이_관리자_경로에_접근하면_401이다() throws Exception {
-        mockMvc.perform(get("/admin/protected"))
+        mockMvc.perform(get("/api/admin/protected"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
     }
@@ -79,7 +82,7 @@ public class SecurityConfigTest {
         String 토큰 = jwtTokenProvider.issue("admin");
 
         // when & then
-        mockMvc.perform(get("/admin/protected")
+        mockMvc.perform(get("/api/admin/protected")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + 토큰))
                 .andExpect(status().isOk());
     }
@@ -90,10 +93,29 @@ public class SecurityConfigTest {
         String 만료된_토큰 = 과거에_발급한_토큰();
 
         // when & then
-        mockMvc.perform(get("/admin/protected")
+        mockMvc.perform(get("/api/admin/protected")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + 만료된_토큰))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode").value("TOKEN_EXPIRED"));
+    }
+
+    /**
+     * 접두사 없는 옛 경로를 남겨두면 같은 자원에 경로가 둘이 된다. 그때 인증 매처는
+     * `/api/admin/**` 한 벌뿐이라 옛 경로가 `anyRequest().permitAll()`로 새어 나간다 —
+     * 401도 아니고 그냥 200이 되어 실패가 조용하다. 그래서 지키는 것은 「핸들러에 닿지
+     * 않는다」 하나다.
+     *
+     * 상태 코드로 못박지 않는 이유가 있다. 지금 매핑 없는 경로는 404가 아니라 500이 나온다 —
+     * `GlobalExceptionHandler`가 `@ExceptionHandler(Exception.class)`로 전부 잡아
+     * `INTERNAL_SERVER_ERROR`를 내기 때문이며, 옛 관리자 경로든 아무 오타 경로든 똑같다.
+     * 이 접두사 작업이 만든 것이 아니라 원래 그랬고, 고치는 것은 이 이슈 범위 밖이다.
+     */
+    @Test
+    void 접두사_없는_옛_경로는_남아_있지_않다() throws Exception {
+        MockHttpServletResponse 응답 = mockMvc.perform(get("/admin/protected")).andReturn().getResponse();
+
+        assertThat(응답.getStatus()).isNotEqualTo(HttpStatus.OK.value());
+        assertThat(응답.getContentAsString()).doesNotContain("ok");
     }
 
     private String 과거에_발급한_토큰() {
@@ -106,7 +128,7 @@ public class SecurityConfigTest {
 
     @RestController
     static class 보호된_컨트롤러 {
-        @GetMapping("/admin/protected")
+        @GetMapping("/api/admin/protected")
         String get() {
             return "ok";
         }
