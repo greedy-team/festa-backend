@@ -133,7 +133,14 @@ merge commit `0abf0e64cfaedee280af990c2a13e7107bae6d0d`으로 실행된 PROJECT-
 - CD는 직전 성공 이미지 `1cf318e6fb4be5969c36e6b54858ad02ab8db722`로 rollback했고, rollback된 애플리케이션의 내부 Actuator 응답 `status=UP`을 확인했다.
 - 실패 위치가 `컨테이너 재기동` 단계이므로 외부 8080 health check와 새 `HTTPS 서빙 확인` 단계는 실행되지 않았다.
 
-따라서 PR 코드의 테스트 CI는 225/225로 성공했지만, merge 시점의 development 배포와 실제 공개 HTTPS 서빙은 이 실행으로 완료 확인되지 않았다. 실패 로그만으로 새 애플리케이션이 3분 내 healthy가 되지 않은 근본 원인까지는 확정할 수 없다.
+이후 문서 커밋 `ebcade451689786957758ef14205b1e89fedb734`으로 동일 develop 코드를 다시 배포한 PROJECT-SPRING-CD run `32935653088`은 성공했다.
+
+- 컨테이너 재기동 성공
+- 외부 `http://$OCI_HOST:8080/actuator/health` 확인 성공
+- `https://api.every-festa.com/actuator/health` HTTPS 서빙 확인 성공
+- 정상 배포 이미지 기록과 정리 성공
+
+따라서 첫 배포의 180초 health timeout과 rollback 이력은 남지만, 후속 실행에서 development 배포 및 공개 HTTPS 경로가 최종 확인되었다. 첫 실행에서만 새 애플리케이션이 3분 내 healthy가 되지 않은 근본 원인은 해당 로그만으로 확정할 수 없다.
 
 ## 제한사항 및 후속 작업
 
@@ -143,7 +150,7 @@ merge commit `0abf0e64cfaedee280af990c2a13e7107bae6d0d`으로 실행된 PROJECT-
 - OCI VCN Security List와 서버 방화벽의 80/443 허용은 코드 밖의 선행 운영 작업이다.
 - HTTPS 확인은 HTTP 성공 여부와 TLS 유효성을 검사하지만 Actuator JSON의 `status=UP` 값 자체를 파싱하지는 않는다.
 - Caddy 전용 Compose healthcheck는 없으며, 공개 HTTPS 확인 실패 시 Caddy나 인프라를 자동 rollback하지 않는다.
-- merge 후 첫 실제 CD는 새 애플리케이션 health timeout으로 rollback되었고 HTTPS 검증 단계에 도달하지 못했다. 배포 로그와 애플리케이션 시작 시간을 확인한 뒤 CD를 다시 성공시켜 공개 HTTPS를 검증해야 한다.
+- merge 후 첫 실제 CD는 새 애플리케이션 health timeout으로 rollback되었으나 후속 CD는 전 단계와 공개 HTTPS 검증을 통과했다. 간헐적으로 180초를 넘긴 최초 기동 시간의 원인은 별도로 관찰할 필요가 있다.
 
 ## 변경 범위 요약
 
