@@ -30,7 +30,7 @@ class AdminAuthControllerTest {
     private static final String 관리자_이름 = "admin";
     private static final String 원문_비밀번호 = "festa-admin-1234";
     private static final String 틀린_비밀번호 = "wrong-password";
-    private static final String 로그인_경로 = "/admin/auth/login";
+    private static final String 로그인_경로 = "/api/admin/auth/login";
 
     @Autowired
     private MockMvcTester mvc;

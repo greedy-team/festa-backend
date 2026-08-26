@@ -72,4 +72,8 @@ public class ImportBatch {
         this.expiresAt = this.uploadedAt.plus(30, ChronoUnit.MINUTES);
         this.committedAt = committedAt;
     }
+
+    public void commit(Instant committedAt) {
+        this.committedAt = Objects.requireNonNull(committedAt, "committedAt");
+    }
 }

@@ -11,6 +11,10 @@ import java.util.Collection;
 
 public interface LineupRepository extends JpaRepository<Lineup, Long> {
 
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM Lineup lineup WHERE lineup.festival.id = :festivalId")
+    void deleteAllByFestivalId(@Param("festivalId") Long festivalId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Lineup l SET l.artist = :target " +
             "WHERE l.artist.id in :sourceIds")

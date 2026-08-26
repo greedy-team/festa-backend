@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "관리자 - 인증", description = "관리자 토큰 발급. 여기서 받은 토큰을 다른 관리자 API의 Authorization 헤더에 쓴다.")
 @RestController
-@RequestMapping("/admin/auth")
+@RequestMapping("/api/admin/auth")
 @RequiredArgsConstructor
 public class AdminAuthController {
 

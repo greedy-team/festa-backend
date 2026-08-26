@@ -18,7 +18,7 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title("festa API")
                         .description("축제 정보 서비스 festa의 API 문서. "
-                                + "/admin 으로 시작하는 경로는 관리자 로그인으로 받은 토큰이 필요하다.")
+                                + "/api/admin 으로 시작하는 경로는 관리자 로그인으로 받은 토큰이 필요하다.")
                         .version("v1"))
                 .components(new Components().addSecuritySchemes(BEARER_AUTH, bearerAuth()));
     }
