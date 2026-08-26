@@ -1,4 +1,4 @@
-package com.greedy.festa.importer.config;
+package com.greedy.festa.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -6,9 +6,10 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Clock;
 
 @Configuration
-public class ImportTimeConfig {
+public class ClockConfig {
+
     @Bean
-    Clock importClock() {
+    public Clock clock() {
         return Clock.systemUTC();
     }
 }

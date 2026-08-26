@@ -115,23 +115,28 @@ public class ImportPreviewService {
             ImportConflictPolicy onConflict,
             Instant uploadedAt
     ) {
-        ImportConflictPolicy policy = onConflict == null ? ImportConflictPolicy.UPDATE : onConflict;
+        ImportConflictPolicy policy = onConflict;
         EnumMap<ImportSection, List<ParsedCsvRow>> parsed = new EnumMap<>(ImportSection.class);
         files.forEach((section, file) -> parsed.put(section, csvParser.parse(file, section)));
 
         Lookup lookup = loadLookup(parsed);
         Set<String> duplicateFestivalKeys = duplicateFestivalKeys(parsed.get(ImportSection.FESTIVALS));
         Set<String> duplicateLineupSlots = duplicateLineupSlots(parsed.get(ImportSection.LINEUPS));
-        Set<String> uploadedFestivalKeys = values(parsed.get(ImportSection.FESTIVALS), "import_key");
+        Set<Integer> conflictingArtistLines = conflictingArtistLines(parsed.get(ImportSection.ARTISTS));
         List<StoredPreviewRow> rows = new ArrayList<>();
 
-        parsed.forEach((section, sectionRows) -> sectionRows.forEach(row -> rows.add(switch (section) {
-            case FESTIVALS -> festivalRow(row, lookup, duplicateFestivalKeys, policy);
-            case ARTISTS -> artistRow(row, lookup, policy);
-            case LINEUPS -> lineupRow(
-                    row, lookup, uploadedFestivalKeys, duplicateFestivalKeys,
-                    duplicateLineupSlots, policy);
-        })));
+        List<StoredPreviewRow> festivalRows = parsed.getOrDefault(
+                        ImportSection.FESTIVALS, List.of()).stream()
+                .map(row -> festivalRow(row, lookup, duplicateFestivalKeys, policy))
+                .toList();
+        Map<String, List<StoredPreviewRow>> uploadedFestivals = festivalRows.stream()
+                .collect(Collectors.groupingBy(StoredPreviewRow::importKey));
+        rows.addAll(festivalRows);
+        parsed.getOrDefault(ImportSection.LINEUPS, List.of()).forEach(row -> rows.add(lineupRow(
+                row, lookup, uploadedFestivals, duplicateFestivalKeys,
+                duplicateLineupSlots, policy)));
+        parsed.getOrDefault(ImportSection.ARTISTS, List.of()).forEach(row -> rows.add(
+                artistRow(row, lookup, conflictingArtistLines, policy)));
 
         StoredImportPreview stored = new StoredImportPreview(
                 StoredImportPreview.CURRENT_SCHEMA_VERSION, policy, List.copyOf(rows));
@@ -154,6 +159,12 @@ public class ImportPreviewService {
         Set<String> hostNames = values(parsed.get(ImportSection.FESTIVALS), "host_name");
         Set<String> artistNames = new LinkedHashSet<>();
         artistNames.addAll(values(parsed.get(ImportSection.ARTISTS), "name"));
+        List<ParsedCsvRow> artistRows = parsed.get(ImportSection.ARTISTS);
+        if (artistRows != null) {
+            artistRows.stream()
+                    .flatMap(row -> pipeValues(row.values().get("other_names")).stream())
+                    .forEach(artistNames::add);
+        }
         artistNames.addAll(values(parsed.get(ImportSection.LINEUPS), "artist_canonical"));
         artistNames.addAll(values(parsed.get(ImportSection.LINEUPS), "artist_raw"));
         artistNames.remove("");
@@ -252,6 +263,10 @@ public class ImportPreviewService {
             errors.add(blocker("FESTIVAL_AMBIGUOUS", "동일 import_key의 Festival이 여러 개입니다"));
         }
         Festival existing = festivals.size() == 1 ? festivals.getFirst() : null;
+        if (successfulCrawl && existing != null && existing.getPublishedAt() != null) {
+            errors.add(blocker("FESTIVAL_ALREADY_PUBLISHED",
+                    "발행된 Festival은 임포트로 변경할 수 없습니다"));
+        }
         ImportPreviewAction action;
         String skipReason = null;
         if (!errors.isEmpty()) {
@@ -259,9 +274,6 @@ public class ImportPreviewService {
         } else if (!"OK".equals(flag)) {
             action = ImportPreviewAction.SKIP;
             skipReason = "CRAWLER_FLAG_" + flag;
-        } else if (existing != null && existing.getPublishedAt() != null) {
-            action = ImportPreviewAction.SKIP;
-            skipReason = "ALREADY_PUBLISHED";
         } else if (existing == null) {
             action = ImportPreviewAction.CREATE;
         } else if (policy == ImportConflictPolicy.SKIP) {
@@ -275,8 +287,8 @@ public class ImportPreviewService {
         normalized.put("importKey", importKey);
         normalized.put("hostName", hostName);
         normalized.put("name", keepExisting(name, existing == null ? null : existing.getName()));
-        normalized.put("startDate", startDate);
-        normalized.put("endDate", endDate);
+        normalized.put("startDate", isoDate(startDate));
+        normalized.put("endDate", isoDate(endDate));
         normalized.put("venueName", keepExisting(trim(payload.get("venue_name")),
                 existing == null ? null : existing.getVenueName()));
         normalized.put("posterUrl", keepExisting(posterCandidate,
@@ -294,8 +306,8 @@ public class ImportPreviewService {
         normalized.put("ticketType", keepExisting(trim(payload.get("ticket_type")),
                 existing == null || existing.getTicketType() == null
                         ? null : existing.getTicketType().name()));
-        normalized.put("ticketOpenAt", keepExisting(ticketOpenAt,
-                existing == null ? null : existing.getTicketOpenAt()));
+        normalized.put("ticketOpenAt", keepExisting(isoInstant(ticketOpenAt),
+                existing == null ? null : isoInstant(existing.getTicketOpenAt())));
         normalized.put("ticketOpenAtRaw", payload.get("ticket_open_at"));
         normalized.put("admissionRaw", keepExisting(trim(payload.get("admission_raw")),
                 existing == null ? null : existing.getAdmissionRaw()));
@@ -315,6 +327,7 @@ public class ImportPreviewService {
     private StoredPreviewRow artistRow(
             ParsedCsvRow row,
             Lookup lookup,
+            Set<Integer> conflictingLines,
             ImportConflictPolicy policy
     ) {
         Map<String, String> payload = row.values();
@@ -328,11 +341,27 @@ public class ImportPreviewService {
         } else if (match.status() == ArtistMatchStatus.NEW) {
             warnings.add(warning("ARTIST_WILL_BE_CREATED", "후속 commit에서 신규 Artist 생성이 필요합니다"));
         }
+        if (conflictingLines.contains(row.line())) {
+            errors.add(blocker("ARTIST_DUPLICATE_NAME",
+                    "같은 업로드에서 Artist 대표명 또는 별칭이 중복됩니다"));
+        }
         enumValue(payload.get("genre"), ArtistGenre.class, "genre", errors);
         booleanValue(payload.get("needs_review"), "needs_review", true, errors);
         url(payload.get("image_url"), "image_url", errors);
 
         List<String> inputAliases = pipeValues(payload.get("other_names"));
+        Long matchedArtistId = match.artist() == null ? null : match.artist().getId();
+        if (claimsExistingAliasAsRepresentative(name, inputAliases, match, lookup)) {
+            errors.add(blocker("ARTIST_DUPLICATE_NAME",
+                    "Artist 대표명이 기존 Artist의 별칭과 중복됩니다"));
+        }
+        for (String alias : inputAliases) {
+            if (ownedByAnotherArtist(alias, matchedArtistId, lookup)) {
+                errors.add(blocker("ARTIST_DUPLICATE_NAME",
+                        "Artist 별칭이 다른 Artist의 대표명 또는 별칭과 중복됩니다"));
+                break;
+            }
+        }
         LinkedHashSet<String> mergedAliases = new LinkedHashSet<>();
         if (match.artist() != null && match.artist().getId() != null) {
             mergedAliases.addAll(lookup.aliasesByArtist()
@@ -361,7 +390,9 @@ public class ImportPreviewService {
                         ? null : match.artist().getGenre().name()));
         normalized.put("imageUrl", keepExisting(trim(payload.get("image_url")),
                 match.artist() == null ? null : match.artist().getImageUrl()));
-        normalized.put("needsReview", booleanValue(payload.get("needs_review"),
+        normalized.put("needsReview", match.status() == ArtistMatchStatus.NEW
+                ? true
+                : booleanValue(payload.get("needs_review"),
                 "needs_review", false, new ArrayList<>()));
         return stored(ImportSection.ARTISTS, row, name, action, normalized, policy, null,
                 match.artist() == null ? null : match.artist().getId(), null, match.status(),
@@ -371,7 +402,7 @@ public class ImportPreviewService {
     private StoredPreviewRow lineupRow(
             ParsedCsvRow row,
             Lookup lookup,
-            Set<String> uploadedFestivalKeys,
+            Map<String, List<StoredPreviewRow>> uploadedFestivals,
             Set<String> duplicateFestivalKeys,
             Set<String> duplicateLineupSlots,
             ImportConflictPolicy policy
@@ -385,7 +416,16 @@ public class ImportPreviewService {
                     "Lineup이 참조하는 Festival import_key가 중복되어 있습니다"));
         }
         List<Festival> festivals = lookup.festivals().getOrDefault(importKey, List.of());
-        if (!uploadedFestivalKeys.contains(importKey) && festivals.isEmpty()) {
+        List<StoredPreviewRow> parentRows = uploadedFestivals.getOrDefault(importKey, List.of());
+        if (parentRows.stream().anyMatch(parent -> parent.action() == ImportPreviewAction.INVALID)) {
+            errors.add(blocker("FESTIVAL_INVALID",
+                    "Lineup이 참조하는 업로드 Festival이 유효하지 않습니다"));
+        }
+        if (festivals.stream().anyMatch(festival -> festival.getPublishedAt() != null)) {
+            errors.add(blocker("FESTIVAL_ALREADY_PUBLISHED",
+                    "발행된 Festival의 Lineup은 임포트로 변경할 수 없습니다"));
+        }
+        if (parentRows.isEmpty() && festivals.isEmpty()) {
             errors.add(blocker("FESTIVAL_NOT_FOUND", "Lineup이 참조하는 Festival이 없습니다"));
         } else if (festivals.size() > 1) {
             errors.add(blocker("FESTIVAL_AMBIGUOUS", "동일 import_key의 Festival이 여러 개입니다"));
@@ -445,6 +485,50 @@ public class ImportPreviewService {
         return matched == null
                 ? new ArtistMatch(ArtistMatchStatus.NEW, null)
                 : new ArtistMatch(ArtistMatchStatus.MATCHED, matched);
+    }
+
+    private boolean ownedByAnotherArtist(String name, Long expectedArtistId, Lookup lookup) {
+        return lookup.artists().getOrDefault(name, List.of()).stream()
+                .map(Artist::getId)
+                .anyMatch(id -> expectedArtistId == null || !Objects.equals(id, expectedArtistId))
+                || lookup.aliases().getOrDefault(name, List.of()).stream()
+                .map(Artist::getId)
+                .anyMatch(id -> expectedArtistId == null || !Objects.equals(id, expectedArtistId));
+    }
+
+    private boolean claimsExistingAliasAsRepresentative(
+            String name, List<String> inputAliases, ArtistMatch match, Lookup lookup
+    ) {
+        if (match.status() != ArtistMatchStatus.MATCHED || match.artist() == null) {
+            return false;
+        }
+        Long matchedArtistId = match.artist().getId();
+        boolean matchesRepresentative = lookup.artists().getOrDefault(name, List.of()).stream()
+                .anyMatch(artist -> Objects.equals(artist.getId(), matchedArtistId));
+        if (matchesRepresentative) {
+            return false;
+        }
+        boolean matchesAlias = lookup.aliases().getOrDefault(name, List.of()).stream()
+                .anyMatch(artist -> Objects.equals(artist.getId(), matchedArtistId));
+        return matchesAlias && !inputAliases.contains(match.artist().getName());
+    }
+
+    private Set<Integer> conflictingArtistLines(List<ParsedCsvRow> rows) {
+        if (rows == null) {
+            return Set.of();
+        }
+        Map<String, Set<Integer>> claims = new LinkedHashMap<>();
+        for (ParsedCsvRow row : rows) {
+            LinkedHashSet<String> names = new LinkedHashSet<>();
+            names.add(trim(row.values().get("name")));
+            names.addAll(pipeValues(row.values().get("other_names")));
+            names.stream().filter(name -> !name.isBlank()).forEach(name -> claims
+                    .computeIfAbsent(name, ignored -> new LinkedHashSet<>()).add(row.line()));
+        }
+        return claims.values().stream()
+                .filter(lines -> lines.size() > 1)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
     }
 
     private StoredPreviewRow stored(
@@ -640,6 +724,14 @@ public class ImportPreviewService {
 
     private Object keepExisting(Object incoming, Object existing) {
         return incoming == null || incoming.toString().isBlank() ? existing : incoming;
+    }
+
+    private String isoDate(LocalDate value) {
+        return value == null ? null : value.toString();
+    }
+
+    private String isoInstant(Instant value) {
+        return value == null ? null : value.toString();
     }
 
     private PreviewProblem error(String code, String message) {

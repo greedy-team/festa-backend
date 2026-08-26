@@ -26,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -83,7 +85,7 @@ class ImportHistoryServiceTest {
 
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
         verify(batchRepository).findHistory(
-                eq(ImportBatchType.BUNDLE), eq("EXPIRED"), eq(NOW), pageable.capture());
+                eq(ImportBatchType.BUNDLE), eq(ImportBatchStatus.EXPIRED), eq(NOW), pageable.capture());
         assertThat(pageable.getValue().getPageNumber()).isEqualTo(2);
         assertThat(pageable.getValue().getPageSize()).isEqualTo(50);
         assertThat(pageable.getValue().getSort().getOrderFor("uploadedAt").getDirection().isDescending())
@@ -157,6 +159,22 @@ class ImportHistoryServiceTest {
     }
 
     @Test
+    void fileNames의_null_원소를_보존하면서_원본과_분리된_불변_목록을_반환한다() {
+        List<String> fileNames = new ArrayList<>(Arrays.asList("festivals.csv", null));
+        ImportBatch batch = batch(37L, NOW.minusSeconds(100), null, null, fileNames);
+        given(batchRepository.findHistory(any(), any(), any(), any()))
+                .willReturn(new PageImpl<>(List.of(batch)));
+
+        List<String> responseFileNames = service.findAll(null, null, 0, 20)
+                .items().getFirst().fileNames();
+        fileNames.set(0, "changed.csv");
+
+        assertThat(responseFileNames).containsExactly("festivals.csv", null);
+        assertThatThrownBy(() -> responseFileNames.add("other.csv"))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
     void page와_size_범위를_검증한다() {
         assertError(() -> service.findAll(null, null, -1, 20), CommonErrorCode.INVALID_PAGE);
         assertError(() -> service.findAll(null, null, 0, 0), CommonErrorCode.INVALID_PAGE_SIZE);
@@ -187,9 +205,15 @@ class ImportHistoryServiceTest {
     }
 
     private ImportBatch batch(Long id, Instant uploadedAt, Instant committedAt, AdminUser admin) {
+        return batch(id, uploadedAt, committedAt, admin,
+                List.of("artists.csv", "festivals.csv", "lineup.csv"));
+    }
+
+    private ImportBatch batch(Long id, Instant uploadedAt, Instant committedAt,
+                              AdminUser admin, List<String> fileNames) {
         ImportBatch batch = ImportBatch.builder()
                 .type(ImportBatchType.BUNDLE)
-                .fileNames(List.of("artists.csv", "festivals.csv", "lineup.csv"))
+                .fileNames(fileNames)
                 .onConflict(ImportConflictPolicy.UPDATE)
                 .preview("preview-must-remain")
                 .uploadedByAdmin(admin)

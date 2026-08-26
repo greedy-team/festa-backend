@@ -1,5 +1,7 @@
 package com.greedy.festa.importer.service;
 
+import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.importer.exception.ImportErrorCode;
 import com.greedy.festa.importer.model.StoredImportPreview;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
@@ -22,30 +24,15 @@ public class PreviewJsonCodec {
     }
 
     public StoredImportPreview deserialize(String json) {
+        StoredImportPreview preview;
         try {
-            StoredImportPreview preview = objectMapper.readValue(json, StoredImportPreview.class);
-            if (preview.schemaVersion() != StoredImportPreview.CURRENT_SCHEMA_VERSION) {
-                throw new UnsupportedPreviewVersionException(
-                        "지원하지 않는 preview schemaVersion입니다: " + preview.schemaVersion());
-            }
-            return preview;
+            preview = objectMapper.readValue(json, StoredImportPreview.class);
         } catch (Exception e) {
-            if (e instanceof UnsupportedPreviewVersionException unsupported) {
-                throw unsupported;
-            }
-            throw new InvalidPreviewException("preview JSON을 읽을 수 없습니다", e);
+            throw new FestaException(ImportErrorCode.IMPORT_INVALID_PREVIEW);
         }
-    }
-
-    public static class UnsupportedPreviewVersionException extends IllegalArgumentException {
-        public UnsupportedPreviewVersionException(String message) {
-            super(message);
+        if (preview.schemaVersion() != StoredImportPreview.CURRENT_SCHEMA_VERSION) {
+            throw new FestaException(ImportErrorCode.IMPORT_UNSUPPORTED_PREVIEW_VERSION);
         }
-    }
-
-    public static class InvalidPreviewException extends IllegalArgumentException {
-        public InvalidPreviewException(String message, Throwable cause) {
-            super(message, cause);
-        }
+        return preview;
     }
 }

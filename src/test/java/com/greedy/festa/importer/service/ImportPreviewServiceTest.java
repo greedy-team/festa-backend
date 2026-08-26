@@ -156,7 +156,7 @@ class ImportPreviewServiceTest {
         ImportPreviewResponse response = service.previewBundle(
                 festivalFile("연세대학교", "", "https://cdn.example.com/1.jpg|https://cdn.example.com/2.jpg",
                         "2026-05-07T14:00:00+09:00"),
-                lineupFile("false", "", ""), null, null, uploadedAt);
+                lineupFile("false", "", ""), null, ImportConflictPolicy.UPDATE, uploadedAt);
 
         assertSoftly(softly -> {
             softly.assertThat(response.importId()).isEqualTo(99L);
@@ -208,7 +208,7 @@ class ImportPreviewServiceTest {
     @Test
     void Artist는_name_alias_NEW_UNRESOLVED를_구분하고_alias를_합집합한다() {
         Artist direct = artist(10L, "10CM");
-        Artist aliasTarget = artist(20L, "십센치 정식명");
+        Artist aliasTarget = artist(20L, "권정열");
         Artist conflict = artist(30L, "충돌 이름");
         ArtistAlias fallback = alias(aliasTarget, "십센치");
         ArtistAlias conflictingAlias = alias(conflict, "10CM");
@@ -250,8 +250,12 @@ class ImportPreviewServiceTest {
 
         assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.UPDATE);
         assertThat(response.rows().getFirst().values())
+                .containsEntry("startDate", "2026-05-30")
+                .containsEntry("endDate", "2026-06-01")
                 .containsEntry("posterUrl", "https://example.com/old.jpg")
-                .containsEntry("ticketOpenAt", Instant.parse("2026-05-07T05:00:00Z"));
+                .containsEntry("ticketOpenAt", "2026-05-07T05:00:00Z");
+        assertThat(response.rows().getFirst().values().get("startDate")).isInstanceOf(String.class);
+        assertThat(response.rows().getFirst().values().get("ticketOpenAt")).isInstanceOf(String.class);
     }
 
     @Test
@@ -275,6 +279,133 @@ class ImportPreviewServiceTest {
         assertThat(update.rows().getFirst().action()).isEqualTo(ImportPreviewAction.UPDATE);
         assertThat(skip.rows().getFirst().action()).isEqualTo(ImportPreviewAction.SKIP);
         assertThat(skip.rows().getFirst().skipReason()).isEqualTo("ON_CONFLICT_SKIP");
+    }
+
+    @Test
+    void 발행된_Festival과_그_Lineup은_모두_INVALID다() {
+        Host host = host(1L, "연세대학교", "연세대");
+        Festival published = Festival.builder()
+                .host(host).importKey("연세대학교-2026").name("기존 축제")
+                .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2))
+                .build();
+        ReflectionTestUtils.setField(published, "id", 5L);
+        ReflectionTestUtils.setField(published, "publishedAt", Instant.parse("2026-05-01T00:00:00Z"));
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(published));
+
+        ImportPreviewResponse response = service.previewBundle(
+                festivalFile("연세대학교", "", "", ""),
+                lineupFile("false", "", ""), null,
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows()).hasSize(2)
+                .allMatch(row -> row.action() == ImportPreviewAction.INVALID);
+        assertThat(response.blockers()).anyMatch(blocker ->
+                blocker.code().equals("FESTIVAL_ALREADY_PUBLISHED") && blocker.count() == 2);
+    }
+
+    @Test
+    void INVALID_Festival을_참조하는_Lineup도_INVALID다() {
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
+
+        ImportPreviewResponse response = service.previewBundle(
+                festivalFile("없는대학교", "", "", ""),
+                lineupFile("false", "", ""), null,
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows()).hasSize(2)
+                .allMatch(row -> row.action() == ImportPreviewAction.INVALID);
+        assertThat(response.rows().get(1).errors()).extracting("code").contains("FESTIVAL_INVALID");
+    }
+
+    @Test
+    void Artist_alias가_다른_Artist_대표명과_같으면_INVALID다() {
+        Artist existing = artist(10L, "Existing");
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(existing));
+        given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of());
+        String csv = String.join(",", ImportSection.ARTISTS.headers())
+                + "\nNew Artist,Existing,BAND,,false\n";
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.ARTISTS, csv("file", "artists.csv", csv),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
+        assertThat(response.rows().getFirst().errors()).extracting("code")
+                .contains("ARTIST_DUPLICATE_NAME");
+    }
+
+    @Test
+    void Artist_alias가_다른_Artist_alias와_같으면_INVALID다() {
+        Artist existing = artist(10L, "Existing");
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
+        given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection()))
+                .willReturn(List.of(alias(existing, "Taken Alias")));
+        String csv = String.join(",", ImportSection.ARTISTS.headers())
+                + "\nNew Artist,Taken Alias,BAND,,false\n";
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.ARTISTS, csv("file", "artists.csv", csv),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
+        assertThat(response.rows().getFirst().errors()).extracting("code")
+                .contains("ARTIST_DUPLICATE_NAME");
+    }
+
+    @Test
+    void 신규_Artist_대표명이_기존_Artist_alias와_같으면_INVALID다() {
+        Artist existing = artist(10L, "다이나믹 듀오");
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
+        given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection()))
+                .willReturn(List.of(alias(existing, "다듀")));
+        given(artistAliasRepository.findAllByArtistIdIn(anyCollection())).willReturn(List.of());
+        String csv = String.join(",", ImportSection.ARTISTS.headers())
+                + "\n다듀,,HIPHOP,,false\n";
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.ARTISTS, csv("file", "artists.csv", csv),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
+        assertThat(response.rows().getFirst().errors()).extracting("code")
+                .contains("ARTIST_DUPLICATE_NAME");
+        assertThat(response.blockers()).anyMatch(blocker ->
+                blocker.code().equals("ARTIST_DUPLICATE_NAME")
+                        && blocker.values().contains("다듀"));
+    }
+
+    @Test
+    void 같은_업로드의_대표명과_alias가_교차하면_두_row_모두_INVALID다() {
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
+        given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of());
+        String csv = String.join(",", ImportSection.ARTISTS.headers())
+                + "\nAlpha,Beta,BAND,,false\n"
+                + "Beta,,BAND,,false\n";
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.ARTISTS, csv("file", "artists.csv", csv),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows()).allMatch(row -> row.action() == ImportPreviewAction.INVALID);
+        assertThat(response.blockers()).anyMatch(blocker ->
+                blocker.code().equals("ARTIST_DUPLICATE_NAME") && blocker.count() == 2);
+    }
+
+    @Test
+    void 신규_Artist는_CSV값과_무관하게_needsReview가_true다() {
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
+        given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of());
+        String csv = String.join(",", ImportSection.ARTISTS.headers())
+                + "\nNew Artist,,BAND,,false\n";
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.ARTISTS, csv("file", "artists.csv", csv),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
+        assertThat(response.rows().getFirst().values()).containsEntry("needsReview", true);
     }
 
     @Test

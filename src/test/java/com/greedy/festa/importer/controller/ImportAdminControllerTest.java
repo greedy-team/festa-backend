@@ -1,6 +1,7 @@
 package com.greedy.festa.importer.controller;
 
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.GlobalExceptionHandler;
 import com.greedy.festa.importer.entity.ImportConflictPolicy;
 import com.greedy.festa.importer.exception.ImportErrorCode;
@@ -11,7 +12,6 @@ import com.greedy.festa.importer.service.ImportHistoryService;
 import com.greedy.festa.importer.model.ImportBatchStatus;
 import com.greedy.festa.importer.entity.ImportBatchType;
 import com.greedy.festa.global.dto.PageResponse;
-import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.importer.dto.ImportHistoryItemResponse;
 import com.greedy.festa.importer.dto.ImportHistoryResult;
 import com.greedy.festa.importer.dto.ImportHistorySectionResult;
@@ -20,19 +20,23 @@ import com.greedy.festa.importer.dto.ImportCommitResponse;
 import com.greedy.festa.importer.dto.ImportCommitResult;
 import com.greedy.festa.importer.dto.ImportCommitSectionResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.mock.web.MockHttpServletRequest;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -53,7 +57,13 @@ class ImportAdminControllerTest {
     @Mock ImportPreviewService importPreviewService;
     @Mock ImportCommitService importCommitService;
     @Mock ImportHistoryService importHistoryService;
-    @InjectMocks ImportAdminController controller;
+    ImportAdminController controller;
+
+    @BeforeEach
+    void setUp() {
+        controller = new ImportAdminController(importPreviewService, importCommitService, importHistoryService,
+                Clock.fixed(Instant.EPOCH, ZoneOffset.UTC));
+    }
 
     @Test
     void history_기본_page_size와_빈_filter를_전달한다() throws Exception {
@@ -61,7 +71,7 @@ class ImportAdminControllerTest {
                 .willReturn(new PageResponse<>(java.util.List.of(), 0, 20, 0, 0, false, false));
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 
-        mockMvc.perform(get("/admin/imports"))
+        mockMvc.perform(get("/api/admin/imports"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20));
@@ -72,7 +82,7 @@ class ImportAdminControllerTest {
     @Test
     void history_type_status와_시간_result_JSON_계약을_반환한다() throws Exception {
         Instant uploadedAt = Instant.parse("2026-08-19T15:40:00Z");
-        ImportHistorySectionResult empty = ImportHistorySectionResult.empty();
+        ImportHistorySectionResult empty = new ImportHistorySectionResult(0, 0, 0);
         ImportHistoryItemResponse item = new ImportHistoryItemResponse(
                 37L, ImportBatchType.BUNDLE, java.util.List.of("festivals.csv"),
                 ImportBatchStatus.COMMITTED, "haeun", uploadedAt,
@@ -83,7 +93,7 @@ class ImportAdminControllerTest {
                 .willReturn(new PageResponse<>(java.util.List.of(item), 1, 50, 1, 1, false, true));
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 
-        mockMvc.perform(get("/admin/imports")
+        mockMvc.perform(get("/api/admin/imports")
                         .param("type", "BUNDLE").param("status", "COMMITTED")
                         .param("page", "1").param("size", "50"))
                 .andExpect(status().isOk())
@@ -101,10 +111,10 @@ class ImportAdminControllerTest {
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
 
-        mockMvc.perform(get("/admin/imports").param("type", "unknown"))
+        mockMvc.perform(get("/api/admin/imports").param("type", "unknown"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("IMPORT_INVALID_TYPE"));
-        mockMvc.perform(get("/admin/imports").param("status", "unknown"))
+        mockMvc.perform(get("/api/admin/imports").param("status", "unknown"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("IMPORT_INVALID_STATUS"));
     }
@@ -120,13 +130,13 @@ class ImportAdminControllerTest {
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
 
-        mockMvc.perform(get("/admin/imports").param("page", "-1"))
+        mockMvc.perform(get("/api/admin/imports").param("page", "-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("INVALID_PAGE"));
-        mockMvc.perform(get("/admin/imports").param("size", "51"))
+        mockMvc.perform(get("/api/admin/imports").param("size", "51"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("INVALID_PAGE_SIZE"));
-        mockMvc.perform(get("/admin/imports").param("size", "0"))
+        mockMvc.perform(get("/api/admin/imports").param("size", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("INVALID_PAGE_SIZE"));
     }
@@ -181,7 +191,7 @@ class ImportAdminControllerTest {
         MockMultipartFile onConflict = new MockMultipartFile(
                 "onConflict", "", "text/plain", "SKIP".getBytes());
 
-        mockMvc.perform(multipart("/admin/imports/bundle")
+        mockMvc.perform(multipart("/api/admin/imports/bundle")
                         .file(festivals).file(lineups).file(artists).file(onConflict))
                 .andExpect(status().isCreated());
 
@@ -208,7 +218,7 @@ class ImportAdminControllerTest {
                 eq(festivals), eq(lineups), eq(null), eq(ImportConflictPolicy.UPDATE), any(Instant.class)))
                 .willThrow(new MaxUploadSizeExceededException(5L * 1024 * 1024));
 
-        mockMvc.perform(multipart("/admin/imports/bundle").file(festivals).file(lineups))
+        mockMvc.perform(multipart("/api/admin/imports/bundle").file(festivals).file(lineups))
                 .andExpect(status().isPayloadTooLarge())
                 .andExpect(jsonPath("$.errorCode").value("PAYLOAD_TOO_LARGE"))
                 .andExpect(jsonPath("$.status").value(413));
@@ -220,7 +230,7 @@ class ImportAdminControllerTest {
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         MockMultipartFile festivals = new MockMultipartFile("festivals", new byte[]{1});
 
-        mockMvc.perform(multipart("/admin/imports/bundle").file(festivals))
+        mockMvc.perform(multipart("/api/admin/imports/bundle").file(festivals))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("IMPORT_MISSING_FILE"));
     }
@@ -233,12 +243,13 @@ class ImportAdminControllerTest {
                         new ImportCommitResult(empty, empty, empty), java.util.List.of()));
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 
-        mockMvc.perform(post("/admin/imports/37/commit")
+        mockMvc.perform(post("/api/admin/imports/37/commit")
                         .contentType("application/json")
                         .content("{\"lines\":{\"artists\":[1,2],\"festivals\":[1]}}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.importId").value(37))
                 .andExpect(jsonPath("$.result.lineups.updated").value(0))
+                .andExpect(jsonPath("$.result.lineups.failed").value(0))
                 .andExpect(jsonPath("$.createdFestivalIds").isArray());
     }
 
@@ -249,11 +260,34 @@ class ImportAdminControllerTest {
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
 
-        mockMvc.perform(post("/admin/imports/37/commit")
+        mockMvc.perform(post("/api/admin/imports/37/commit")
                         .contentType("application/json").content("{}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("IMPORT_PREVIEW_STALE"))
                 .andExpect(jsonPath("$.status").value(409))
-                .andExpect(jsonPath("$.instance").value("/admin/imports/37/commit"));
+                .andExpect(jsonPath("$.instance").value("/api/admin/imports/37/commit"));
+    }
+
+    @Test
+    void 빈_selection은_400으로_매핑한다() throws Exception {
+        given(importCommitService.commit(eq(37L), any()))
+                .willThrow(new FestaException(ImportErrorCode.IMPORT_INVALID_LINE_SELECTION));
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+
+        mockMvc.perform(post("/api/admin/imports/37/commit")
+                        .contentType("application/json").content("{\"lines\":{}}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("IMPORT_INVALID_LINE_SELECTION"));
+    }
+
+    @Test
+    void 일반_multipart_part_누락은_Import_전용_오류로_매핑하지_않는다() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+        var response = handler.handleMissingServletRequestPartException(
+                new MissingServletRequestPartException("file"), new MockHttpServletRequest());
+
+        assertThat(response.getBody().errorCode()).isEqualTo(CommonErrorCode.INVALID_REQUEST_BODY.name());
     }
 }

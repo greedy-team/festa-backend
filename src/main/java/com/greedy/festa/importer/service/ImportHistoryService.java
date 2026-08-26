@@ -23,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -47,7 +49,7 @@ public class ImportHistoryService {
         validatePagination(page, size);
         Instant now = importClock.instant();
         Page<ImportBatch> batches = importBatchRepository.findHistory(
-                type, status == null ? null : status.name(), now,
+                type, status, now,
                 PageRequest.of(page, size, HISTORY_SORT));
 
         List<Long> committedBatchIds = batches.getContent().stream()
@@ -90,7 +92,7 @@ public class ImportHistoryService {
         return new ImportHistoryItemResponse(
                 batch.getId(),
                 batch.getType(),
-                List.copyOf(batch.getFileNames()),
+                Collections.unmodifiableList(new ArrayList<>(batch.getFileNames())),
                 status,
                 batch.getUploadedByAdmin() == null ? null : batch.getUploadedByAdmin().getUsername(),
                 batch.getUploadedAt(),

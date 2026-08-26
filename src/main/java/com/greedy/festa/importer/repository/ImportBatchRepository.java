@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.Optional;
 
 import com.greedy.festa.importer.entity.ImportBatchType;
+import com.greedy.festa.importer.model.ImportBatchStatus;
 
 public interface ImportBatchRepository extends JpaRepository<ImportBatch, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -21,29 +22,22 @@ public interface ImportBatchRepository extends JpaRepository<ImportBatch, Long> 
     Optional<ImportBatch> findByIdForUpdate(@Param("id") Long id);
 
     @EntityGraph(attributePaths = "uploadedByAdmin")
-    @Query(value = """
+    @Query("""
             SELECT batch FROM ImportBatch batch
             WHERE (:type IS NULL OR batch.type = :type)
               AND (
                 :status IS NULL
-                OR (:status = 'COMMITTED' AND batch.committedAt IS NOT NULL)
-                OR (:status = 'EXPIRED' AND batch.committedAt IS NULL AND batch.expiresAt <= :now)
-                OR (:status = 'PENDING' AND batch.committedAt IS NULL AND batch.expiresAt > :now)
-              )
-            """,
-            countQuery = """
-            SELECT COUNT(batch) FROM ImportBatch batch
-            WHERE (:type IS NULL OR batch.type = :type)
-              AND (
-                :status IS NULL
-                OR (:status = 'COMMITTED' AND batch.committedAt IS NOT NULL)
-                OR (:status = 'EXPIRED' AND batch.committedAt IS NULL AND batch.expiresAt <= :now)
-                OR (:status = 'PENDING' AND batch.committedAt IS NULL AND batch.expiresAt > :now)
+                OR (:status = com.greedy.festa.importer.model.ImportBatchStatus.COMMITTED
+                    AND batch.committedAt IS NOT NULL)
+                OR (:status = com.greedy.festa.importer.model.ImportBatchStatus.EXPIRED
+                    AND batch.committedAt IS NULL AND batch.expiresAt <= :now)
+                OR (:status = com.greedy.festa.importer.model.ImportBatchStatus.PENDING
+                    AND batch.committedAt IS NULL AND batch.expiresAt > :now)
               )
             """)
     Page<ImportBatch> findHistory(
             @Param("type") ImportBatchType type,
-            @Param("status") String status,
+            @Param("status") ImportBatchStatus status,
             @Param("now") Instant now,
             Pageable pageable);
 }

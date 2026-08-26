@@ -1,6 +1,7 @@
 package com.greedy.festa.importer.parser;
 
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.importer.exception.ImportErrorCode;
 import com.greedy.festa.importer.model.ImportSection;
 import com.greedy.festa.importer.model.ParsedCsvRow;
@@ -17,6 +18,20 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 class ImportCsvParserTest {
 
     private final ImportCsvParser parser = new ImportCsvParser();
+
+    @Test
+    void crawler_최신_CSV_header_계약과_정확히_일치한다() {
+        assertThat(ImportSection.FESTIVALS.headers()).containsExactly(
+                "import_key", "host_name", "name", "start_date", "end_date", "venue_name",
+                "poster_url", "image_urls", "description", "hashtags",
+                "external_visitor_policy", "verification_method", "ticket_type",
+                "ticket_open_at", "admission_raw", "source_url", "discovery", "flag",
+                "instagram_url");
+        assertThat(ImportSection.LINEUPS.headers()).containsExactly(
+                "import_key", "day", "order", "artist_raw", "artist_canonical", "revealed");
+        assertThat(ImportSection.ARTISTS.headers()).containsExactly(
+                "name", "other_names", "genre", "image_url", "needs_review");
+    }
 
     @Test
     void UTF8_BOM과_quoted_comma_escaped_quote_multiline을_파싱한다() {
@@ -75,7 +90,7 @@ class ImportCsvParserTest {
         FestaException thrown = catchThrowableOfType(
                 FestaException.class, () -> parser.parse(file, ImportSection.ARTISTS));
 
-        assertThat(thrown.getErrorCode()).isEqualTo(ImportErrorCode.PAYLOAD_TOO_LARGE);
+        assertThat(thrown.getErrorCode()).isEqualTo(CommonErrorCode.PAYLOAD_TOO_LARGE);
     }
 
     @Test
