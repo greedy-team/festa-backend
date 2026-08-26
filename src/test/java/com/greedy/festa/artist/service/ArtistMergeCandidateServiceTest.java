@@ -249,6 +249,22 @@ public class ArtistMergeCandidateServiceTest {
     }
 
     @Test
+    void 점수와_출연_횟수가_같으면_id가_작은_쪽이_앞선다() {
+        // given 조회 순서를 뒤집어 넣는다. tie-break가 없으면 조회 순서가 그대로 결과 순서가 된다
+        Artist 기준 = 아티스트(기준_id, "잔나비");
+        Artist 작은_id = 아티스트(2L, "잔나비");
+        Artist 큰_id = 아티스트(3L, "잔 나 비");
+        조회를_준비한다(기준, List.of(큰_id, 작은_id), List.of(),
+                List.of(출연(2L, 5L), 출연(3L, 5L)), List.of());
+
+        // when
+        List<ArtistCandidate> candidates = 후보들(기준, 기본_limit);
+
+        // then
+        assertThat(candidates).extracting(ArtistCandidate::artistId).containsExactly(2L, 3L);
+    }
+
+    @Test
     void 겹치는_아티스트가_없으면_빈_목록을_준다() {
         // given
         Artist 기준 = 아티스트(기준_id, "잔나비");

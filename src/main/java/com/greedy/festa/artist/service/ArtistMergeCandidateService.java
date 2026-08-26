@@ -42,9 +42,10 @@ public class ArtistMergeCandidateService {
     private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^\\p{L}\\p{N}]");
     private static final int MIN_PARTIAL_LENGTH = 3;
 
-    private static final Comparator<ArtistCandidate> BY_SIMILARITY_THEN_APPEARANCES =
+    private static final Comparator<ArtistCandidate> BY_SIMILARITY_THEN_APPEARANCES_THEN_ID =
             Comparator.comparingDouble(ArtistCandidate::similarity).reversed()
-                    .thenComparing(Comparator.comparingLong(ArtistCandidate::appearanceCount).reversed());
+                    .thenComparing(Comparator.comparingLong(ArtistCandidate::appearanceCount).reversed())
+                    .thenComparingLong(ArtistCandidate::artistId);
 
     private final ArtistRepository artistRepository;
     private final ArtistAliasRepository artistAliasRepository;
@@ -74,7 +75,7 @@ public class ArtistMergeCandidateService {
                         aliasesByArtist.getOrDefault(id, List.of()),
                         appearanceCounts.getOrDefault(id, 0L)),
                 candidates.stream()
-                        .sorted(BY_SIMILARITY_THEN_APPEARANCES)
+                        .sorted(BY_SIMILARITY_THEN_APPEARANCES_THEN_ID)
                         .limit(candidateLimits)
                         .toList());
     }
