@@ -3,6 +3,7 @@ package com.greedy.festa.importer.service;
 import com.greedy.festa.importer.entity.ImportBatchType;
 import com.greedy.festa.importer.model.ImportBatchStatus;
 import com.greedy.festa.support.PostgresTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,6 +33,12 @@ class ImportHistoryPostgresIntegrationTest extends PostgresTestSupport {
 
     @Autowired ImportHistoryService service;
     @Autowired JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void cleanImportHistoryFixtures() {
+        jdbcTemplate.update("DELETE FROM import_commit_row");
+        jdbcTemplate.update("DELETE FROM import_batch");
+    }
 
     @Test
     void 파생_상태_filter_pagination_count_ARRAY와_정렬을_PostgreSQL에서_검증한다() {
