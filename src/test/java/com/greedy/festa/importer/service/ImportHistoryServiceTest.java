@@ -85,7 +85,7 @@ class ImportHistoryServiceTest {
 
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
         verify(batchRepository).findHistory(
-                eq(ImportBatchType.BUNDLE), eq(ImportBatchStatus.EXPIRED), eq(NOW), pageable.capture());
+                eq(ImportBatchType.BUNDLE), eq("EXPIRED"), eq(NOW), pageable.capture());
         assertThat(pageable.getValue().getPageNumber()).isEqualTo(2);
         assertThat(pageable.getValue().getPageSize()).isEqualTo(50);
         assertThat(pageable.getValue().getSort().getOrderFor("uploadedAt").getDirection().isDescending())

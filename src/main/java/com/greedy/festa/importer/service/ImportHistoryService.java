@@ -49,7 +49,7 @@ public class ImportHistoryService {
         validatePagination(page, size);
         Instant now = importClock.instant();
         Page<ImportBatch> batches = importBatchRepository.findHistory(
-                type, status, now,
+                type, status == null ? null : status.name(), now,
                 PageRequest.of(page, size, HISTORY_SORT));
 
         List<Long> committedBatchIds = batches.getContent().stream()

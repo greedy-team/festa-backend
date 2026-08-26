@@ -14,7 +14,6 @@ import java.time.Instant;
 import java.util.Optional;
 
 import com.greedy.festa.importer.entity.ImportBatchType;
-import com.greedy.festa.importer.model.ImportBatchStatus;
 
 public interface ImportBatchRepository extends JpaRepository<ImportBatch, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -27,17 +26,17 @@ public interface ImportBatchRepository extends JpaRepository<ImportBatch, Long> 
             WHERE (:type IS NULL OR batch.type = :type)
               AND (
                 :status IS NULL
-                OR (:status = com.greedy.festa.importer.model.ImportBatchStatus.COMMITTED
+                OR (:status = 'COMMITTED'
                     AND batch.committedAt IS NOT NULL)
-                OR (:status = com.greedy.festa.importer.model.ImportBatchStatus.EXPIRED
+                OR (:status = 'EXPIRED'
                     AND batch.committedAt IS NULL AND batch.expiresAt <= :now)
-                OR (:status = com.greedy.festa.importer.model.ImportBatchStatus.PENDING
+                OR (:status = 'PENDING'
                     AND batch.committedAt IS NULL AND batch.expiresAt > :now)
               )
             """)
     Page<ImportBatch> findHistory(
             @Param("type") ImportBatchType type,
-            @Param("status") ImportBatchStatus status,
+            @Param("status") String status,
             @Param("now") Instant now,
             Pageable pageable);
 }
