@@ -22,7 +22,9 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      # 비어 있으면 프로파일 없이 뜬다 — API 문서가 꺼진 쪽이 기본값이다
+      # 값이 비어 있으면 프로파일 없이 뜨고 API 문서는 꺼진다.
+      # 다만 develop 자동 배포는 development로 뜨므로 실제 배포에서는 켜져 있다 —
+      # 저장소가 공개라 API 표면을 가릴 실익이 없어 그대로 둔다.
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
       DB_URL: ${DB_URL:?DB_URL is required}
       DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
@@ -37,5 +39,23 @@ services:
     ports:
       - "8080:8080"
 
+  # TLS 종단. Cloudflare가 DNS 전용(회색 구름)이라 앞단에서 대신 끊어주지 않는다.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
 volumes:
   postgres-data:
+  # 발급받은 인증서가 여기 남는다. 이 볼륨이 없으면 재배포마다 재발급을 시도하고,
+  # develop 푸시마다 배포되므로 며칠 만에 Let's Encrypt 발급 한도에 걸린다.
+  caddy-data:
+  caddy-config:
