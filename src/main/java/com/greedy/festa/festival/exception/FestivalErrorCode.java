@@ -13,6 +13,7 @@ public enum FestivalErrorCode implements ErrorCode {
     FESTIVAL_INVALID_SORT_TYPE("지원하지 않는 정렬 기준입니다", HttpStatus.BAD_REQUEST),
     FESTIVAL_INVALID_IDS("festivalIds는 1개 이상 100개 이하여야 하며 null을 담을 수 없습니다", HttpStatus.BAD_REQUEST),
     FESTIVAL_INVALID_LIMIT("조회 개수가 올바르지 않습니다", HttpStatus.BAD_REQUEST),
+    FESTIVAL_INVALID_FILTER("조회 조건의 형식이 올바르지 않습니다", HttpStatus.BAD_REQUEST),
     FESTIVAL_COVERAGE_INVALID_STATUS(
             "status는 PUBLISHED, REVIEW_PENDING 또는 NEEDS_CHECK만 사용할 수 있습니다.",
             HttpStatus.BAD_REQUEST

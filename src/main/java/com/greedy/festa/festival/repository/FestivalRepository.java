@@ -90,4 +90,35 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
         ORDER BY f.publishedAt DESC, f.id DESC
         """)
     List<Festival> findRecentlyPublished(Limit limit);
+    @Query(value = """
+        SELECT f
+        FROM Festival f
+        JOIN FETCH f.host h
+        WHERE f.publishedAt IS NOT NULL
+          AND (:hostId IS NULL OR h.id = :hostId)
+          AND (CAST(:yearStart AS date) IS NULL
+               OR (f.startDate >= :yearStart AND f.startDate < :nextYearStart))
+          AND (:artistId IS NULL
+               OR EXISTS (SELECT 1 FROM Lineup l
+                          WHERE l.festival = f AND l.artist.id = :artistId))
+        """,
+            countQuery = """
+        SELECT COUNT(f)
+        FROM Festival f
+        JOIN f.host h
+        WHERE f.publishedAt IS NOT NULL
+          AND (:hostId IS NULL OR h.id = :hostId)
+          AND (CAST(:yearStart AS date) IS NULL
+               OR (f.startDate >= :yearStart AND f.startDate < :nextYearStart))
+          AND (:artistId IS NULL
+               OR EXISTS (SELECT 1 FROM Lineup l
+                          WHERE l.festival = f AND l.artist.id = :artistId))
+        """)
+    Page<Festival> findPublishedRows(
+            @Param("hostId") Long hostId,
+            @Param("yearStart") LocalDate yearStart,
+            @Param("nextYearStart") LocalDate nextYearStart,
+            @Param("artistId") Long artistId,
+            Pageable pageable
+    );
 }
