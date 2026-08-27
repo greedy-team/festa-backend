@@ -25,6 +25,8 @@ public class HostController {
     @Operation(summary = "주최 상세 조회",
             description = "발행된 축제만 집계한다. 다가오는 축제와 이력은 종료일로 갈리며 기준일은 KST다.")
     @ApiResponse(responseCode = "200", description = "주최 상세")
+    @ApiResponse(responseCode = "400", description = "INVALID_PATH_VARIABLE",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "HOST_NOT_FOUND",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping("/{id}")
