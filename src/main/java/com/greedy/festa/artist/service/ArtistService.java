@@ -1,16 +1,23 @@
 package com.greedy.festa.artist.service;
 
-import com.greedy.festa.artist.dto.ArtistCreateRequest;
-import com.greedy.festa.artist.dto.ArtistResponse;
-import com.greedy.festa.artist.dto.ArtistSortType;
-import com.greedy.festa.artist.dto.ArtistUpdateRequest;
+import com.greedy.festa.artist.dto.ArtistAppearanceResponse;
+import com.greedy.festa.artist.dto.ArtistDetailResponse;
+import com.greedy.festa.artist.dto.ArtistListItemResponse;
+import com.greedy.festa.artist.dto.ArtistPublicSortType;
+import com.greedy.festa.artist.dto.ArtistSectionResponse;
+import com.greedy.festa.artist.dto.ArtistUpcomingShowResponse;
+import com.greedy.festa.artist.dto.RecentFestivalResponse;
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistAlias;
 import com.greedy.festa.artist.entity.ArtistGenre;
+import com.greedy.festa.artist.entity.Lineup;
 import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
+import com.greedy.festa.artist.repository.ArtistRecentFestivalRow;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.artist.repository.ArtistWithAppearanceCount;
+import com.greedy.festa.artist.repository.LineupRepository;
+import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
@@ -20,250 +27,196 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ArtistService {
 
-    private static final int MAX_NAME_LENGTH = 100;
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final int MAX_DETAIL_ITEMS = 5;
 
     private final ArtistRepository artistRepository;
     private final ArtistAliasRepository artistAliasRepository;
+    private final LineupRepository lineupRepository;
+    private final Clock clock;
 
-    @Transactional
-    public ArtistResponse create(ArtistCreateRequest request) {
-        String name = blankToNull(request.name());
-        validateName(name);
-        List<String> otherNames = List.of();
-        if (request.otherNames() != null) {
-            otherNames = normalizeAliases(request.otherNames(), name);
-        }
-        validateAlias(otherNames);
+    @Transactional(readOnly = true)
+    public PageResponse<ArtistListItemResponse> findAll(
+            int page, int size, String genreValue, String sortValue, String query
+    ) {
+        validatePage(page, size);
+        ArtistGenre genre = parseGenre(genreValue);
+        ArtistPublicSortType sort = parseSort(sortValue);
+        String normalizedQuery = normalizeQuery(query);
+        LocalDate today = today();
 
-        Artist artist = artistRepository.save(Artist.builder()
-                .name(name)
-                .genre(request.genre())
-                .instagramUrl(blankToNull(request.instagramUrl()))
-                .needsReview(false)
-                .imageUrl(null).build());
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<ArtistWithAppearanceCount> rows = sort == ArtistPublicSortType.NAME
+                ? artistRepository.findPublicByName(genre, normalizedQuery, today, pageRequest)
+                : artistRepository.findPublicByAppearances(genre, normalizedQuery, today, pageRequest);
 
-        artistAliasRepository.saveAll(otherNames.stream()
-                .map(artistName -> ArtistAlias.builder()
-                        .artist(artist)
-                        .name(artistName)
-                        .build())
-                .toList());
-
-        return ArtistResponse.of(artist, otherNames, 0L);
+        Map<Long, RecentFestivalResponse> recentFestivals = loadRecentFestivals(rows, today);
+        return PageResponse.from(rows.map(row -> toListItem(row, recentFestivals)));
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<ArtistResponse> findAll(
-            Boolean needsReview, String q, ArtistGenre genre,
-            ArtistSortType sort, int page, int size
+    public ArtistDetailResponse findById(Long id) {
+        Artist artist = artistRepository.findById(id)
+                .orElseThrow(() -> new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND));
+        List<String> aliases = artistAliasRepository.findByArtistId(id).stream()
+                .map(ArtistAlias::getName)
+                .toList();
+
+        LocalDate today = today();
+        List<Lineup> lineups = lineupRepository.findPublishedByArtistId(id);
+
+        List<ArtistUpcomingShowResponse> upcoming = lineups.stream()
+                .map(lineup -> toUpcomingShow(lineup, today))
+                .filter(show -> !show.performanceDate().isBefore(today))
+                .sorted(Comparator.comparing(ArtistUpcomingShowResponse::performanceDate)
+                        .thenComparing(ArtistUpcomingShowResponse::festivalId)
+                        .thenComparingInt(ArtistUpcomingShowResponse::day))
+                .toList();
+
+        Map<Long, ArtistAppearanceResponse> appearanceByFestival = new LinkedHashMap<>();
+        lineups.stream()
+                .filter(lineup -> lineup.getFestival().getEndDate().isBefore(today))
+                .sorted(Comparator.comparing((Lineup lineup) -> lineup.getFestival().getStartDate()).reversed()
+                        .thenComparing(lineup -> lineup.getFestival().getId(), Comparator.reverseOrder()))
+                .forEach(lineup -> appearanceByFestival.putIfAbsent(
+                        lineup.getFestival().getId(), toAppearance(lineup.getFestival())));
+        List<ArtistAppearanceResponse> appearances = List.copyOf(appearanceByFestival.values());
+
+        return new ArtistDetailResponse(
+                artist.getId(),
+                artist.getName(),
+                aliases,
+                artist.getGenre(),
+                null,
+                artist.getInstagramUrl(),
+                section(upcoming),
+                section(appearances)
+        );
+    }
+
+    private Map<Long, RecentFestivalResponse> loadRecentFestivals(
+            Page<ArtistWithAppearanceCount> rows, LocalDate today
     ) {
+        List<Long> artistIds = rows.stream()
+                .map(row -> row.getArtist().getId())
+                .toList();
+        if (artistIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, RecentFestivalResponse> result = new LinkedHashMap<>();
+        for (ArtistRecentFestivalRow row : artistRepository.findRecentFestivals(artistIds, today)) {
+            result.putIfAbsent(row.getArtistId(), new RecentFestivalResponse(
+                    row.getFestivalId(), row.getFestivalName(), row.getHostShortName()));
+        }
+        return result;
+    }
+
+    private ArtistListItemResponse toListItem(
+            ArtistWithAppearanceCount row,
+            Map<Long, RecentFestivalResponse> recentFestivals
+    ) {
+        Artist artist = row.getArtist();
+        return new ArtistListItemResponse(
+                artist.getId(),
+                artist.getName(),
+                null,
+                artist.getGenre(),
+                row.getAppearanceCount(),
+                recentFestivals.get(artist.getId())
+        );
+    }
+
+    private ArtistUpcomingShowResponse toUpcomingShow(Lineup lineup, LocalDate today) {
+        Festival festival = lineup.getFestival();
+        LocalDate performanceDate = festival.getStartDate().plusDays(lineup.getDay() - 1L);
+        return new ArtistUpcomingShowResponse(
+                festival.getId(),
+                festival.getName(),
+                festival.getHost().getName(),
+                festival.getVenueName(),
+                festival.getPosterUrl(),
+                festival.getStartDate(),
+                festival.getEndDate(),
+                ChronoUnit.DAYS.between(today, performanceDate),
+                performanceDate,
+                lineup.getDay()
+        );
+    }
+
+    private ArtistAppearanceResponse toAppearance(Festival festival) {
+        return new ArtistAppearanceResponse(
+                festival.getId(),
+                festival.getName(),
+                festival.getHost().getName(),
+                festival.getStartDate(),
+                festival.getEndDate()
+        );
+    }
+
+    private <T> ArtistSectionResponse<T> section(List<T> all) {
+        return new ArtistSectionResponse<>(
+                all.stream().limit(MAX_DETAIL_ITEMS).toList(),
+                all.size()
+        );
+    }
+
+    private void validatePage(int page, int size) {
         if (page < 0) {
             throw new FestaException(CommonErrorCode.INVALID_PAGE);
         }
         if (size < 1 || size > 50) {
             throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
         }
-        if (q != null && q.trim().length() > 50) {
+    }
+
+    private ArtistGenre parseGenre(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return ArtistGenre.valueOf(value);
+        } catch (IllegalArgumentException exception) {
+            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_GENRE_TYPE);
+        }
+    }
+
+    private ArtistPublicSortType parseSort(String value) {
+        if (value == null || value.isBlank()) {
+            return ArtistPublicSortType.APPEARANCES;
+        }
+        try {
+            return ArtistPublicSortType.valueOf(value);
+        } catch (IllegalArgumentException exception) {
+            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_SORT_TYPE);
+        }
+    }
+
+    private String normalizeQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+        String normalized = query.trim();
+        if (normalized.length() > 50) {
             throw new FestaException(ArtistErrorCode.ARTIST_INVALID_QUERY);
         }
-
-        Page<ArtistWithAppearanceCount> rows = artistRepository.findAllWithAppearanceCount(
-                needsReview, genre, q, PageRequest.of(page, size, sort.toSort())
-        );
-
-        Map<Long, List<String>> aliasesByArtistId = loadAlias(rows);
-
-        return PageResponse.from(rows.map(
-                row -> ArtistResponse.of(
-                        row.getArtist(),
-                        aliasesByArtistId.getOrDefault(row.getArtist().getId(), List.of()),
-                        row.getAppearanceCount()
-                )));
+        return normalized;
     }
 
-    @Transactional
-    public ArtistResponse update(Long id, ArtistUpdateRequest request) {
-        Artist artist = artistRepository.findById(id)
-                .orElseThrow(() -> new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND));
-
-        String name = request.name();
-        if (name != null) {
-            name = name.trim();
-            validateNameForUpdate(name, id);
-        }
-        if (name != null && request.otherNames() == null) {
-            artistAliasRepository.deleteByArtistIdAndName(id, name);
-        }
-        String instagramUrl = request.instagramUrl();
-        if (instagramUrl != null) {
-            instagramUrl = instagramUrl.trim();
-        }
-
-        artist.update(name, request.genre(), instagramUrl, request.needsReview());
-
-        List<String> aliasNames;
-        if (request.otherNames() != null) {
-            aliasNames = normalizeAliases(request.otherNames(), artist.getName());
-            replaceAliases(artist, aliasNames);
-        }
-        else {
-            aliasNames = artistAliasRepository.findByArtistId(artist.getId()).stream()
-                    .map(ArtistAlias::getName)
-                    .toList();
-        }
-
-        return ArtistResponse.of(
-                artist,
-                aliasNames,
-                artistRepository.countAppearancesByArtistId(id)
-        );
-    }
-
-    @Transactional
-    public void delete(Long id) {
-        artistRepository.findById(id)
-                .orElseThrow(() -> new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND));
-
-        if (artistRepository.countLineupsByArtistId(id) > 0) {
-            throw new FestaException(ArtistErrorCode.ARTIST_HAS_APPEARANCES);
-        }
-
-        artistAliasRepository.deleteByArtistId(id);
-        artistAliasRepository.flush();
-        artistRepository.deleteById(id);
-    }
-
-    private void validateName(String name) {
-        if (name == null || name.isBlank() || name.length() > MAX_NAME_LENGTH) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_NAME);
-        }
-
-        if (artistRepository.existsByName(name)
-                || artistAliasRepository.existsByName(name)) {
-            throw new FestaException(ArtistErrorCode.ARTIST_DUPLICATE_NAME);
-        }
-    }
-
-    private void validateAlias(List<String> otherNames) {
-        boolean tooLong = otherNames.stream()
-                .anyMatch(otherName -> otherName.length() > MAX_NAME_LENGTH);
-
-        if (tooLong) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_ALIAS);
-        }
-
-        boolean taken = otherNames.stream()
-                .anyMatch(otherName ->
-                        artistRepository.existsByName(otherName)
-                                || artistAliasRepository.existsByName(otherName));
-
-        if (taken) {
-            throw new FestaException(ArtistErrorCode.ARTIST_DUPLICATE_ALIAS);
-        }
-    }
-
-    private void validateNameForUpdate(String name, Long id) {
-        if (name.isBlank() || name.length() > MAX_NAME_LENGTH) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_NAME);
-        }
-
-        if (artistRepository.existsByNameAndIdNot(name, id)
-            || artistAliasRepository.existsByNameAndArtistIdNot(name, id)) {
-            throw new FestaException(ArtistErrorCode.ARTIST_DUPLICATE_NAME);
-        }
-    }
-
-    private void validateAliasesForUpdate(List<String> aliasesToAdd, Long id) {
-        boolean tooLong = aliasesToAdd.stream()
-                .anyMatch(otherName -> otherName.length() > MAX_NAME_LENGTH);
-
-        if (tooLong) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_ALIAS);
-        }
-
-        boolean taken = aliasesToAdd.stream()
-                .anyMatch(otherName ->
-                        artistRepository.existsByNameAndIdNot(otherName, id)
-                                || artistAliasRepository.existsByNameAndArtistIdNot(otherName, id));
-
-        if (taken) {
-            throw new FestaException(ArtistErrorCode.ARTIST_DUPLICATE_ALIAS);
-        }
-    }
-
-    private String blankToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmedValue = value.trim();
-        if (trimmedValue.isBlank()) {
-            return null;
-        }
-        return trimmedValue;
-    }
-
-    private List<String> normalizeAliases(List<String> otherNames, String name) {
-        if (otherNames == null) {
-            return List.of();
-        }
-        return otherNames.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(otherName -> !otherName.isBlank())
-                .filter(otherName -> !otherName.equals(name))
-                .distinct()
-                .toList();
-    }
-
-    private void replaceAliases(Artist artist, List<String> target) {
-        List<ArtistAlias> currentAliases = artistAliasRepository.findByArtistId(artist.getId());
-        List<String> currentAliasesNames = currentAliases.stream()
-                .map(ArtistAlias::getName)
-                .toList();
-
-        List<ArtistAlias> aliasesToRemove = currentAliases.stream()
-                .filter(alias -> !target.contains(alias.getName()))
-                .toList();
-
-        List<String> aliasesToAdd = target.stream()
-                .filter(otherName -> !currentAliasesNames.contains(otherName))
-                .toList();
-
-
-        validateAliasesForUpdate(aliasesToAdd, artist.getId());
-
-        artistAliasRepository.deleteAll(aliasesToRemove);
-        artistAliasRepository.saveAll(aliasesToAdd.stream()
-                .map(name -> ArtistAlias.builder()
-                        .artist(artist)
-                        .name(name)
-                        .build())
-                .toList());
-    }
-
-    private Map<Long, List<String>> loadAlias(Page<ArtistWithAppearanceCount> rows) {
-        List<Long> artistIds = rows.getContent().stream()
-                .map(row -> row.getArtist().getId())
-                .toList();
-
-        if (artistIds.isEmpty()) {
-            return Map.of();
-        }
-
-        return artistAliasRepository.findByArtistIdIn(artistIds)
-                .stream()
-                .collect(Collectors.groupingBy(
-                        alias -> alias.getArtist().getId(),
-                        Collectors.mapping(ArtistAlias::getName, Collectors.toList()))
-                );
+    private LocalDate today() {
+        return LocalDate.now(clock.withZone(KST));
     }
 }

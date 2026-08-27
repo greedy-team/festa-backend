@@ -8,8 +8,18 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface LineupRepository extends JpaRepository<Lineup, Long> {
+
+    @Query("""
+            SELECT l FROM Lineup l
+            JOIN FETCH l.festival f
+            JOIN FETCH f.host
+            WHERE l.artist.id = :artistId
+              AND f.publishedAt IS NOT NULL
+            """)
+    List<Lineup> findPublishedByArtistId(@Param("artistId") Long artistId);
 
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM Lineup lineup WHERE lineup.festival.id = :festivalId")
