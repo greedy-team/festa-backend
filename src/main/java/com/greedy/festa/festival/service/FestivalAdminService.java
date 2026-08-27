@@ -1,5 +1,8 @@
 package com.greedy.festa.festival.service;
 
+import com.greedy.festa.festival.dto.FestivalBatchPublishResponse;
+import com.greedy.festa.festival.dto.FestivalPublishFailure;
+import com.greedy.festa.festival.dto.FestivalPublishFailureReason;
 import com.greedy.festa.festival.dto.FestivalPublishResponse;
 import com.greedy.festa.festival.dto.FestivalReviewItem;
 import com.greedy.festa.festival.dto.FestivalSortType;
@@ -20,11 +23,18 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class FestivalAdminService {
+
+    private static final int MAX_BATCH_SIZE = 100;
 
     private final FestivalRepository festivalRepository;
     private final Clock clock;
@@ -97,5 +107,55 @@ public class FestivalAdminService {
                 .orElseThrow(() -> new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
         festival.unpublish();
         return FestivalPublishResponse.of(festival);
+    }
+
+    @Transactional
+    public FestivalBatchPublishResponse batchPublish(List<Long> ids) {
+        if (ids == null || ids.isEmpty() || ids.size() > MAX_BATCH_SIZE || ids.stream().anyMatch(Objects::isNull)) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_IDS);
+        }
+
+        List<Long> requestedIds = ids.stream().distinct().toList();
+        Map<Long, FestivalWithLineupCount> rowsById = festivalRepository.findPublishTargets(requestedIds)
+                .stream()
+                .collect(Collectors.toMap(row -> row.getFestival().getId(), Function.identity()));
+
+        Instant publishedAt = Instant.now(clock);
+        List<Long> publishedIds = new ArrayList<>();
+        List<FestivalPublishFailure> failed = new ArrayList<>();
+
+        for (Long id : requestedIds) {
+            FestivalWithLineupCount row = rowsById.get(id);
+            if (row == null) {
+                failed.add(new FestivalPublishFailure(
+                        id, FestivalPublishFailureReason.NOT_FOUND
+                ));
+                continue;
+            }
+
+            Festival festival = row.getFestival();
+            if (festival.getPublishedAt() != null) {
+                publishedIds.add(id);
+                continue;
+            }
+
+            List<FestivalPublishBlocker> blockers = FestivalPublishBlocker.evaluate(
+                    row.getHost() != null,
+                    festival.getLatitude(),
+                    festival.getLongitude(),
+                    row.getLineupCount()
+            );
+            if (!blockers.isEmpty()) {
+                failed.add(new FestivalPublishFailure(
+                        id, FestivalPublishFailureReason.from(blockers.getFirst())
+                ));
+                continue;
+            }
+
+            festival.publish(publishedAt);
+            publishedIds.add(id);
+        }
+
+        return new FestivalBatchPublishResponse(publishedIds, failed);
     }
 }

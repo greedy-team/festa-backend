@@ -8,6 +8,13 @@ import com.greedy.festa.importer.exception.ImportErrorCode;
 import com.greedy.festa.importer.model.ImportSection;
 import com.greedy.festa.importer.service.ImportPreviewService;
 import com.greedy.festa.importer.service.ImportCommitService;
+import com.greedy.festa.importer.service.ImportHistoryService;
+import com.greedy.festa.importer.model.ImportBatchStatus;
+import com.greedy.festa.importer.entity.ImportBatchType;
+import com.greedy.festa.global.dto.PageResponse;
+import com.greedy.festa.importer.dto.ImportHistoryItemResponse;
+import com.greedy.festa.importer.dto.ImportHistoryResult;
+import com.greedy.festa.importer.dto.ImportHistorySectionResult;
 import com.greedy.festa.importer.dto.ImportCommitRequest;
 import com.greedy.festa.importer.dto.ImportCommitResponse;
 import com.greedy.festa.importer.dto.ImportCommitResult;
@@ -39,6 +46,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
@@ -48,12 +56,89 @@ class ImportAdminControllerTest {
 
     @Mock ImportPreviewService importPreviewService;
     @Mock ImportCommitService importCommitService;
+    @Mock ImportHistoryService importHistoryService;
     ImportAdminController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new ImportAdminController(importPreviewService, importCommitService,
+        controller = new ImportAdminController(importPreviewService, importCommitService, importHistoryService,
                 Clock.fixed(Instant.EPOCH, ZoneOffset.UTC));
+    }
+
+    @Test
+    void history_기본_page_size와_빈_filter를_전달한다() throws Exception {
+        given(importHistoryService.findAll(null, null, 0, 20))
+                .willReturn(new PageResponse<>(java.util.List.of(), 0, 20, 0, 0, false, false));
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+
+        mockMvc.perform(get("/api/admin/imports"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20));
+
+        verify(importHistoryService).findAll(null, null, 0, 20);
+    }
+
+    @Test
+    void history_type_status와_시간_result_JSON_계약을_반환한다() throws Exception {
+        Instant uploadedAt = Instant.parse("2026-08-19T15:40:00Z");
+        ImportHistorySectionResult empty = new ImportHistorySectionResult(0, 0, 0);
+        ImportHistoryItemResponse item = new ImportHistoryItemResponse(
+                37L, ImportBatchType.BUNDLE, java.util.List.of("festivals.csv"),
+                ImportBatchStatus.COMMITTED, "haeun", uploadedAt,
+                uploadedAt.plusSeconds(1800), uploadedAt.plusSeconds(600),
+                new ImportHistoryResult(new ImportHistorySectionResult(1, 2, 3), empty, empty));
+        given(importHistoryService.findAll(
+                ImportBatchType.BUNDLE, ImportBatchStatus.COMMITTED, 1, 50))
+                .willReturn(new PageResponse<>(java.util.List.of(item), 1, 50, 1, 1, false, true));
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+
+        mockMvc.perform(get("/api/admin/imports")
+                        .param("type", "BUNDLE").param("status", "COMMITTED")
+                        .param("page", "1").param("size", "50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].importId").value(37))
+                .andExpect(jsonPath("$.items[0].uploadedBy").value("haeun"))
+                .andExpect(jsonPath("$.items[0].uploadedAt").value("2026-08-19T15:40:00Z"))
+                .andExpect(jsonPath("$.items[0].expiresAt").value("2026-08-19T16:10:00Z"))
+                .andExpect(jsonPath("$.items[0].committedAt").value("2026-08-19T15:50:00Z"))
+                .andExpect(jsonPath("$.items[0].result.artists.created").value(1))
+                .andExpect(jsonPath("$.items[0].result.artists.failed").doesNotExist());
+    }
+
+    @Test
+    void history_지원하지_않는_type_status는_400_ErrorResponse다() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+
+        mockMvc.perform(get("/api/admin/imports").param("type", "unknown"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("IMPORT_INVALID_TYPE"));
+        mockMvc.perform(get("/api/admin/imports").param("status", "unknown"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("IMPORT_INVALID_STATUS"));
+    }
+
+    @Test
+    void history_잘못된_page_size는_공통_400_ErrorResponse다() throws Exception {
+        given(importHistoryService.findAll(null, null, -1, 20))
+                .willThrow(new FestaException(CommonErrorCode.INVALID_PAGE));
+        given(importHistoryService.findAll(null, null, 0, 51))
+                .willThrow(new FestaException(CommonErrorCode.INVALID_PAGE_SIZE));
+        given(importHistoryService.findAll(null, null, 0, 0))
+                .willThrow(new FestaException(CommonErrorCode.INVALID_PAGE_SIZE));
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+
+        mockMvc.perform(get("/api/admin/imports").param("page", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_PAGE"));
+        mockMvc.perform(get("/api/admin/imports").param("size", "51"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_PAGE_SIZE"));
+        mockMvc.perform(get("/api/admin/imports").param("size", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_PAGE_SIZE"));
     }
 
     @Test

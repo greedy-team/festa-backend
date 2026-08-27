@@ -55,6 +55,16 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
             Pageable pageable
     );
 
+    @Query("""
+            SELECT f AS festival, h AS host, COUNT(l) AS lineupCount
+            FROM Festival f
+            LEFT JOIN f.host h
+            LEFT JOIN Lineup l ON l.festival = f
+            WHERE f.id IN :festivalIds
+            GROUP BY f, h
+            """)
+    List<FestivalWithLineupCount> findPublishTargets(@Param("festivalIds") Collection<Long> festivalIds);
+
     @Query("SELECT COUNT(l) FROM Lineup l WHERE l.festival.id = :festivalId")
     long countLineupsByFestivalId(@Param("festivalId") Long festivalId);
 

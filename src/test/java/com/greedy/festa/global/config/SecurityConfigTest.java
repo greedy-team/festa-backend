@@ -77,6 +77,13 @@ public class SecurityConfigTest {
     }
 
     @Test
+    void 토큰_없이_임포트_이력에_접근하면_401이다() throws Exception {
+        mockMvc.perform(get("/api/admin/imports"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
+    }
+
+    @Test
     void 유효한_토큰이면_통과한다() throws Exception {
         // given
         String 토큰 = jwtTokenProvider.issue("admin");
@@ -131,6 +138,11 @@ public class SecurityConfigTest {
         @GetMapping("/api/admin/protected")
         String get() {
             return "ok";
+        }
+
+        @GetMapping("/api/admin/imports")
+        String imports() {
+            return "imports";
         }
     }
 }
