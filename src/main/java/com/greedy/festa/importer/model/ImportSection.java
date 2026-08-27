@@ -7,7 +7,7 @@ import java.util.List;
 public enum ImportSection {
     FESTIVALS(List.of(
             "import_key", "host_name", "name", "start_date", "end_date", "venue_name",
-            "poster_url", "image_urls", "description", "hashtags",
+            "latitude", "longitude", "poster_url", "image_urls", "description", "hashtags",
             "external_visitor_policy", "verification_method", "ticket_type",
             "ticket_open_at", "admission_raw", "source_url", "discovery", "flag",
             "instagram_url"), ImportBatchType.FESTIVALS),

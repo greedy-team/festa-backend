@@ -31,7 +31,7 @@ class PreviewJsonCodecTest {
         normalized.put("ticketOpenAt", "2026-05-01T03:00:00Z");
         normalized.put("revealed", false);
         StoredPreviewRow row = new StoredPreviewRow(
-                ImportSection.LINEUPS, 1, "연세대학교-2026", ImportPreviewAction.CREATE,
+                ImportSection.LINEUPS, 1, "연세대학교-신촌캠퍼스-2026", ImportPreviewAction.CREATE,
                 ImportConflictPolicy.UPDATE,
                 normalized, Map.of("revealed", "false"),
                 null, null, null, null, List.of(), List.of(), null,

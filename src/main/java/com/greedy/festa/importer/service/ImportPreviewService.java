@@ -233,6 +233,13 @@ public class ImportPreviewService {
         if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
             errors.add(error("INVALID_DATE_RANGE", "end_date는 start_date보다 빠를 수 없습니다"));
         }
+        Double latitude = coordinate(payload.get("latitude"), "latitude", -90, 90, errors);
+        Double longitude = coordinate(payload.get("longitude"), "longitude", -180, 180, errors);
+        if ((latitude != null && (latitude < 33 || latitude > 39))
+                || (longitude != null && (longitude < 124 || longitude > 132))) {
+            warnings.add(warning("COORDINATES_OUTSIDE_KOREA",
+                    "좌표가 국내 범위(위도 33~39, 경도 124~132) 밖에 있습니다"));
+        }
 
         String discovery = trim(payload.get("discovery"));
         if (successfulCrawl) {
@@ -291,6 +298,10 @@ public class ImportPreviewService {
         normalized.put("endDate", isoDate(endDate));
         normalized.put("venueName", keepExisting(trim(payload.get("venue_name")),
                 existing == null ? null : existing.getVenueName()));
+        normalized.put("latitude", keepExisting(latitude,
+                existing == null ? null : existing.getLatitude()));
+        normalized.put("longitude", keepExisting(longitude,
+                existing == null ? null : existing.getLongitude()));
         normalized.put("posterUrl", keepExisting(posterCandidate,
                 existing == null ? null : existing.getPosterUrl()));
         normalized.put("imageUrls", imageUrls);
@@ -687,6 +698,28 @@ public class ImportPreviewService {
             return number;
         } catch (NumberFormatException e) {
             errors.add(error("INVALID_INTEGER", field + " 값은 1 이상의 정수여야 합니다"));
+            return null;
+        }
+    }
+
+    private Double coordinate(
+            String value, String field, double minimum, double maximum,
+            List<PreviewProblem> errors
+    ) {
+        String text = trim(value);
+        if (text.isEmpty()) {
+            return null;
+        }
+        try {
+            double coordinate = Double.parseDouble(text);
+            if (!Double.isFinite(coordinate) || coordinate < minimum || coordinate > maximum) {
+                errors.add(error("COORDINATE_OUT_OF_RANGE",
+                        field + " 값이 허용 범위를 벗어났습니다"));
+                return null;
+            }
+            return coordinate;
+        } catch (NumberFormatException e) {
+            errors.add(error("INVALID_COORDINATE", field + " 값은 숫자여야 합니다"));
             return null;
         }
     }

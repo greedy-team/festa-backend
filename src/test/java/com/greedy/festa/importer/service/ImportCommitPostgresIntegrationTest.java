@@ -139,6 +139,40 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
                 .isEqualTo(NOW);
     }
 
+    @Test
+    void CREATE_Festival의_좌표를_PostgreSQL에_저장한다() {
+        Host host = hostRepository.save(Host.builder().name("university").region("SEOUL").build());
+        ImportBatch batch = saveBatch(preview(newFestival(1, host.getId())));
+
+        service.commit(batch.getId(), null);
+
+        Festival saved = festivalRepository.findAll().getFirst();
+        assertThat(saved.getImportKey()).isEqualTo("university-main-campus-2026");
+        assertThat(saved.getLatitude()).isEqualTo(37.5665);
+        assertThat(saved.getLongitude()).isEqualTo(126.978);
+    }
+
+    @Test
+    void UPDATE_Festival의_좌표를_PostgreSQL에_반영한다() {
+        Host host = hostRepository.save(Host.builder().name("university").region("SEOUL").build());
+        Festival festival = festivalRepository.save(festival(host));
+        ImportBatch batch = saveBatch(preview(row(
+                ImportSection.FESTIVALS, 1, "university-main-campus-2026",
+                ImportPreviewAction.UPDATE,
+                Map.of("hostName", "university", "name", "festival",
+                        "startDate", LocalDate.of(2026, 5, 1),
+                        "endDate", LocalDate.of(2026, 5, 2),
+                        "latitude", 35.1796, "longitude", 129.0756,
+                        "hashtags", List.of(), "flag", "OK"),
+                host.getId(), null, festival.getId(), null, false)));
+
+        service.commit(batch.getId(), null);
+
+        Festival updated = festivalRepository.findById(festival.getId()).orElseThrow();
+        assertThat(updated.getLatitude()).isEqualTo(35.1796);
+        assertThat(updated.getLongitude()).isEqualTo(129.0756);
+    }
+
     private String commitResult(Long batchId, CountDownLatch start) throws InterruptedException {
         start.await();
         try {
@@ -161,7 +195,8 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
     }
 
     private StoredPreviewRow lineup(int line, Long festivalId, Long artistId, int order) {
-        return row(ImportSection.LINEUPS, line, "university-2026", ImportPreviewAction.CREATE,
+        return row(ImportSection.LINEUPS, line, "university-main-campus-2026",
+                ImportPreviewAction.CREATE,
                 Map.of("day", 1, "order", order, "artistRaw", "new",
                         "artistCanonical", "new", "revealed", true),
                 null, artistId, festivalId, ArtistMatchStatus.MATCHED, true);
@@ -181,16 +216,19 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
     }
 
     private StoredPreviewRow newFestival(int line, Long hostId) {
-        return row(ImportSection.FESTIVALS, line, "university-2026", ImportPreviewAction.CREATE,
+        return row(ImportSection.FESTIVALS, line, "university-main-campus-2026",
+                ImportPreviewAction.CREATE,
                 Map.of("hostName", "university", "name", "festival",
                         "startDate", LocalDate.of(2026, 5, 1),
                         "endDate", LocalDate.of(2026, 5, 2),
+                        "latitude", 37.5665, "longitude", 126.978,
                         "hashtags", List.of(), "flag", "OK"),
                 hostId, null, null, null, false);
     }
 
     private StoredPreviewRow newLineup(int line) {
-        return row(ImportSection.LINEUPS, line, "university-2026", ImportPreviewAction.CREATE,
+        return row(ImportSection.LINEUPS, line, "university-main-campus-2026",
+                ImportPreviewAction.CREATE,
                 Map.of("day", 1, "order", 1, "artistRaw", "new",
                         "artistCanonical", "new", "revealed", true),
                 null, null, null, ArtistMatchStatus.NEW, true);
@@ -207,7 +245,7 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
     }
 
     private Festival festival(Host host) {
-        return Festival.builder().host(host).importKey("university-2026").name("festival")
+        return Festival.builder().host(host).importKey("university-main-campus-2026").name("festival")
                 .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2)).build();
     }
 
