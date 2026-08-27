@@ -53,6 +53,11 @@ public class ImportAdminController {
     private final ImportHistoryService importHistoryService;
     private final Clock clock;
 
+    @Operation(summary = "임포트 이력 조회",
+            description = "type은 BUNDLE / FESTIVALS / LINEUPS / ARTISTS, status는 PENDING / COMMITTED / EXPIRED 중 하나다. 최신 업로드 순으로 내려간다.")
+    @ApiResponse(responseCode = "200", description = "임포트 이력 페이지")
+    @ApiResponse(responseCode = "400", description = "IMPORT_INVALID_TYPE / IMPORT_INVALID_STATUS / INVALID_PAGE / INVALID_PAGE_SIZE",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping
     public PageResponse<ImportHistoryItemResponse> history(
             @RequestParam(name = "type", required = false) String type,
