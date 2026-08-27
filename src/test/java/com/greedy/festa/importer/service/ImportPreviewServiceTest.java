@@ -37,6 +37,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -529,7 +530,7 @@ class ImportPreviewServiceTest {
     }
 
     @Test
-    void 국내_범위_밖_좌표는_warning이지만_CREATE다() {
+    void 국내_범위_밖_위도와_경도는_각각_필드를_명시한_warning이지만_CREATE다() {
         Host host = host(1L, "연세대학교", "연세대");
         given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
@@ -541,8 +542,14 @@ class ImportPreviewServiceTest {
                 ImportConflictPolicy.UPDATE, Instant.EPOCH);
 
         assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
-        assertThat(response.rows().getFirst().warnings()).extracting("code")
-                .containsExactly("COORDINATES_OUTSIDE_KOREA");
+        assertThat(response.rows().getFirst().warnings())
+                .extracting("code", "message")
+                .containsExactly(
+                        tuple("COORDINATES_OUTSIDE_KOREA",
+                                "latitude 값이 국내 권장 범위(33~39) 밖에 있습니다"),
+                        tuple("COORDINATES_OUTSIDE_KOREA",
+                                "longitude 값이 국내 권장 범위(124~132) 밖에 있습니다")
+                );
     }
 
     private MockMultipartFile festivalFile(
