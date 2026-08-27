@@ -1,5 +1,7 @@
 package com.greedy.festa.festival.controller;
 
+import com.greedy.festa.festival.dto.FestivalBatchPublishRequest;
+import com.greedy.festa.festival.dto.FestivalBatchPublishResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalPublishResponse;
 import com.greedy.festa.festival.dto.FestivalReviewItem;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -71,6 +74,19 @@ public class FestivalAdminController {
             @RequestParam(defaultValue = "20") int size
     ) {
         return festivalCoverageService.findCoverage(year, status, page, size);
+    }
+
+    @Operation(summary = "축제 일괄 발행",
+            description = "festivalIds는 1~100개다. 부분 성공을 허용해 발행된 id는 publishedIds에, 막힌 id는 "
+                    + "failed[]에 사유와 함께 담긴다. reason은 LINEUP_EMPTY / HOST_NOT_LINKED / "
+                    + "COORDINATES_MISSING / NOT_FOUND이며 에러 코드와는 다른 체계다. "
+                    + "없는 id도 전체를 막지 않고, 이미 발행된 축제에 다시 요청해도 오류가 아니다.")
+    @ApiResponse(responseCode = "200", description = "발행된 id 목록과 실패 목록")
+    @ApiResponse(responseCode = "400", description = "FESTIVAL_INVALID_IDS",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @PostMapping("/publish")
+    public FestivalBatchPublishResponse batchPublish(@RequestBody FestivalBatchPublishRequest request) {
+        return festivalAdminService.batchPublish(request.festivalIds());
     }
 
     @Operation(summary = "축제 발행",
