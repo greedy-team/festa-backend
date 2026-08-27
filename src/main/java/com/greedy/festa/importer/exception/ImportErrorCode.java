@@ -15,6 +15,7 @@ public enum ImportErrorCode implements ErrorCode {
     IMPORT_INVALID_CSV("CSV 파일을 읽을 수 없습니다", HttpStatus.BAD_REQUEST),
     IMPORT_MISSING_FILE("필수 CSV 파일이 없습니다", HttpStatus.BAD_REQUEST),
     IMPORT_INVALID_TYPE("지원하지 않는 임포트 유형입니다", HttpStatus.BAD_REQUEST),
+    IMPORT_INVALID_STATUS("지원하지 않는 임포트 상태입니다", HttpStatus.BAD_REQUEST),
     IMPORT_INVALID_CONFLICT_POLICY("지원하지 않는 충돌 정책입니다", HttpStatus.BAD_REQUEST),
     PAYLOAD_TOO_LARGE("업로드 가능한 파일 크기를 초과했습니다", HttpStatus.CONTENT_TOO_LARGE),
     IMPORT_NOT_FOUND("임포트 배치를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
