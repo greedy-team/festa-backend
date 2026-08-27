@@ -8,4 +8,8 @@ springdoc:
 
 app:
   cors:
-    allowed-origins: "http://localhost:3000"
+    # 배포 프론트와 로컬을 함께 적는다. 오리진은 비밀이 아니고 자주 바뀌지도 않아
+    # 리뷰를 거치도록 리터럴로 둔다.
+    # CORS_ALLOWED_ORIGINS 덮어쓰기는 아직 컨테이너까지 닿는 통로가 없다 — 쓰려면
+    # CD write_env와 deploy/compose.yaml을 함께 열어야 한다(#47이 터진 그 자리다).
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://every-festa.com,https://www.every-festa.com}

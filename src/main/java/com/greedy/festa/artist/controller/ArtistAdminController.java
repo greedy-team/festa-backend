@@ -1,6 +1,7 @@
 package com.greedy.festa.artist.controller;
 
 import com.greedy.festa.artist.dto.ArtistCreateRequest;
+import com.greedy.festa.artist.dto.ArtistMergeCandidateResponse;
 import com.greedy.festa.artist.dto.ArtistMergeRequest;
 import com.greedy.festa.artist.dto.ArtistMergeResponse;
 import com.greedy.festa.artist.dto.ArtistResponse;
@@ -8,6 +9,7 @@ import com.greedy.festa.artist.dto.ArtistSortType;
 import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.exception.ArtistErrorCode;
+import com.greedy.festa.artist.service.ArtistMergeCandidateService;
 import com.greedy.festa.artist.service.ArtistMergeService;
 import com.greedy.festa.artist.service.ArtistService;
 import com.greedy.festa.global.config.SwaggerConfig;
@@ -43,6 +45,7 @@ public class ArtistAdminController {
 
     private final ArtistService artistService;
     private final ArtistMergeService artistMergeService;
+    private final ArtistMergeCandidateService artistMergeCandidateService;
 
     @Operation(summary = "아티스트 등록",
             description = "이름은 기존 아티스트의 이름뿐 아니라 별칭과도 겹칠 수 없다.")
@@ -72,6 +75,21 @@ public class ArtistAdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return artistService.findAll(needsReview, q, toGenre(genre), toSortType(sort), page, size);
+    }
+
+    @Operation(summary = "병합 후보 조회",
+            description = "이름이나 별칭이 겹치는 아티스트만 후보가 되고, 같은 축제 출연은 점수를 올릴 뿐 단독으로는 후보가 되지 않는다. "
+                    + "similarity 내림차순, 출연 횟수 내림차순, artistId 오름차순으로 정렬해 limit(1~20)만큼 준다.")
+    @ApiResponse(responseCode = "200", description = "기준 아티스트와 병합 후보 목록")
+    @ApiResponse(responseCode = "400", description = "ARTIST_INVALID_LIMIT",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "ARTIST_NOT_FOUND",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @GetMapping("/{id}/merge-candidates")
+    public ArtistMergeCandidateResponse findMergeCandidates(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "5") Long limit) {
+        return artistMergeCandidateService.findAll(id, limit);
     }
 
     @Operation(summary = "아티스트 수정",

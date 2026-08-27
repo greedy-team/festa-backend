@@ -15,6 +15,8 @@ import java.util.List;
 
 public interface ArtistRepository extends JpaRepository<Artist, Long> {
 
+    List<Artist> findAllByIdNot(Long id);
+
     boolean existsByName(String name);
 
     boolean existsByNameAndIdNot(String name, Long id);
@@ -72,4 +74,22 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM Artist a WHERE a.id IN :ids ORDER BY a.id")
     List<Artist> findAllByIdInForUpdate(@Param("ids") Collection<Long> ids);
+
+    @Query("""
+            SELECT l.artist.id AS artistId, COUNT(l) AS appearanceCount
+            FROM Lineup l
+            WHERE l.festival.publishedAt IS NOT NULL
+              AND l.festival.endDate < CURRENT_DATE
+            GROUP BY l.artist.id
+            """)
+    List<ArtistAppearanceCount> countAllAppearances();
+
+    @Query("""
+            SELECT DISTINCT other.artist.id
+            FROM Lineup mine
+            JOIN Lineup other ON other.festival = mine.festival
+            WHERE mine.artist.id = :artistId
+              AND other.artist.id <> :artistId
+            """)
+    List<Long> findSameFestivalArtistIds(@Param("artistId") Long artistId);
 }
