@@ -1,5 +1,6 @@
 package com.greedy.festa.festival.controller;
 
+import com.greedy.festa.festival.dto.FestivalDetailResponse;
 import com.greedy.festa.festival.dto.FestivalListItemResponse;
 import com.greedy.festa.festival.dto.FestivalListSortType;
 import com.greedy.festa.festival.dto.FestivalRecentResponse;
@@ -23,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -94,6 +96,17 @@ public class FestivalController {
     public ItemsResponse<FestivalRecentResponse> getRecentFestivals(
             @RequestParam(defaultValue = "10") int limit) {
         return ItemsResponse.of(festivalService.getRecentPublished(limit));
+    }
+
+    @Operation(summary = "축제 상세 조회",
+            description = "lineup은 day 오름차순, day 안에서는 무대 순서대로 담기며 그 배열 순서가 계약이다. "
+                    + "미공개 아티스트는 자리를 유지한 채 artists 원소의 필드가 모두 null이다.")
+    @ApiResponse(responseCode = "200", description = "축제 상세")
+    @ApiResponse(responseCode = "404", description = "FESTIVAL_NOT_FOUND",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @GetMapping("/{id}")
+    public FestivalDetailResponse getFestivalDetail(@PathVariable Long id) {
+        return festivalService.getFestivalDetail(id);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

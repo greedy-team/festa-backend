@@ -1,5 +1,8 @@
 package com.greedy.festa.festival.service;
 
+import com.greedy.festa.artist.entity.Lineup;
+import com.greedy.festa.artist.repository.LineupRepository;
+import com.greedy.festa.festival.dto.FestivalDetailResponse;
 import com.greedy.festa.festival.dto.FestivalListItemResponse;
 import com.greedy.festa.festival.dto.FestivalListSortType;
 import com.greedy.festa.festival.dto.FestivalRecentResponse;
@@ -34,6 +37,7 @@ public class FestivalService {
     private static final int LIST_MAX_PAGE_SIZE = 50;
 
     private final FestivalRepository festivalRepository;
+    private final LineupRepository lineupRepository;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -91,6 +95,17 @@ public class FestivalService {
         );
 
         return PageResponse.from(festivals.map(FestivalListItemResponse::from));
+    }
+
+    @Transactional(readOnly = true)
+    public FestivalDetailResponse getFestivalDetail(Long id) {
+        LocalDate today = LocalDate.now(clock.withZone(SEOUL));
+
+        Festival target = festivalRepository.findPublishedDetailById(id)
+                .orElseThrow(() -> new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
+        List<Lineup> lineups = lineupRepository.findDetailRowsByFestivalId(id);
+
+        return FestivalDetailResponse.of(target, lineups, today);
     }
 
     private void validateLimit(int limit, int maxLimit) {
