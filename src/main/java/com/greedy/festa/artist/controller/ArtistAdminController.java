@@ -11,7 +11,7 @@ import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.service.ArtistMergeCandidateService;
 import com.greedy.festa.artist.service.ArtistMergeService;
-import com.greedy.festa.artist.service.ArtistService;
+import com.greedy.festa.artist.service.ArtistAdminService;
 import com.greedy.festa.global.config.SwaggerConfig;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.ErrorResponse;
@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ArtistAdminController {
 
-    private final ArtistService artistService;
+    private final ArtistAdminService artistAdminService;
     private final ArtistMergeService artistMergeService;
     private final ArtistMergeCandidateService artistMergeCandidateService;
 
@@ -56,7 +56,7 @@ public class ArtistAdminController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping
     public ResponseEntity<ArtistResponse> create(@RequestBody ArtistCreateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(artistService.create(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(artistAdminService.create(request));
     }
 
     @Operation(summary = "아티스트 목록 조회",
@@ -74,7 +74,7 @@ public class ArtistAdminController {
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return artistService.findAll(needsReview, q, toGenre(genre), toSortType(sort), page, size);
+        return artistAdminService.findAll(needsReview, q, toGenre(genre), toSortType(sort), page, size);
     }
 
     @Operation(summary = "병합 후보 조회",
@@ -103,7 +103,7 @@ public class ArtistAdminController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PatchMapping("/{id}")
     public ArtistResponse update(@PathVariable Long id, @RequestBody ArtistUpdateRequest request) {
-        return artistService.update(id, request);
+        return artistAdminService.update(id, request);
     }
 
     @Operation(summary = "아티스트 삭제",
@@ -115,7 +115,7 @@ public class ArtistAdminController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        artistService.delete(id);
+        artistAdminService.delete(id);
         return ResponseEntity.noContent().build();
     }
 

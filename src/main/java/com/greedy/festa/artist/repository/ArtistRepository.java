@@ -61,6 +61,92 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             Pageable pageable
     );
 
+    @Query(value = """
+            SELECT a AS artist, COUNT(DISTINCT f) AS appearanceCount
+            FROM Artist a
+            LEFT JOIN Lineup l ON l.artist = a
+            LEFT JOIN Festival f ON f = l.festival
+                 AND f.publishedAt IS NOT NULL
+                 AND f.endDate < :today
+            WHERE (:genre IS NULL OR a.genre = :genre)
+              AND (:q IS NULL
+                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR EXISTS (SELECT 1 FROM ArtistAlias al
+                              WHERE al.artist = a
+                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
+            GROUP BY a
+            ORDER BY COUNT(DISTINCT f) DESC, a.id ASC
+            """,
+            countQuery = """
+            SELECT COUNT(a)
+            FROM Artist a
+            WHERE (:genre IS NULL OR a.genre = :genre)
+              AND (:q IS NULL
+                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR EXISTS (SELECT 1 FROM ArtistAlias al
+                              WHERE al.artist = a
+                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
+            """)
+    Page<ArtistWithAppearanceCount> findPublicByAppearances(
+            @Param("genre") ArtistGenre genre,
+            @Param("q") String q,
+            @Param("today") LocalDate today,
+            Pageable pageable
+    );
+
+    @Query(value = """
+            SELECT a AS artist, COUNT(DISTINCT f) AS appearanceCount
+            FROM Artist a
+            LEFT JOIN Lineup l ON l.artist = a
+            LEFT JOIN Festival f ON f = l.festival
+                 AND f.publishedAt IS NOT NULL
+                 AND f.endDate < :today
+            WHERE (:genre IS NULL OR a.genre = :genre)
+              AND (:q IS NULL
+                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR EXISTS (SELECT 1 FROM ArtistAlias al
+                              WHERE al.artist = a
+                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
+            GROUP BY a
+            ORDER BY a.name ASC, a.id ASC
+            """,
+            countQuery = """
+            SELECT COUNT(a)
+            FROM Artist a
+            WHERE (:genre IS NULL OR a.genre = :genre)
+              AND (:q IS NULL
+                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR EXISTS (SELECT 1 FROM ArtistAlias al
+                              WHERE al.artist = a
+                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
+            """)
+    Page<ArtistWithAppearanceCount> findPublicByName(
+            @Param("genre") ArtistGenre genre,
+            @Param("q") String q,
+            @Param("today") LocalDate today,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT l.artist.id AS artistId,
+                   f.id AS festivalId,
+                   f.name AS festivalName,
+                   h.shortName AS hostShortName,
+                   f.startDate AS startDate
+            FROM Lineup l
+            JOIN l.festival f
+            JOIN f.host h
+            WHERE l.artist.id IN :artistIds
+              AND f.publishedAt IS NOT NULL
+              AND f.endDate < :today
+            GROUP BY l.artist.id, f.id, f.name, h.shortName, f.startDate
+            ORDER BY l.artist.id ASC, f.startDate DESC, f.id DESC
+            """)
+    List<ArtistRecentFestivalRow> findRecentFestivals(
+            @Param("artistIds") Collection<Long> artistIds,
+            @Param("today") LocalDate today
+    );
+
     @Query("""
         SELECT a AS artist, COUNT(l) AS appearanceCount
         FROM Lineup l

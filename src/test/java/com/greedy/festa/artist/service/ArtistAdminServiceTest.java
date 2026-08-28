@@ -35,7 +35,7 @@ import static org.mockito.Mockito.verify;
 
 @SuppressWarnings("NonAsciiCharacters")
 @ExtendWith(MockitoExtension.class)
-public class ArtistServiceTest {
+public class ArtistAdminServiceTest {
 
     @Mock
     ArtistRepository artistRepository;
@@ -44,7 +44,7 @@ public class ArtistServiceTest {
     ArtistAliasRepository artistAliasRepository;
 
     @InjectMocks
-    ArtistService artistService;
+    ArtistAdminService artistService;
 
     private static final Long 아티스트_id = 1L;
     private static final String 아티스트_이름 = "BTS";

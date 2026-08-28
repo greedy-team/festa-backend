@@ -84,6 +84,14 @@ public class SecurityConfigTest {
     }
 
     @Test
+    void 공개_아티스트_목록과_상세는_토큰_없이_접근할_수_있다() throws Exception {
+        mockMvc.perform(get("/api/artists"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/artists/1"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void 유효한_토큰이면_통과한다() throws Exception {
         // given
         String 토큰 = jwtTokenProvider.issue("admin");
@@ -143,6 +151,16 @@ public class SecurityConfigTest {
         @GetMapping("/api/admin/imports")
         String imports() {
             return "imports";
+        }
+
+        @GetMapping("/api/artists")
+        String artists() {
+            return "artists";
+        }
+
+        @GetMapping("/api/artists/{id}")
+        String artist() {
+            return "artist";
         }
     }
 }
