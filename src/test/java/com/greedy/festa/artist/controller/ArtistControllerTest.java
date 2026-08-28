@@ -122,6 +122,15 @@ class ArtistControllerTest {
     }
 
     @Test
+    void 숫자가_아닌_id는_INVALID_PATH_VARIABLE_400을_반환한다() throws Exception {
+        mockMvc.perform(get("/api/artists/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_PATH_VARIABLE"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.instance").value("/api/artists/abc"));
+    }
+
+    @Test
     void 잘못된_목록_파라미터는_공통_오류_형식으로_반환한다() throws Exception {
         given(artistService.findAll(-1, 10, null, "APPEARANCES", null))
                 .willThrow(new FestaException(CommonErrorCode.INVALID_PAGE));

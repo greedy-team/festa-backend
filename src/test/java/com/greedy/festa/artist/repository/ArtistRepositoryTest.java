@@ -276,6 +276,35 @@ class ArtistRepositoryTest extends PostgresTestSupport {
     }
 
     @Test
+    void 공개_목록의_출연_횟수는_같은_축제의_여러_라인업을_한번만_센다() {
+        Artist 아티스트 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Festival 같은축제 = 축제를_넣는다(
+                "이틀 출연 축제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3), true);
+        라인업에_올린다(아티스트, 같은축제, 1);
+        라인업에_올린다(아티스트, 같은축제, 2);
+        반영한다();
+
+        Page<ArtistWithAppearanceCount> 결과 = artistRepository.findPublicByAppearances(
+                null, null, LocalDate.of(2026, 6, 1), PageRequest.of(0, 10));
+
+        assertThat(결과.getContent().getFirst().getAppearanceCount()).isEqualTo(1L);
+    }
+
+    @Test
+    void 공개_목록_검색은_LIKE_와일드카드를_문자_그대로_찾는다() {
+        아티스트를_넣는다("100% 라이브", ArtistGenre.BAND, false);
+        아티스트를_넣는다("100점 라이브", ArtistGenre.BAND, false);
+        반영한다();
+
+        Page<ArtistWithAppearanceCount> 결과 = artistRepository.findPublicByName(
+                null, "100\\%", LocalDate.of(2026, 6, 1), PageRequest.of(0, 10));
+
+        assertThat(결과.getContent())
+                .extracting(row -> row.getArtist().getName())
+                .containsExactly("100% 라이브");
+    }
+
+    @Test
     void 공개_이름순은_페이지네이션_전에_적용되고_total도_전체_필터_결과다() {
         Artist 가나다 = 아티스트를_넣는다("가나다", ArtistGenre.BAND, false);
         Artist 라마바 = 아티스트를_넣는다("라마바", ArtistGenre.BAND, false);
@@ -308,6 +337,25 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         assertThat(결과)
                 .extracting(ArtistRecentFestivalRow::getFestivalName)
                 .containsExactly("최근 축제", "예전 축제");
+    }
+
+    @Test
+    void 최근_축제는_상세_이력과_같이_시작일_내림차순으로_정한다() {
+        Artist 아티스트 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Festival 먼저시작_나중종료 = 축제를_넣는다(
+                "장기 축제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 20), true);
+        Festival 나중시작_먼저종료 = 축제를_넣는다(
+                "단기 축제", LocalDate.of(2026, 5, 10), LocalDate.of(2026, 5, 12), true);
+        라인업에_올린다(아티스트, 먼저시작_나중종료);
+        라인업에_올린다(아티스트, 나중시작_먼저종료);
+        반영한다();
+
+        List<ArtistRecentFestivalRow> 결과 = artistRepository.findRecentFestivals(
+                List.of(아티스트.getId()), LocalDate.of(2026, 6, 1));
+
+        assertThat(결과)
+                .extracting(ArtistRecentFestivalRow::getFestivalName)
+                .containsExactly("단기 축제", "장기 축제");
     }
 
     @Test
@@ -371,10 +419,14 @@ class ArtistRepositoryTest extends PostgresTestSupport {
     }
 
     private void 라인업에_올린다(Artist 아티스트, Festival 대상축제) {
+        라인업에_올린다(아티스트, 대상축제, 1);
+    }
+
+    private void 라인업에_올린다(Artist 아티스트, Festival 대상축제, int 일차) {
         em.persist(Lineup.builder()
                 .festival(대상축제)
                 .artist(아티스트)
-                .day(1)
+                .day(일차)
                 .displayOrder(다음_출연_순서++)
                 .build());
     }

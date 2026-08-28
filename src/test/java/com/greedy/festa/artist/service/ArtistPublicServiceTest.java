@@ -95,6 +95,18 @@ class ArtistPublicServiceTest {
     }
 
     @Test
+    void 검색어의_LIKE_와일드카드는_리터럴로_이스케이프한다() {
+        given(artistRepository.findPublicByAppearances(
+                eq(null), eq("100\\%\\_live"), any(LocalDate.class), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        artistService.findAll(0, 10, null, "APPEARANCES", "100%_live");
+
+        verify(artistRepository).findPublicByAppearances(
+                eq(null), eq("100\\%\\_live"), any(LocalDate.class), any(Pageable.class));
+    }
+
+    @Test
     void 현재_페이지의_최근_축제는_아티스트별_반복_조회_없이_한번에_가져온다() {
         Artist first = artist(1L, "BTS");
         Artist second = artist(2L, "잔나비");
@@ -170,6 +182,28 @@ class ArtistPublicServiceTest {
         assertThat(response.upcomingShows().items().getFirst().dday()).isZero();
         assertThat(response.appearances().total()).isEqualTo(1);
         assertThat(response.appearances().items().getFirst().festivalId()).isEqualTo(11L);
+    }
+
+    @Test
+    void 축제_기간을_벗어난_라인업_day는_예정_공연에_노출하지_않는다() {
+        Artist artist = artist(1L, "BTS");
+        Host host = host(1L, "한국대학교");
+        Festival endedFestival = festival(10L, host, "종료 축제",
+                LocalDate.of(2026, 8, 20), LocalDate.of(2026, 8, 22));
+
+        given(artistRepository.findById(1L)).willReturn(Optional.of(artist));
+        given(artistAliasRepository.findByArtistId(1L)).willReturn(List.of());
+        given(lineupRepository.findPublishedByArtistId(1L)).willReturn(List.of(
+                Lineup.builder().artist(artist).festival(endedFestival)
+                        .day(10).displayOrder(1).build()));
+
+        ArtistDetailResponse response = artistService.findById(1L);
+
+        assertThat(response.upcomingShows().items()).isEmpty();
+        assertThat(response.upcomingShows().total()).isZero();
+        assertThat(response.appearances().items())
+                .extracting(item -> item.festivalId())
+                .containsExactly(10L);
     }
 
     @Test

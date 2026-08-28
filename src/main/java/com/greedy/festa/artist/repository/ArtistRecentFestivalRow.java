@@ -12,5 +12,5 @@ public interface ArtistRecentFestivalRow {
 
     String getHostShortName();
 
-    LocalDate getEndDate();
+    LocalDate getStartDate();
 }
