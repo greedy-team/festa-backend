@@ -148,6 +148,49 @@ class ImportPreviewServiceTest {
     }
 
     @Test
+    void 기존_Festival_기간을_벗어난_Lineup_day는_INVALID다() {
+        Festival existing = Festival.builder()
+                .host(host(1L, "연세대학교", "연세대"))
+                .importKey("연세대학교-신촌캠퍼스-2026").name("대동제")
+                .startDate(LocalDate.of(2026, 5, 30)).endDate(LocalDate.of(2026, 6, 1))
+                .build();
+        ReflectionTestUtils.setField(existing, "id", 3L);
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
+        String header = String.join(",", ImportSection.LINEUPS.headers());
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.LINEUPS,
+                csv("file", "lineup.csv", header + "\n"
+                        + "연세대학교-신촌캠퍼스-2026,4,1,,,false\n"),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.summary().invalid()).isOne();
+        assertThat(response.rows().getFirst().errors()).anySatisfy(error -> {
+            assertThat(error.code()).isEqualTo("LINEUP_DAY_OUT_OF_RANGE");
+            assertThat(error.blocker()).isTrue();
+        });
+    }
+
+    @Test
+    void bundle의_Festival_기간을_벗어난_Lineup_day는_INVALID다() {
+        Host host = host(1L, "연세대학교", "연세대");
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
+        String header = String.join(",", ImportSection.LINEUPS.headers());
+        MockMultipartFile lineup = csv("lineups", "lineup.csv", header + "\n"
+                + "연세대학교-신촌캠퍼스-2026,4,1,,,false\n");
+
+        ImportPreviewResponse response = service.previewBundle(
+                festivalFile("연세대학교", "", "", ""), lineup, null,
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
+        assertThat(response.rows().get(1).action()).isEqualTo(ImportPreviewAction.INVALID);
+        assertThat(response.rows().get(1).errors()).extracting("code")
+                .containsExactly("LINEUP_DAY_OUT_OF_RANGE");
+    }
+
+    @Test
     void bundle은_실제_도메인_데이터를_저장하지_않고_preview_batch만_저장한다() {
         Host host = host(1L, "연세대학교", "연세대");
         given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));

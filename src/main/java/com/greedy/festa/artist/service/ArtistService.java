@@ -51,7 +51,7 @@ public class ArtistService {
             int page, int size, String genreValue, String sortValue, String query
     ) {
         validatePage(page, size);
-        ArtistGenre genre = parseGenre(genreValue);
+        ArtistGenre genre = ArtistGenre.from(genreValue);
         ArtistPublicSortType sort = ArtistPublicSortType.from(sortValue);
         String normalizedQuery = normalizeQuery(query);
         LocalDate today = today();
@@ -130,17 +130,6 @@ public class ArtistService {
         }
         if (size < 1 || size > 50) {
             throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
-        }
-    }
-
-    private ArtistGenre parseGenre(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return ArtistGenre.valueOf(value);
-        } catch (IllegalArgumentException exception) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_GENRE_TYPE);
         }
     }
 

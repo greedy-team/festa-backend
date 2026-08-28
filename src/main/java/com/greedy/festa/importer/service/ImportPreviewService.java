@@ -40,6 +40,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -452,6 +453,7 @@ public class ImportPreviewService {
         }
         Integer day = positiveInteger(payload.get("day"), "day", errors);
         Integer order = positiveInteger(payload.get("order"), "order", errors);
+        validateLineupDay(day, parentRows, festivals, errors);
         if (duplicateLineupSlots.contains(lineupSlot(importKey, day, order))) {
             errors.add(blocker("DUPLICATE_LINEUP_POSITION",
                     "같은 import_key, day, order 조합이 중복되었습니다"));
@@ -486,6 +488,38 @@ public class ImportPreviewService {
                 festivals.size() == 1 ? festivals.getFirst().getId() : null,
                 Boolean.FALSE.equals(revealed) ? null : match.status(), errors, warnings, null,
                 revealed, List.of(), null);
+    }
+
+    private void validateLineupDay(
+            Integer day,
+            List<StoredPreviewRow> parentRows,
+            List<Festival> festivals,
+            List<PreviewProblem> errors
+    ) {
+        if (day == null) {
+            return;
+        }
+
+        LocalDate startDate = null;
+        LocalDate endDate = null;
+        if (parentRows.size() == 1) {
+            Map<String, Object> festival = parentRows.getFirst().normalized();
+            startDate = dateValue(festival.get("startDate"));
+            endDate = dateValue(festival.get("endDate"));
+        } else if (parentRows.isEmpty() && festivals.size() == 1) {
+            startDate = festivals.getFirst().getStartDate();
+            endDate = festivals.getFirst().getEndDate();
+        }
+
+        if (startDate != null && endDate != null
+                && day > ChronoUnit.DAYS.between(startDate, endDate) + 1) {
+            errors.add(blocker("LINEUP_DAY_OUT_OF_RANGE",
+                    "day 값은 Festival 기간을 벗어날 수 없습니다"));
+        }
+    }
+
+    private LocalDate dateValue(Object value) {
+        return value == null ? null : LocalDate.parse(value.toString());
     }
 
     private ArtistMatch artistMatch(String input, Lookup lookup) {
