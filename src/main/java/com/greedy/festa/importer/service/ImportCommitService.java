@@ -444,6 +444,8 @@ public class ImportCommitService {
                 .posterUrl(nullableText(row.normalized(), "posterUrl"))
                 .description(nullableText(row.normalized(), "description"))
                 .venueName(nullableText(row.normalized(), "venueName"))
+                .latitude(nullableDouble(row.normalized(), "latitude"))
+                .longitude(nullableDouble(row.normalized(), "longitude"))
                 .externalVisitor(enumValue(row.normalized(), "externalVisitorPolicy", ExternalVisitorPolicy.class))
                 .verification(enumValue(row.normalized(), "verificationMethod", VerificationMethod.class))
                 .ticketType(enumValue(row.normalized(), "ticketType", TicketType.class))
@@ -461,6 +463,7 @@ public class ImportCommitService {
                 date(row.normalized(), "startDate"), date(row.normalized(), "endDate"),
                 nullableText(row.normalized(), "posterUrl"), nullableText(row.normalized(), "description"),
                 nullableText(row.normalized(), "venueName"),
+                nullableDouble(row.normalized(), "latitude"), nullableDouble(row.normalized(), "longitude"),
                 enumValue(row.normalized(), "externalVisitorPolicy", ExternalVisitorPolicy.class),
                 enumValue(row.normalized(), "verificationMethod", VerificationMethod.class),
                 enumValue(row.normalized(), "ticketType", TicketType.class),
@@ -558,7 +561,8 @@ public class ImportCommitService {
         return new ImportCommitPayload(
                 value.get("import_key"), value.get("host_name"), value.get("name"),
                 optionalDate(value.get("start_date")), optionalDate(value.get("end_date")),
-                value.get("venue_name"), value.get("poster_url"), payloadList(value.get("image_urls")),
+                value.get("venue_name"), optionalDouble(value.get("latitude")), optionalDouble(value.get("longitude")),
+                value.get("poster_url"), payloadList(value.get("image_urls")),
                 value.get("description"), payloadList(value.get("hashtags")),
                 value.get("external_visitor_policy"), value.get("verification_method"),
                 value.get("ticket_type"), value.get("ticket_open_at"), value.get("admission_raw"),
@@ -621,6 +625,14 @@ public class ImportCommitService {
     private int integer(Map<String, Object> map, String key) {
         Object value = map.get(key);
         return value instanceof Number number ? number.intValue() : Integer.parseInt(value.toString());
+    }
+
+    private Double nullableDouble(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null || value.toString().isBlank()) {
+            return null;
+        }
+        return value instanceof Number number ? number.doubleValue() : Double.valueOf(value.toString());
     }
 
     private boolean booleanValue(Map<String, Object> map, String key) {
@@ -689,6 +701,10 @@ public class ImportCommitService {
 
     private Integer optionalInteger(String value) {
         return value == null || value.isBlank() ? null : Integer.valueOf(value.trim());
+    }
+
+    private Double optionalDouble(String value) {
+        return value == null || value.isBlank() ? null : Double.valueOf(value.trim());
     }
 
     private Boolean optionalBoolean(String value) {

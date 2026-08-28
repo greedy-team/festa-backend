@@ -6,7 +6,7 @@ import com.greedy.festa.global.exception.ErrorResponse;
 import com.greedy.festa.host.dto.HostCreateRequest;
 import com.greedy.festa.host.dto.HostResponse;
 import com.greedy.festa.host.dto.HostUpdateRequest;
-import com.greedy.festa.host.service.HostService;
+import com.greedy.festa.host.service.HostAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class HostAdminController {
 
-    private final HostService hostService;
+    private final HostAdminService hostAdminService;
 
     @Operation(summary = "주최 등록")
     @ApiResponse(responseCode = "201", description = "등록된 주최")
@@ -44,7 +44,7 @@ public class HostAdminController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping
     public ResponseEntity<HostResponse> create(@RequestBody HostCreateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(hostService.create(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(hostAdminService.create(request));
     }
 
     @Operation(summary = "주최 목록 조회", description = "등록 역순으로 내려간다. 축제 수는 조회 시점에 세어 채운다.")
@@ -53,7 +53,7 @@ public class HostAdminController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping
     public PageResponse<HostResponse> findAll(Pageable pageable) {
-        return hostService.findAll(pageable);
+        return hostAdminService.findAll(pageable);
     }
 
     @Operation(summary = "주최 수정", description = "보내온 항목만 반영한다. 보내지 않은 항목은 기존 값을 그대로 둔다.")
@@ -66,7 +66,7 @@ public class HostAdminController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PatchMapping("/{id}")
     public HostResponse update(@PathVariable Long id, @RequestBody HostUpdateRequest request) {
-        return hostService.update(id, request);
+        return hostAdminService.update(id, request);
     }
 
     @Operation(summary = "주최 삭제", description = "축제가 등록된 주최는 지우지 않는다.")
@@ -77,7 +77,7 @@ public class HostAdminController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        hostService.delete(id);
+        hostAdminService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }

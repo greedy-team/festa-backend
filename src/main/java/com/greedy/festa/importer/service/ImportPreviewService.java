@@ -62,6 +62,14 @@ public class ImportPreviewService {
             "OK", "FETCH_FAILED", "EMPTY_BODY", "EXTRACT_FAILED", "MISMATCH",
             "NO_CANDIDATE", "NO_SOURCE");
     private static final Set<String> DISCOVERIES = Set.of("MANUAL", "SITEMAP", "SEARCH", "PASTED");
+    private static final double MIN_LATITUDE = -90;
+    private static final double MAX_LATITUDE = 90;
+    private static final double MIN_LONGITUDE = -180;
+    private static final double MAX_LONGITUDE = 180;
+    private static final int MIN_KOREA_LATITUDE = 33;
+    private static final int MAX_KOREA_LATITUDE = 39;
+    private static final int MIN_KOREA_LONGITUDE = 124;
+    private static final int MAX_KOREA_LONGITUDE = 132;
 
     private final ImportCsvParser csvParser;
     private final HostRepository hostRepository;
@@ -233,6 +241,14 @@ public class ImportPreviewService {
         if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
             errors.add(error("INVALID_DATE_RANGE", "end_date는 start_date보다 빠를 수 없습니다"));
         }
+        Double latitude = coordinate(payload.get("latitude"), "latitude",
+                MIN_LATITUDE, MAX_LATITUDE, errors);
+        Double longitude = coordinate(payload.get("longitude"), "longitude",
+                MIN_LONGITUDE, MAX_LONGITUDE, errors);
+        coordinateOutsideKorea(latitude, "latitude",
+                MIN_KOREA_LATITUDE, MAX_KOREA_LATITUDE, warnings);
+        coordinateOutsideKorea(longitude, "longitude",
+                MIN_KOREA_LONGITUDE, MAX_KOREA_LONGITUDE, warnings);
 
         String discovery = trim(payload.get("discovery"));
         if (successfulCrawl) {
@@ -291,6 +307,10 @@ public class ImportPreviewService {
         normalized.put("endDate", isoDate(endDate));
         normalized.put("venueName", keepExisting(trim(payload.get("venue_name")),
                 existing == null ? null : existing.getVenueName()));
+        normalized.put("latitude", keepExisting(latitude,
+                existing == null ? null : existing.getLatitude()));
+        normalized.put("longitude", keepExisting(longitude,
+                existing == null ? null : existing.getLongitude()));
         normalized.put("posterUrl", keepExisting(posterCandidate,
                 existing == null ? null : existing.getPosterUrl()));
         normalized.put("imageUrls", imageUrls);
@@ -688,6 +708,38 @@ public class ImportPreviewService {
         } catch (NumberFormatException e) {
             errors.add(error("INVALID_INTEGER", field + " 값은 1 이상의 정수여야 합니다"));
             return null;
+        }
+    }
+
+    private Double coordinate(
+            String value, String field, double minimum, double maximum,
+            List<PreviewProblem> errors
+    ) {
+        String text = trim(value);
+        if (text.isEmpty()) {
+            return null;
+        }
+        try {
+            double coordinate = Double.parseDouble(text);
+            if (!Double.isFinite(coordinate) || coordinate < minimum || coordinate > maximum) {
+                errors.add(error("COORDINATE_OUT_OF_RANGE",
+                        field + " 값이 허용 범위를 벗어났습니다"));
+                return null;
+            }
+            return coordinate;
+        } catch (NumberFormatException e) {
+            errors.add(error("INVALID_COORDINATE", field + " 값은 숫자여야 합니다"));
+            return null;
+        }
+    }
+
+    private void coordinateOutsideKorea(
+            Double coordinate, String field, int minimum, int maximum,
+            List<PreviewProblem> warnings
+    ) {
+        if (coordinate != null && (coordinate < minimum || coordinate > maximum)) {
+            warnings.add(warning("COORDINATES_OUTSIDE_KOREA",
+                    field + " 값이 국내 권장 범위(" + minimum + "~" + maximum + ") 밖에 있습니다"));
         }
     }
 

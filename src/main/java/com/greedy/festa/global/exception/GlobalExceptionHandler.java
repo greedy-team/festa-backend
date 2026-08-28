@@ -4,7 +4,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
@@ -49,6 +51,27 @@ public class GlobalExceptionHandler {
         return toResponse(
                 CommonErrorCode.INVALID_REQUEST_BODY,
                 CommonErrorCode.INVALID_REQUEST_BODY.getMessage(),
+                request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
+            MethodArgumentTypeMismatchException e, HttpServletRequest request) {
+
+        // 경로 변수만 400으로 가른다. 쿼리 파라미터 타입 불일치도 같은 예외로 오지만
+        // 대상이 전부 인증 뒤(/api/admin/**)라 기존 500 동작을 그대로 둔다.
+        if (e.getParameter().hasParameterAnnotation(PathVariable.class)) {
+            log.warn("{} - {}", CommonErrorCode.INVALID_PATH_VARIABLE.name(), e.getName());
+            return toResponse(
+                    CommonErrorCode.INVALID_PATH_VARIABLE,
+                    CommonErrorCode.INVALID_PATH_VARIABLE.getMessage(),
+                    request);
+        }
+
+        log.error("예상하지 못한 예외", e);
+        return toResponse(
+                CommonErrorCode.INTERNAL_SERVER_ERROR,
+                CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
                 request);
     }
 

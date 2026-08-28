@@ -165,8 +165,8 @@ class ImportCommitServiceTest {
 
     @Test
     void 같은_Festival에_INVALID_Lineup이_있으면_정상_Lineup만_선택해도_거부한다() {
-        StoredPreviewRow valid = lineup(1, "university-2026", 1, 1, 20L, 30L, true);
-        StoredPreviewRow invalid = row(ImportSection.LINEUPS, 2, "university-2026",
+        StoredPreviewRow valid = lineup(1, "university-main-campus-2026", 1, 1, 20L, 30L, true);
+        StoredPreviewRow invalid = row(ImportSection.LINEUPS, 2, "university-main-campus-2026",
                 ImportPreviewAction.INVALID,
                 Map.of("day", 1, "order", 2, "artistRaw", "bad", "revealed", true),
                 null, null, 30L, ArtistMatchStatus.UNRESOLVED,
@@ -214,7 +214,7 @@ class ImportCommitServiceTest {
         StoredPreviewRow festival = festival(1, ImportPreviewAction.CREATE, null, null);
         StoredPreviewRow artist = artistRow(1, ImportPreviewAction.CREATE, null);
         StoredPreviewRow lineup = lineupWithArtistName(
-                1, "university-2026", 1, 1, null, null, true, "new alias");
+                1, "university-main-campus-2026", 1, 1, null, null, true, "new alias");
         prepare(preview(artist, festival, lineup));
 
         assertError(() -> service.commit(39L,
@@ -227,7 +227,8 @@ class ImportCommitServiceTest {
         Host host = host(1L, "university");
         StoredPreviewRow artist = artistRow(1, ImportPreviewAction.CREATE, null);
         StoredPreviewRow festival = festival(1, ImportPreviewAction.CREATE, null, 1L);
-        StoredPreviewRow lineup = lineup(1, "university-2026", 1, 1, null, null, true);
+        StoredPreviewRow lineup = lineup(1, "university-main-campus-2026",
+                1, 1, null, null, true);
         ImportBatch batch = prepare(preview(artist, festival, lineup));
         given(hostRepository.findAllById(anyCollection())).willReturn(List.of(host));
         given(artistRepository.save(any(Artist.class))).willAnswer(invocation -> {
@@ -279,7 +280,8 @@ class ImportCommitServiceTest {
         verify(hashtagRepository, never()).deleteAllByFestivalId(any());
         verify(auditRepository, never()).saveAll(any());
 
-        StoredPreviewRow lineup = lineup(1, "university-2026", 1, 1, null, 30L, false);
+        StoredPreviewRow lineup = lineup(1, "university-main-campus-2026",
+                1, 1, null, 30L, false);
         prepare(preview(festival, lineup));
         given(hostRepository.findAllById(anyCollection())).willReturn(List.of(host));
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
@@ -294,7 +296,8 @@ class ImportCommitServiceTest {
         StoredPreviewRow festival = withPolicy(
                 festival(1, ImportPreviewAction.SKIP, 30L, 1L), ImportConflictPolicy.SKIP);
         StoredPreviewRow lineup = withPolicy(
-                lineup(1, "university-2026", 1, 1, 20L, 30L, true), ImportConflictPolicy.SKIP);
+                lineup(1, "university-main-campus-2026",
+                        1, 1, 20L, 30L, true), ImportConflictPolicy.SKIP);
         prepare(preview(festival, lineup));
         given(hostRepository.findAllById(anyCollection())).willReturn(List.of(host));
         given(artistRepository.findAllById(anyCollection())).willReturn(List.of(artist));
@@ -466,7 +469,8 @@ class ImportCommitServiceTest {
 
         Map<String, Object> emptyNormalized = new LinkedHashMap<>(withTags.normalized());
         emptyNormalized.put("hashtags", List.of());
-        StoredPreviewRow withoutTags = row(ImportSection.FESTIVALS, 1, "university-2026",
+        StoredPreviewRow withoutTags = row(
+                ImportSection.FESTIVALS, 1, "university-main-campus-2026",
                 ImportPreviewAction.UPDATE, emptyNormalized, 1L, null, 30L,
                 null, List.of(), false);
         prepare(preview(withoutTags));
@@ -479,8 +483,10 @@ class ImportCommitServiceTest {
 
     @Test
     void 중복_Lineup_position은_delete_전에_stale로_거부한다() {
-        StoredPreviewRow first = lineup(1, "university-2026", 1, 1, 20L, 30L, true);
-        StoredPreviewRow second = lineup(2, "university-2026", 1, 1, 20L, 30L, true);
+        StoredPreviewRow first = lineup(
+                1, "university-main-campus-2026", 1, 1, 20L, 30L, true);
+        StoredPreviewRow second = lineup(
+                2, "university-main-campus-2026", 1, 1, 20L, 30L, true);
         Artist artist = artist(20L, "new artist");
         Host host = host(1L, "university");
         Festival festival = festivalEntity(30L, host, false);
@@ -498,7 +504,8 @@ class ImportCommitServiceTest {
         Artist artist = artist(20L, "new artist");
         Host host = host(1L, "university");
         Festival festival = festivalEntity(30L, host, false);
-        StoredPreviewRow lineup = lineup(1, "university-2026", 1, 1, 20L, 30L, true);
+        StoredPreviewRow lineup = lineup(
+                1, "university-main-campus-2026", 1, 1, 20L, 30L, true);
         ImportBatch batch = prepare(preview(lineup));
         given(artistRepository.findAllById(anyCollection())).willReturn(List.of(artist));
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(artist));
@@ -561,14 +568,14 @@ class ImportCommitServiceTest {
             int line, ImportPreviewAction action, Long matchedFestivalId, Long hostId
     ) {
         Map<String, Object> normalized = new LinkedHashMap<>();
-        normalized.put("importKey", "university-2026");
+        normalized.put("importKey", "university-main-campus-2026");
         normalized.put("hostName", "university");
         normalized.put("name", "festival");
         normalized.put("startDate", LocalDate.of(2026, 5, 1));
         normalized.put("endDate", LocalDate.of(2026, 5, 2));
         normalized.put("hashtags", List.of("spring", "spring"));
         normalized.put("flag", "OK");
-        return row(ImportSection.FESTIVALS, line, "university-2026", action,
+        return row(ImportSection.FESTIVALS, line, "university-main-campus-2026", action,
                 normalized, hostId, null, matchedFestivalId, null, List.of(), false);
     }
 
@@ -633,7 +640,7 @@ class ImportCommitServiceTest {
     }
 
     private Festival festivalEntity(Long id, Host host, boolean published) {
-        Festival festival = Festival.builder().host(host).importKey("university-2026")
+        Festival festival = Festival.builder().host(host).importKey("university-main-campus-2026")
                 .name("festival").startDate(LocalDate.of(2026, 5, 1))
                 .endDate(LocalDate.of(2026, 5, 2)).build();
         ReflectionTestUtils.setField(festival, "id", id);
