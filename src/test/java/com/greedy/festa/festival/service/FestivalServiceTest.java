@@ -1,6 +1,7 @@
 package com.greedy.festa.festival.service;
 
-import com.greedy.festa.festival.dto.FestivalCardResponse;
+import com.greedy.festa.festival.dto.FestivalRecentResponse;
+import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.global.config.JpaConfig;
@@ -74,10 +75,10 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        List<FestivalCardResponse> 결과 = festivalService.getUpcomingFestivals(10);
+        List<FestivalUpcomingResponse> 결과 = festivalService.getUpcomingFestivals(10);
 
         // then
-        assertThat(결과).extracting(FestivalCardResponse::name)
+        assertThat(결과).extracting(FestivalUpcomingResponse::name)
                 .containsExactly("진행_중", "다음_주", "다음_달");
     }
 
@@ -90,10 +91,10 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        List<FestivalCardResponse> 결과 = festivalService.getUpcomingFestivals(10);
+        List<FestivalUpcomingResponse> 결과 = festivalService.getUpcomingFestivals(10);
 
         // then - 폐막일 당일은 아직 종료가 아니다 (endDate >= today)
-        assertThat(결과).extracting(FestivalCardResponse::name).containsExactly("오늘_종료");
+        assertThat(결과).extracting(FestivalUpcomingResponse::name).containsExactly("오늘_종료");
     }
 
     @Test
@@ -104,10 +105,10 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        List<FestivalCardResponse> 결과 = festivalService.getUpcomingFestivals(10);
+        List<FestivalUpcomingResponse> 결과 = festivalService.getUpcomingFestivals(10);
 
         // then
-        assertThat(결과).extracting(FestivalCardResponse::name).containsExactly("발행됨");
+        assertThat(결과).extracting(FestivalUpcomingResponse::name).containsExactly("발행됨");
     }
 
     @Test
@@ -132,15 +133,16 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        List<FestivalCardResponse> 결과 = festivalService.getUpcomingFestivals(10);
+        List<FestivalUpcomingResponse> 결과 = festivalService.getUpcomingFestivals(10);
 
         // then
-        FestivalCardResponse 카드 = 결과.getFirst();
+        FestivalUpcomingResponse 카드 = 결과.getFirst();
         assertThat(카드.festivalId()).isEqualTo(축제.getId());
         assertThat(카드.name()).isEqualTo("대동제");
         assertThat(카드.startDate()).isEqualTo(날짜("2026-05-30"));
         assertThat(카드.endDate()).isEqualTo(날짜("2026-06-01"));
         assertThat(카드.posterUrl()).isEqualTo("https://cdn.example.com/poster.jpg");
+        assertThat(카드.venueName()).isEqualTo("성균관대학교 인문사회과학 캠퍼스");
         assertThat(카드.host().id()).isEqualTo(주최.getId());
         assertThat(카드.host().name()).isEqualTo("테스트_성균관대학교");
         assertThat(카드.host().logoUrl()).isEqualTo("https://cdn.example.com/logo.png");
@@ -156,10 +158,10 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        List<FestivalCardResponse> 결과 = festivalService.getRecentPublished(10);
+        List<FestivalRecentResponse> 결과 = festivalService.getRecentPublished(10);
 
         // then
-        assertThat(결과).extracting(FestivalCardResponse::name)
+        assertThat(결과).extracting(FestivalRecentResponse::name)
                 .containsExactly("일괄_발행_2", "일괄_발행_1", "가장_먼저_발행");
     }
 
@@ -172,10 +174,10 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        List<FestivalCardResponse> 결과 = festivalService.getRecentPublished(10);
+        List<FestivalRecentResponse> 결과 = festivalService.getRecentPublished(10);
 
         // then
-        assertThat(결과).extracting(FestivalCardResponse::name).containsExactly("발행됨");
+        assertThat(결과).extracting(FestivalRecentResponse::name).containsExactly("발행됨");
     }
 
     @Test
@@ -186,10 +188,10 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        List<FestivalCardResponse> 결과 = festivalService.getRecentPublished(10);
+        List<FestivalRecentResponse> 결과 = festivalService.getRecentPublished(10);
 
         // then
-        assertThat(결과).extracting(FestivalCardResponse::name).containsExactly("끝난_축제");
+        assertThat(결과).extracting(FestivalRecentResponse::name).containsExactly("끝난_축제");
     }
 
     @Test
@@ -201,10 +203,10 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        List<FestivalCardResponse> 결과 = festivalService.getUpcomingFestivals(2);
+        List<FestivalUpcomingResponse> 결과 = festivalService.getUpcomingFestivals(2);
 
         // then
-        assertThat(결과).extracting(FestivalCardResponse::name).containsExactly("첫째", "둘째");
+        assertThat(결과).extracting(FestivalUpcomingResponse::name).containsExactly("첫째", "둘째");
     }
 
     @ParameterizedTest
@@ -252,7 +254,7 @@ class FestivalServiceTest extends PostgresTestSupport {
         통계.clear();
 
         // when
-        List<FestivalCardResponse> 결과 = festivalService.getUpcomingFestivals(10);
+        List<FestivalUpcomingResponse> 결과 = festivalService.getUpcomingFestivals(10);
 
         // then
         assertThat(결과).hasSize(3);

@@ -1,6 +1,7 @@
 package com.greedy.festa.festival.service;
 
-import com.greedy.festa.festival.dto.FestivalCardResponse;
+import com.greedy.festa.festival.dto.FestivalRecentResponse;
+import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.repository.FestivalRepository;
@@ -27,7 +28,7 @@ public class FestivalService {
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    public List<FestivalCardResponse> getUpcomingFestivals(int limit) {
+    public List<FestivalUpcomingResponse> getUpcomingFestivals(int limit) {
         validateLimit(limit, UPCOMING_MAX_LIMIT);
 
         LocalDate today = LocalDate.now(clock.withZone(SEOUL));
@@ -35,18 +36,18 @@ public class FestivalService {
         List<Festival> festivals = festivalRepository.findPublishedNotEnded(today, Limit.of(limit));
 
         return festivals.stream()
-                .map(FestivalCardResponse::from)
+                .map(FestivalUpcomingResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<FestivalCardResponse> getRecentPublished(int limit) {
+    public List<FestivalRecentResponse> getRecentPublished(int limit) {
         validateLimit(limit, RECENT_MAX_LIMIT);
 
         List<Festival> festivals = festivalRepository.findRecentlyPublished(Limit.of(limit));
 
         return festivals.stream()
-                .map(FestivalCardResponse::from)
+                .map(FestivalRecentResponse::from)
                 .toList();
     }
 

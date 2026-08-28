@@ -6,4 +6,9 @@ public record ErrorResponse(
         int status,
         String instance
 ) {
+
+    public static ErrorResponse of(ErrorCode errorCode, String instance) {
+        return new ErrorResponse(
+                errorCode.name(), errorCode.getMessage(), errorCode.getStatus().value(), instance);
+    }
 }

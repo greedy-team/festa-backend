@@ -1,6 +1,8 @@
 package com.greedy.festa.festival.controller;
 
-import com.greedy.festa.festival.dto.FestivalCardResponse;
+import com.greedy.festa.festival.dto.FestivalRecentResponse;
+import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
+import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.service.FestivalService;
 import com.greedy.festa.global.dto.ItemsResponse;
 import com.greedy.festa.global.exception.ErrorResponse;
@@ -9,11 +11,15 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Tag(name = "축제", description = "축제 조회. 발행된 축제만 내려간다.")
 @RestController
@@ -30,7 +36,7 @@ public class FestivalController {
     @ApiResponse(responseCode = "400", description = "FESTIVAL_INVALID_LIMIT",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping("/upcoming")
-    public ItemsResponse<FestivalCardResponse> getUpcomingFestivals(
+    public ItemsResponse<FestivalUpcomingResponse> getUpcomingFestivals(
             @RequestParam(defaultValue = "10") int limit) {
         return ItemsResponse.of(festivalService.getUpcomingFestivals(limit));
     }
@@ -41,8 +47,16 @@ public class FestivalController {
     @ApiResponse(responseCode = "400", description = "FESTIVAL_INVALID_LIMIT",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping("/recent")
-    public ItemsResponse<FestivalCardResponse> getRecentFestivals(
+    public ItemsResponse<FestivalRecentResponse> getRecentFestivals(
             @RequestParam(defaultValue = "10") int limit) {
         return ItemsResponse.of(festivalService.getRecentPublished(limit));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleLimitTypeMismatch(HttpServletRequest request) {
+        FestivalErrorCode errorCode = FestivalErrorCode.FESTIVAL_INVALID_LIMIT;
+
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ErrorResponse.of(errorCode, request.getRequestURI()));
     }
 }
