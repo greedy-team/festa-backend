@@ -1,6 +1,7 @@
 package com.greedy.festa.festival.repository;
 
 import com.greedy.festa.festival.entity.Festival;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -70,4 +71,23 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
 
     List<Festival> findAllByImportKeyIn(Collection<String> importKeys);
     List<Festival> findAllByHostIdAndPublishedAtIsNotNull(Long hostId);
+
+    @Query("""
+        SELECT f
+        FROM Festival f
+        JOIN FETCH f.host
+        WHERE f.publishedAt IS NOT NULL
+          AND f.endDate >= :today
+        ORDER BY f.startDate ASC, f.id ASC
+        """)
+    List<Festival> findPublishedNotEnded(@Param("today") LocalDate today, Limit limit);
+
+    @Query("""
+        SELECT f
+        FROM Festival f
+        JOIN FETCH f.host
+        WHERE f.publishedAt IS NOT NULL
+        ORDER BY f.publishedAt DESC, f.id DESC
+        """)
+    List<Festival> findRecentlyPublished(Limit limit);
 }
