@@ -202,50 +202,14 @@ jobs:
           fi
           REMOTE
 
-      - name: 외부 헬스 체크
-        env:
-          OCI_HOST: ${{ secrets.OCI_HOST }}
-          OCI_USER: ${{ secrets.OCI_USER }}
-        run: |
-          if ! curl --fail --silent --show-error \
-            --retry 10 --retry-delay 5 --retry-all-errors \
-            "http://$OCI_HOST:8080/actuator/health"; then
-            ssh \
-              -i "$RUNNER_TEMP/ssh/key" \
-              -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
-              -p "$OCI_PORT" \
-              "$OCI_USER@$OCI_HOST" \
-              "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' EXPECTED_IMAGE='$IMAGE_NAME:$GITHUB_SHA' bash -s" <<'REMOTE'
-            set -Eeuo pipefail
-            cd "$OCI_DEPLOY_PATH"
-            deploying_image="$(cat .deployment-in-progress 2>/dev/null || true)"
-            previous_image="$(cat .last-successful-image 2>/dev/null || true)"
-
-            if [[ "$deploying_image" != "$EXPECTED_IMAGE" ]]; then
-              echo "배포 상태가 예상과 달라 자동 롤백을 중단합니다." >&2
-              exit 1
-            fi
-            if [[ -z "$previous_image" ]] || ! docker image inspect "$previous_image" >/dev/null 2>&1; then
-              echo "외부 헬스 체크 실패: 롤백할 이전 정상 이미지가 없습니다." >&2
-              rm -f .deployment-in-progress
-              exit 1
-            fi
-
-            echo "외부 헬스 체크 실패. $previous_image 로 롤백합니다." >&2
-            APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 300
-            curl --fail --silent --show-error --retry 10 --retry-delay 3 \
-              http://localhost:8080/actuator/health
-            rm -f .deployment-in-progress
-          REMOTE
-            exit 1
-          fi
-
       - name: HTTPS 서빙 확인
         env:
           PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL || 'https://api.every-festa.com' }}
         run: |
           # 실제 서비스 경로는 도메인 → 앞단(TLS 종단) → app:8080이다. 8080만 보면
           # 인증서 발급 실패나 443 차단을 배포 성공으로 넘겨버린다.
+          # 앱 8080은 루프백에만 묶여 있어 러너에서 직접 부를 수 없다 —
+          # 밖에서 하는 확인은 이 스텝 하나다.
           # 첫 배포에서는 인증서를 받아오는 시간이 필요해 넉넉히 재시도한다.
           if ! curl --fail --silent --show-error \
             --retry 15 --retry-delay 4 --retry-all-errors --connect-timeout 10 \

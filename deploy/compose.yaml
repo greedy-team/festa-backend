@@ -36,8 +36,10 @@ services:
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:?ADMIN_JWT_SECRET is required}
       ADMIN_INITIAL_USERNAME: ${ADMIN_INITIAL_USERNAME:-}
       ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+    # 루프백에만 묶는다. 앞단 caddy는 compose 네트워크로 app:8080에 닿고,
+    # 서버 자신의 헬스 체크와 롤백도 localhost로 닿는다. 인터넷에서만 못 닿는다.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   # TLS 종단. Cloudflare가 DNS 전용(회색 구름)이라 앞단에서 대신 끊어주지 않는다.
   caddy:
