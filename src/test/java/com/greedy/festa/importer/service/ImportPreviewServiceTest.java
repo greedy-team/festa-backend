@@ -37,6 +37,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -84,7 +85,7 @@ class ImportPreviewServiceTest {
 
         assertThat(response.rows()).hasSize(2);
         assertThat(response.rows()).allMatch(row -> row.action() == ImportPreviewAction.CREATE);
-        assertThat(response.rows().get(1).importKey()).isEqualTo("연세대학교-2026");
+        assertThat(response.rows().get(1).importKey()).isEqualTo("연세대학교-신촌캠퍼스-2026");
         assertThat(response.rows().get(1).matchedFestivalId()).isNull();
         assertThat(response.rows().get(1).errors()).isEmpty();
     }
@@ -125,13 +126,13 @@ class ImportPreviewServiceTest {
     void 같은_importKey_day_order의_Lineup은_모두_INVALID다() {
         Festival existing = Festival.builder()
                 .host(host(1L, "연세대학교", "연세대"))
-                .importKey("연세대학교-2026").name("대동제")
+                .importKey("연세대학교-신촌캠퍼스-2026").name("대동제")
                 .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2))
                 .build();
         ReflectionTestUtils.setField(existing, "id", 3L);
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
         String header = String.join(",", ImportSection.LINEUPS.headers());
-        String row = "연세대학교-2026,1,1,,,false";
+        String row = "연세대학교-신촌캠퍼스-2026,1,1,,,false";
 
         ImportPreviewResponse response = service.previewSingle(
                 ImportSection.LINEUPS,
@@ -142,7 +143,7 @@ class ImportPreviewServiceTest {
         assertThat(response.blockers()).anySatisfy(blocker -> {
             assertThat(blocker.code()).isEqualTo("DUPLICATE_LINEUP_POSITION");
             assertThat(blocker.count()).isEqualTo(2);
-            assertThat(blocker.values()).containsExactly("연세대학교-2026");
+            assertThat(blocker.values()).containsExactly("연세대학교-신촌캠퍼스-2026");
         });
     }
 
@@ -236,7 +237,7 @@ class ImportPreviewServiceTest {
     void UPDATE의_빈_poster_url은_기존값을_유지하고_offset없는_시간은_서울로_해석한다() {
         Host host = host(1L, "연세대학교", "연세대");
         Festival existing = Festival.builder()
-                .host(host).importKey("연세대학교-2026").name("기존 축제")
+                .host(host).importKey("연세대학교-신촌캠퍼스-2026").name("기존 축제")
                 .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2))
                 .posterUrl("https://example.com/old.jpg").build();
         ReflectionTestUtils.setField(existing, "id", 5L);
@@ -262,7 +263,7 @@ class ImportPreviewServiceTest {
     void 기존_importKey는_onConflict에_따라_UPDATE와_SKIP으로_판정한다() {
         Host host = host(1L, "연세대학교", "연세대");
         Festival existing = Festival.builder()
-                .host(host).importKey("연세대학교-2026").name("기존 축제")
+                .host(host).importKey("연세대학교-신촌캠퍼스-2026").name("기존 축제")
                 .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2))
                 .build();
         ReflectionTestUtils.setField(existing, "id", 5L);
@@ -285,7 +286,7 @@ class ImportPreviewServiceTest {
     void 발행된_Festival과_그_Lineup은_모두_INVALID다() {
         Host host = host(1L, "연세대학교", "연세대");
         Festival published = Festival.builder()
-                .host(host).importKey("연세대학교-2026").name("기존 축제")
+                .host(host).importKey("연세대학교-신촌캠퍼스-2026").name("기존 축제")
                 .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2))
                 .build();
         ReflectionTestUtils.setField(published, "id", 5L);
@@ -412,8 +413,8 @@ class ImportPreviewServiceTest {
     void flag가_OK가_아니면_빈_축제_필드도_SKIP이다() {
         String header = String.join(",", ImportSection.FESTIVALS.headers());
         String row = String.join(",",
-                "연세대학교-2026", "연세대학교", "", "", "", "", "", "", "", "",
-                "", "", "", "", "", "", "", "NO_CANDIDATE", "");
+                "연세대학교-신촌캠퍼스-2026", "연세대학교", "", "", "", "", "", "", "", "",
+                "", "", "", "", "", "", "", "", "", "NO_CANDIDATE", "");
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
 
         ImportPreviewResponse response = service.previewSingle(
@@ -431,8 +432,8 @@ class ImportPreviewServiceTest {
     void crawler_실패_flag_6종은_SKIP이다(String flag) {
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
         String row = String.join(",",
-                "연세대학교-2026", "연세대학교", "", "", "", "", "", "", "", "",
-                "", "", "", "", "", "", "", flag, "");
+                "연세대학교-신촌캠퍼스-2026", "연세대학교", "", "", "", "", "", "", "", "",
+                "", "", "", "", "", "", "", "", "", flag, "");
 
         ImportPreviewResponse response = service.previewSingle(
                 ImportSection.FESTIVALS, csv("file", "festivals.csv",
@@ -458,6 +459,99 @@ class ImportPreviewServiceTest {
         assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
     }
 
+    @Test
+    void 정상_좌표를_숫자로_normalized에_저장한다() {
+        Host host = host(1L, "연세대학교", "연세대");
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.FESTIVALS,
+                festivalFile("연세대학교", "", "", ""),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
+        assertThat(response.rows().getFirst().values())
+                .containsEntry("latitude", 37.5665)
+                .containsEntry("longitude", 126.978);
+    }
+
+    @Test
+    void 빈_좌표는_오류없이_null로_normalized에_저장한다() {
+        Host host = host(1L, "연세대학교", "연세대");
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
+        String row = festivalRow("연세대학교", "", "", "", "", "");
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.FESTIVALS, csv("file", "festivals.csv",
+                        String.join(",", ImportSection.FESTIVALS.headers()) + "\n" + row + "\n"),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
+        assertThat(response.rows().getFirst().errors()).isEmpty();
+        assertThat(response.rows().getFirst().values())
+                .containsEntry("latitude", null)
+                .containsEntry("longitude", null);
+    }
+
+    @Test
+    void 비숫자_좌표는_INVALID다() {
+        Host host = host(1L, "연세대학교", "연세대");
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
+        String row = festivalRow("연세대학교", "", "", "", "북위", "동경");
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.FESTIVALS, csv("file", "festivals.csv",
+                        String.join(",", ImportSection.FESTIVALS.headers()) + "\n" + row + "\n"),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
+        assertThat(response.rows().getFirst().errors()).extracting("code")
+                .containsOnly("INVALID_COORDINATE");
+    }
+
+    @Test
+    void 지구_좌표_범위를_벗어나면_INVALID다() {
+        Host host = host(1L, "연세대학교", "연세대");
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
+        String row = festivalRow("연세대학교", "", "", "", "90.1", "180.1");
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.FESTIVALS, csv("file", "festivals.csv",
+                        String.join(",", ImportSection.FESTIVALS.headers()) + "\n" + row + "\n"),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
+        assertThat(response.rows().getFirst().errors()).extracting("code")
+                .containsOnly("COORDINATE_OUT_OF_RANGE");
+    }
+
+    @Test
+    void 국내_범위_밖_위도와_경도는_각각_필드를_명시한_warning이지만_CREATE다() {
+        Host host = host(1L, "연세대학교", "연세대");
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
+        String row = festivalRow("연세대학교", "", "", "", "40.0", "123.9");
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.FESTIVALS, csv("file", "festivals.csv",
+                        String.join(",", ImportSection.FESTIVALS.headers()) + "\n" + row + "\n"),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
+        assertThat(response.rows().getFirst().warnings())
+                .extracting("code", "message")
+                .containsExactly(
+                        tuple("COORDINATES_OUTSIDE_KOREA",
+                                "latitude 값이 국내 권장 범위(33~39) 밖에 있습니다"),
+                        tuple("COORDINATES_OUTSIDE_KOREA",
+                                "longitude 값이 국내 권장 범위(124~132) 밖에 있습니다")
+                );
+    }
+
     private MockMultipartFile festivalFile(
             String hostName, String posterUrl, String imageUrls, String ticketOpenAt
     ) {
@@ -467,15 +561,24 @@ class ImportPreviewServiceTest {
     }
 
     private String festivalRow(String hostName, String posterUrl, String imageUrls, String ticketOpenAt) {
+        return festivalRow(hostName, posterUrl, imageUrls, ticketOpenAt, "37.5665", "126.9780");
+    }
+
+    private String festivalRow(
+            String hostName, String posterUrl, String imageUrls, String ticketOpenAt,
+            String latitude, String longitude
+    ) {
         return String.join(",",
-                "연세대학교-2026", hostName, "대동제 2026", "2026-05-30", "2026-06-01", "노천극장",
+                "연세대학교-신촌캠퍼스-2026", hostName, "대동제 2026",
+                "2026-05-30", "2026-06-01", "노천극장", latitude, longitude,
                 posterUrl, imageUrls, "설명", "봄|축제", "ALLOWED", "NONE", "FREE",
                 ticketOpenAt, "무료", "https://example.com/source", "MANUAL", "OK", "");
     }
 
     private MockMultipartFile lineupFile(String revealed, String raw, String canonical) {
         String csv = String.join(",", ImportSection.LINEUPS.headers()) + "\n"
-                + String.join(",", "연세대학교-2026", "1", "1", raw, canonical, revealed) + "\n";
+                + String.join(",", "연세대학교-신촌캠퍼스-2026",
+                        "1", "1", raw, canonical, revealed) + "\n";
         return csv("lineups", "lineup.csv", csv);
     }
 

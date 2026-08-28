@@ -23,7 +23,7 @@ class ImportCsvParserTest {
     void crawler_최신_CSV_header_계약과_정확히_일치한다() {
         assertThat(ImportSection.FESTIVALS.headers()).containsExactly(
                 "import_key", "host_name", "name", "start_date", "end_date", "venue_name",
-                "poster_url", "image_urls", "description", "hashtags",
+                "latitude", "longitude", "poster_url", "image_urls", "description", "hashtags",
                 "external_visitor_policy", "verification_method", "ticket_type",
                 "ticket_open_at", "admission_raw", "source_url", "discovery", "flag",
                 "instagram_url");
@@ -64,6 +64,22 @@ class ImportCsvParserTest {
         FestaException thrown = catchThrowableOfType(FestaException.class,
                 () -> parser.parse(file("artists.csv", "name,genre\n10CM,BAND\n"),
                         ImportSection.ARTISTS));
+
+        assertThat(thrown.getErrorCode()).isEqualTo(ImportErrorCode.IMPORT_INVALID_CSV_HEADER);
+    }
+
+    @Test
+    void 기존_19컬럼_festivals_CSV는_header_오류다() {
+        String oldHeader = String.join(",",
+                "import_key", "host_name", "name", "start_date", "end_date", "venue_name",
+                "poster_url", "image_urls", "description", "hashtags",
+                "external_visitor_policy", "verification_method", "ticket_type",
+                "ticket_open_at", "admission_raw", "source_url", "discovery", "flag",
+                "instagram_url");
+        FestaException thrown = catchThrowableOfType(FestaException.class,
+                () -> parser.parse(file("festivals.csv", oldHeader + "\n"
+                                + ",".repeat(18) + "\n"),
+                        ImportSection.FESTIVALS));
 
         assertThat(thrown.getErrorCode()).isEqualTo(ImportErrorCode.IMPORT_INVALID_CSV_HEADER);
     }
