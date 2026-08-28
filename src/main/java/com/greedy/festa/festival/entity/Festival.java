@@ -107,6 +107,7 @@ public class Festival extends BaseEntity {
     public void updateFromImport(
             Host host, String name, LocalDate startDate, LocalDate endDate,
             String posterUrl, String description, String venueName,
+            Double latitude, Double longitude,
             ExternalVisitorPolicy externalVisitor, VerificationMethod verification,
             TicketType ticketType, Instant ticketOpenAt, String admissionRaw,
             String instagramUrl, String discovery, String crawlFlag,
@@ -119,6 +120,8 @@ public class Festival extends BaseEntity {
         this.posterUrl = posterUrl;
         this.description = description;
         this.venueName = venueName;
+        this.latitude = latitude;
+        this.longitude = longitude;
         this.externalVisitor = externalVisitor;
         this.verification = verification;
         this.ticketType = ticketType;

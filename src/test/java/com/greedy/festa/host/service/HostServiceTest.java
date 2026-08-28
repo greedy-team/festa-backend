@@ -1,209 +1,181 @@
 package com.greedy.festa.host.service;
 
+import com.greedy.festa.artist.entity.Artist;
+import com.greedy.festa.artist.entity.Lineup;
+import com.greedy.festa.festival.entity.Festival;
+import com.greedy.festa.global.config.JpaConfig;
 import com.greedy.festa.global.exception.FestaException;
-import com.greedy.festa.host.dto.HostCreateRequest;
-import com.greedy.festa.host.dto.HostResponse;
-import com.greedy.festa.host.dto.HostUpdateRequest;
+import com.greedy.festa.host.dto.HostDetailResponse;
+import com.greedy.festa.host.dto.HostDetailResponse.FrequentArtist;
+import com.greedy.festa.host.dto.HostDetailResponse.HistoryItem;
+import com.greedy.festa.host.dto.HostDetailResponse.UpcomingFestival;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
-import com.greedy.festa.host.repository.HostRepository;
+import com.greedy.festa.support.PostgresTestSupport;
+import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 @SuppressWarnings("NonAsciiCharacters")
-@ExtendWith(MockitoExtension.class)
-class HostServiceTest {
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@ActiveProfiles("test")
+@Import({JpaConfig.class, HostService.class, HostServiceTest.고정된_시계.class})
+class HostServiceTest extends PostgresTestSupport {
 
-    @Mock
-    private HostRepository hostRepository;
+    // UTC로는 2026-05-20이고 KST로는 2026-05-21인 시각을 일부러 골랐다.
+    // "오늘"을 KST로 고정하지 않으면 아래 단언이 하루씩 어긋나므로,
+    // 모든 테스트가 타임존 회귀 테스트를 겸한다.
+    private static final Instant 기준시각 = Instant.parse("2026-05-20T15:30:00Z");
 
-    @InjectMocks
+    @TestConfiguration
+    static class 고정된_시계 {
+        @Bean
+        Clock clock() {
+            return Clock.fixed(기준시각, ZoneOffset.UTC);
+        }
+    }
+
+    @Autowired
     private HostService hostService;
 
-    static List<String> 잘못된_이름() {
-        return Arrays.asList(null, "", "   ", "연".repeat(101));
-    }
+    @Autowired
+    private EntityManager em;
 
-    @ParameterizedTest
-    @MethodSource("잘못된_이름")
-    void 이름이_비었거나_100자를_넘으면_등록에_실패한다(String name) {
-        // given
-        HostCreateRequest request = createRequest(name, "서울 서대문구");
+    private Host 주최;
+    private Artist 자주온;
+    private Artist 한번온;
 
-        // when
-        FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> hostService.create(request)
-        );
+    @BeforeEach
+    void setUp() {
+        주최 = em.merge(Host.builder()
+                .name("테스트대학교")
+                .shortName("테스트대")
+                .region("서울 광진구")
+                .homepageUrl("https://test.ac.kr")
+                .build());
 
-        // then
-        assertThat(thrown.getErrorCode()).isEqualTo(HostErrorCode.HOST_INVALID_NAME);
-    }
+        자주온 = 아티스트를_넣는다("자주오는밴드");
+        한번온 = 아티스트를_넣는다("한번온밴드");
 
-    static List<String> 잘못된_지역() {
-        return Arrays.asList(null, "", "   ", "서".repeat(51));
-    }
+        Festival 예정 = 축제를_넣는다("예정축제", "2026-05-24", "2026-05-26", true);
+        축제를_넣는다("오늘끝나는축제", "2026-05-19", "2026-05-21", true);
 
-    @ParameterizedTest
-    @MethodSource("잘못된_지역")
-    void 지역이_비었거나_50자를_넘으면_등록에_실패한다(String region) {
-        // given
-        HostCreateRequest request = createRequest("연세대학교", region);
+        // 종료된 발행 축제 4건 — HISTORY_SIZE(2)로 잘리므로 오래된 2건이 빠진다.
+        // 2건만 두면 items.size() == total이 되어 자르기가 검증되지 않는다.
+        Festival 어제종료 = 축제를_넣는다("어제끝난축제", "2026-05-17", "2026-05-20", true);
+        Festival 작년 = 축제를_넣는다("작년축제", "2025-05-20", "2025-05-22", true);
+        축제를_넣는다("재작년축제", "2024-05-20", "2024-05-22", true);
+        축제를_넣는다("삼년전축제", "2023-05-20", "2023-05-22", true);
 
-        // when
-        FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> hostService.create(request)
-        );
+        Festival 미발행과거 = 축제를_넣는다("미발행축제", "2026-01-10", "2026-01-12", false);
 
-        // then
-        assertThat(thrown.getErrorCode()).isEqualTo(HostErrorCode.HOST_INVALID_REGION);
-    }
+        라인업에_올린다(어제종료, 자주온, 1);
+        라인업에_올린다(어제종료, null, 2);      // 시크릿 게스트
+        라인업에_올린다(작년, 자주온, 1);
+        라인업에_올린다(작년, 한번온, 2);
+        라인업에_올린다(예정, 자주온, 1);        // 아직 안 끝났으므로 집계 대상이 아니다
+        라인업에_올린다(미발행과거, 한번온, 1);  // 미발행이므로 집계 대상이 아니다
 
-    @Test
-    void 이미_있는_이름이면_등록에_실패한다() {
-        // given
-        HostCreateRequest request = createRequest("연세대학교", "서울 서대문구");
-        given(hostRepository.existsByName("연세대학교")).willReturn(true);
-
-        // when
-        FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> hostService.create(request)
-        );
-
-        // then
-        assertThat(thrown.getErrorCode()).isEqualTo(HostErrorCode.HOST_DUPLICATE_NAME);
+        em.flush();
+        em.clear();
     }
 
     @Test
-    void 등록에_성공하면_요청_값이_그대로_담기고_축제_수는_0이다() {
-        // given
-        HostCreateRequest request = createRequest("연세대학교", "서울 서대문구");
-        given(hostRepository.existsByName("연세대학교")).willReturn(false);
-        given(hostRepository.save(any(Host.class))).willAnswer(it -> it.getArgument(0));
+    void 발행된_축제만_상세에_나온다() {
+        HostDetailResponse response = hostService.getHostDetail(주최.getId());
 
-        // when
-        HostResponse response = hostService.create(request);
-
-        // then
         assertSoftly(softly -> {
-            softly.assertThat(response.name()).isEqualTo("연세대학교");
-            softly.assertThat(response.shortName()).isEqualTo("연세대");
-            softly.assertThat(response.region()).isEqualTo("서울 서대문구");
-            softly.assertThat(response.festivalCount()).isZero();
+            softly.assertThat(response.upcomingFestivals())
+                    .extracting(UpcomingFestival::name)
+                    .doesNotContain("미발행축제");
+            softly.assertThat(response.festivalHistory().items())
+                    .extracting(HistoryItem::name)
+                    .doesNotContain("미발행축제");
+            softly.assertThat(response.festivalHistory().total()).isEqualTo(4);
+            softly.assertThat(response.availableYears())
+                    .containsExactly(2026, 2025, 2024, 2023);
+            softly.assertThat(response.homepageUrl()).isEqualTo("https://test.ac.kr");
         });
     }
 
     @Test
-    void 없는_주최를_수정하면_실패한다() {
-        // given
-        given(hostRepository.findById(1L)).willReturn(Optional.empty());
-        HostUpdateRequest request = new HostUpdateRequest(null, null, null, null, null, null, null);
+    void 예정과_이력은_종료일로_갈리고_dday는_kst_기준이다() {
+        HostDetailResponse response = hostService.getHostDetail(주최.getId());
 
-        // when
-        FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> hostService.update(1L, request)
-        );
-
-        // then
-        assertThat(thrown.getErrorCode()).isEqualTo(HostErrorCode.HOST_NOT_FOUND);
-    }
-
-    @Test
-    void 보내지_않은_필드는_수정되지_않는다() {
-        // given
-        given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
-        given(hostRepository.countFestivalsByHostId(1L)).willReturn(2L);
-        HostUpdateRequest request = new HostUpdateRequest(
-                null, null, null, null, null, null, "https://yonsei.ac.kr");
-
-        // when
-        HostResponse response = hostService.update(1L, request);
-
-        // then
         assertSoftly(softly -> {
-            softly.assertThat(response.name()).isEqualTo("연세대학교");
-            softly.assertThat(response.shortName()).isEqualTo("연세대");
-            softly.assertThat(response.region()).isEqualTo("서울 서대문구");
-            softly.assertThat(response.bannerUrl()).isEqualTo("https://cdn.festa.kr/hosts/3/banner.jpg");
-            softly.assertThat(response.homepageUrl()).isEqualTo("https://yonsei.ac.kr");
-            softly.assertThat(response.festivalCount()).isEqualTo(2L);
+            // 오늘 끝나는 축제는 아직 "다가오는" 쪽이다 (endDate >= 오늘)
+            softly.assertThat(response.upcomingFestivals())
+                    .extracting(UpcomingFestival::name, UpcomingFestival::dday)
+                    .containsExactly(
+                            tuple("오늘끝나는축제", -2L),
+                            tuple("예정축제", 3L));
+            // 이력은 종료된 것만, 최신순 HISTORY_SIZE(2)건이며 total은 자르기 전 개수다
+            softly.assertThat(response.festivalHistory().items())
+                    .extracting(HistoryItem::name)
+                    .containsExactly("어제끝난축제", "작년축제");
         });
     }
 
     @Test
-    void 빈_문자열을_보내면_값이_비워진다() {
-        // given
-        given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
-        given(hostRepository.countFestivalsByHostId(1L)).willReturn(0L);
-        HostUpdateRequest request = new HostUpdateRequest(
-                null, null, null, null, "", null, null);
+    void 자주_온_아티스트는_출연이_많은_순이고_시크릿_게스트는_빠진다() {
+        HostDetailResponse response = hostService.getHostDetail(주최.getId());
 
-        // when
-        HostResponse response = hostService.update(1L, request);
-
-        // then
-        assertSoftly(softly -> {
-            softly.assertThat(response.bannerUrl()).isNull();
-            softly.assertThat(response.name()).isEqualTo("연세대학교");
-        });
+        assertThat(response.frequentArtists())
+                .extracting(FrequentArtist::artistId, FrequentArtist::appearanceCount)
+                .containsExactly(
+                        tuple(자주온.getId(), 2L),
+                        tuple(한번온.getId(), 1L));
     }
 
     @Test
-    void 축제가_남아_있으면_삭제에_실패한다() {
-        // given
-        given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
-        given(hostRepository.countFestivalsByHostId(1L)).willReturn(3L);
+    void 없는_주최는_host_not_found다() {
+        FestaException exception = catchThrowableOfType(
+                FestaException.class, () -> hostService.getHostDetail(999_999L));
 
-        // when
-        FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> hostService.delete(1L)
-        );
-
-        // then
-        assertThat(thrown.getErrorCode()).isEqualTo(HostErrorCode.HOST_HAS_FESTIVALS);
-        verify(hostRepository, never()).delete(any());
+        assertThat(exception.getErrorCode()).isEqualTo(HostErrorCode.HOST_NOT_FOUND);
     }
 
-    @Test
-    void 축제가_없으면_삭제된다() {
-        // given
-        Host host = host();
-        given(hostRepository.findById(1L)).willReturn(Optional.of(host));
-        given(hostRepository.countFestivalsByHostId(1L)).willReturn(0L);
-
-        // when
-        hostService.delete(1L);
-
-        // then
-        verify(hostRepository).delete(host);
-    }
-
-    private Host host() {
-        return Host.builder()
-                .name("연세대학교")
-                .shortName("연세대")
-                .region("서울 서대문구")
-                .bannerUrl("https://cdn.festa.kr/hosts/3/banner.jpg")
+    private Festival 축제를_넣는다(String name, String 시작, String 종료, boolean 발행) {
+        Festival festival = Festival.builder()
+                .host(주최)
+                .name(name)
+                .startDate(LocalDate.parse(시작))
+                .endDate(LocalDate.parse(종료))
                 .build();
+        if (발행) {
+            festival.publish(기준시각);
+        }
+        return em.merge(festival);
     }
 
-    private HostCreateRequest createRequest(String name, String region) {
-        return new HostCreateRequest(name, "연세대", region, null, null, null, null);
+    private Artist 아티스트를_넣는다(String name) {
+        return em.merge(Artist.builder().name(name).build());
+    }
+
+    private void 라인업에_올린다(Festival festival, Artist artist, int displayOrder) {
+        em.merge(Lineup.builder()
+                .festival(festival)
+                .artist(artist)
+                .day(1)
+                .displayOrder(displayOrder)
+                .build());
     }
 }

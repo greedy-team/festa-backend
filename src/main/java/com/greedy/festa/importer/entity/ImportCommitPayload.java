@@ -14,6 +14,8 @@ public record ImportCommitPayload(
         @JsonProperty("start_date") LocalDate startDate,
         @JsonProperty("end_date") LocalDate endDate,
         @JsonProperty("venue_name") String venueName,
+        @JsonProperty("latitude") Double latitude,
+        @JsonProperty("longitude") Double longitude,
         @JsonProperty("poster_url") String posterUrl,
         @JsonProperty("image_urls") List<String> imageUrls,
         @JsonProperty("description") String description,

@@ -178,9 +178,14 @@ jobs:
           fi
           printf '%s\n' "$IMAGE_NAME:$IMAGE_TAG" > .deployment-in-progress
 
-          if ! APP_IMAGE="$IMAGE_NAME:$IMAGE_TAG" docker compose --env-file app.env up -d --wait --wait-timeout 180 \
+          if ! APP_IMAGE="$IMAGE_NAME:$IMAGE_TAG" docker compose --env-file app.env up -d --wait --wait-timeout 300 \
             || ! curl --fail --silent --show-error --retry 10 --retry-delay 3 \
               http://localhost:8080/actuator/health; then
+            # 롤백하면 실패한 컨테이너가 사라져 원인이 영영 남지 않는다. 되돌리기 전에 찍는다.
+            # APP_IMAGE를 다시 넘기는 이유는 compose.yaml이 이 값을 필수로 선언해서,
+            # 주지 않으면 logs가 그 자리에서 죽기 때문이다.
+            echo "=== 실패한 앱 컨테이너 로그 (마지막 200줄) ===" >&2
+            APP_IMAGE="$IMAGE_NAME:$IMAGE_TAG" docker compose --env-file app.env logs --tail=200 --no-color app >&2 || true
             previous_image="$(cat .last-successful-image 2>/dev/null || true)"
             if [[ -z "$previous_image" ]] || ! docker image inspect "$previous_image" >/dev/null 2>&1; then
               echo "배포 실패: 롤백할 이전 정상 이미지가 없습니다." >&2
@@ -189,7 +194,7 @@ jobs:
             fi
 
             echo "새 이미지 배포 실패. $previous_image 로 롤백합니다." >&2
-            APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 180
+            APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 300
             curl --fail --silent --show-error --retry 10 --retry-delay 3 \
               http://localhost:8080/actuator/health
             rm -f .deployment-in-progress
@@ -227,7 +232,7 @@ jobs:
             fi
 
             echo "외부 헬스 체크 실패. $previous_image 로 롤백합니다." >&2
-            APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 180
+            APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 300
             curl --fail --silent --show-error --retry 10 --retry-delay 3 \
               http://localhost:8080/actuator/health
             rm -f .deployment-in-progress

@@ -70,6 +70,7 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
     long countLineupsByFestivalId(@Param("festivalId") Long festivalId);
 
     List<Festival> findAllByImportKeyIn(Collection<String> importKeys);
+    List<Festival> findAllByHostIdAndPublishedAtIsNotNull(Long hostId);
 
     @Query("""
         SELECT f
