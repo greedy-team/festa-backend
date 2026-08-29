@@ -120,6 +120,44 @@ class FestivalControllerTest {
     }
 
     @Test
+    void 목록의_status가_어휘_밖이면_400_FESTIVAL_INVALID_STATUS_TYPE이다() throws Exception {
+        // given - 파싱은 컨트롤러의 FestivalStatus.from이 한다. 이 컨트롤러의 로컬
+        //         @ExceptionHandler는 타입 불일치만 잡으므로 FestaException은 전역 핸들러가 받는다
+        // when & then
+        mockMvc.perform(get("/api/festivals").param("status", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("FESTIVAL_INVALID_STATUS_TYPE"))
+                .andExpect(jsonPath("$.instance").value("/api/festivals"));
+    }
+
+    @Test
+    void 목록의_status가_빈_값이면_필터를_주지_않은_것과_같다() throws Exception {
+        // given - from("")이 던지지 않고 null을 돌려줘야 서비스가 status 없이 불린다
+        given(festivalService.getFestivals(null, null, null, null, null, FestivalListSortType.LATEST, 0, 20))
+                .willReturn(PageResponse.from(new PageImpl<>(List.of(목록_항목()),
+                        PageRequest.of(0, 20), 1)));
+
+        // when & then
+        mockMvc.perform(get("/api/festivals").param("status", ""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].name").value("대동제"));
+    }
+
+    @Test
+    void 목록의_q는_컨트롤러가_손대지_않고_서비스로_넘긴다() throws Exception {
+        // given - 공백 정리와 LIKE 이스케이프는 서비스의 몫이다
+        given(festivalService.getFestivals(null, null, null, null, "  대동  ",
+                FestivalListSortType.LATEST, 0, 20))
+                .willReturn(PageResponse.from(new PageImpl<>(List.of(목록_항목()),
+                        PageRequest.of(0, 20), 1)));
+
+        // when & then
+        mockMvc.perform(get("/api/festivals").param("q", "  대동  "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].name").value("대동제"));
+    }
+
+    @Test
     void 목록_응답에는_venueName이_없다() throws Exception {
         // given
         given(festivalService.getFestivals(null, null, null, null, null, FestivalListSortType.LATEST, 0, 20))
