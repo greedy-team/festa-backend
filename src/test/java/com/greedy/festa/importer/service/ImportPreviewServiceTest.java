@@ -6,6 +6,7 @@ import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.repository.FestivalRepository;
+import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.repository.HostRepository;
 import com.greedy.festa.global.exception.FestaException;
@@ -64,7 +65,7 @@ class ImportPreviewServiceTest {
         codec = new PreviewJsonCodec(JsonMapper.builder().findAndAddModules().build());
         service = new ImportPreviewService(
                 new ImportCsvParser(), hostRepository, artistRepository, artistAliasRepository,
-                festivalRepository, importBatchRepository, codec);
+                festivalRepository, importBatchRepository, codec, ClockConfig.KST);
         lenient().when(importBatchRepository.save(any(ImportBatch.class))).thenAnswer(invocation -> {
             ImportBatch batch = invocation.getArgument(0);
             ReflectionTestUtils.setField(batch, "id", 99L);

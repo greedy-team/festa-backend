@@ -58,7 +58,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ImportPreviewService {
 
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final Set<String> FLAGS = Set.of(
             "OK", "FETCH_FAILED", "EMPTY_BODY", "EXTRACT_FAILED", "MISMATCH",
             "NO_CANDIDATE", "NO_SOURCE");
@@ -79,6 +78,7 @@ public class ImportPreviewService {
     private final FestivalRepository festivalRepository;
     private final ImportBatchRepository importBatchRepository;
     private final PreviewJsonCodec previewJsonCodec;
+    private final ZoneId kstZoneId;
 
     @Transactional
     public ImportPreviewResponse previewBundle(
@@ -679,7 +679,7 @@ public class ImportPreviewService {
             return OffsetDateTime.parse(text).toInstant();
         } catch (DateTimeException ignored) {
             try {
-                return LocalDateTime.parse(text).atZone(SEOUL).toInstant();
+                return LocalDateTime.parse(text).atZone(kstZoneId).toInstant();
             } catch (DateTimeException e) {
                 errors.add(error("INVALID_TICKET_OPEN_AT",
                         "ticket_open_at은 ISO-8601 datetime이어야 합니다"));
