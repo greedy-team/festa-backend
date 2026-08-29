@@ -90,4 +90,51 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
         ORDER BY f.publishedAt DESC, f.id DESC
         """)
     List<Festival> findRecentlyPublished(Limit limit);
+
+    @Query(value = """
+        SELECT f
+        FROM Festival f
+        JOIN FETCH f.host h
+        WHERE f.publishedAt IS NOT NULL
+          AND (:hostId IS NULL OR h.id = :hostId)
+          AND (CAST(:yearStart AS date) IS NULL
+               OR (f.startDate >= :yearStart AND f.startDate < :nextYearStart))
+          AND (:artistId IS NULL
+               OR EXISTS (SELECT 1 FROM Lineup l
+                          WHERE l.festival = f AND l.artist.id = :artistId))
+          AND (CAST(:status AS String) IS NULL
+               OR (:status = 'UPCOMING' AND f.startDate > :today)
+               OR (:status = 'ONGOING'  AND f.startDate <= :today AND f.endDate >= :today)
+               OR (:status = 'ENDED'    AND f.endDate < :today))
+          AND (CAST(:q AS String) IS NULL
+               OR LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+        """,
+            countQuery = """
+        SELECT COUNT(f)
+        FROM Festival f
+        JOIN f.host h
+        WHERE f.publishedAt IS NOT NULL
+          AND (:hostId IS NULL OR h.id = :hostId)
+          AND (CAST(:yearStart AS date) IS NULL
+               OR (f.startDate >= :yearStart AND f.startDate < :nextYearStart))
+          AND (:artistId IS NULL
+               OR EXISTS (SELECT 1 FROM Lineup l
+                          WHERE l.festival = f AND l.artist.id = :artistId))
+          AND (CAST(:status AS String) IS NULL
+               OR (:status = 'UPCOMING' AND f.startDate > :today)
+               OR (:status = 'ONGOING'  AND f.startDate <= :today AND f.endDate >= :today)
+               OR (:status = 'ENDED'    AND f.endDate < :today))
+          AND (CAST(:q AS String) IS NULL
+               OR LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+        """)
+    Page<Festival> findPublishedRows(
+            @Param("hostId") Long hostId,
+            @Param("yearStart") LocalDate yearStart,
+            @Param("nextYearStart") LocalDate nextYearStart,
+            @Param("artistId") Long artistId,
+            @Param("status") String status,
+            @Param("today") LocalDate today,
+            @Param("q") String q,
+            Pageable pageable
+    );
 }

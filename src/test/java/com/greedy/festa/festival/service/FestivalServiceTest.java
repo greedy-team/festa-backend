@@ -1,15 +1,28 @@
 package com.greedy.festa.festival.service;
 
+import com.greedy.festa.artist.entity.Artist;
+import com.greedy.festa.artist.entity.Lineup;
+import com.greedy.festa.festival.dto.FestivalListItemResponse;
+import com.greedy.festa.festival.dto.FestivalListSortType;
 import com.greedy.festa.festival.dto.FestivalRecentResponse;
+import com.greedy.festa.festival.dto.FestivalStatus;
 import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
+import com.greedy.festa.festival.dto.HostSummaryResponse;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.global.config.JpaConfig;
+import com.greedy.festa.global.dto.PageResponse;
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.support.PostgresTestSupport;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
@@ -23,12 +36,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
-
-import java.time.Clock;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -261,6 +268,366 @@ class FestivalServiceTest extends PostgresTestSupport {
         assertThat(통계.getPrepareStatementCount()).isEqualTo(1);
     }
 
+    @Test
+    void 발행되지_않은_축제는_목록에서_빠진다() {
+        // given
+        Host 주최 = 주최("테스트_연세대학교");
+        축제(주최, "발행됨", 날짜(2026, 6, 1), 날짜(2026, 6, 3), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "미발행", 날짜(2026, 6, 1), 날짜(2026, 6, 3), null);
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name).containsExactly("발행됨");
+        assertThat(결과.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void 주최가_연결되지_않은_축제는_목록에서_빠진다() {
+        // given - 발행 조건이 주최 연결을 요구하므로 이런 행은 원래 존재하면 안 된다
+        Host 주최 = 주최("테스트_고려대학교");
+        축제(주최, "주최 있음", 날짜(2026, 6, 1), 날짜(2026, 6, 3), 시각("2026-05-01T00:00:00Z"));
+        축제(null, "주최 없음", 날짜(2026, 6, 1), 날짜(2026, 6, 3), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name).containsExactly("주최 있음");
+        assertThat(결과.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void 같은_아티스트가_여러_day에_출연해도_축제는_한_번만_나온다() {
+        // given
+        Host 주최 = 주최("테스트_성균관대학교");
+        Festival 축제 = 축제(주최, "이틀 출연", 날짜(2026, 6, 1), 날짜(2026, 6, 3), 시각("2026-05-01T00:00:00Z"));
+        Artist 아티스트 = 아티스트("아이유");
+        라인업(축제, 아티스트, 1, 0);
+        라인업(축제, 아티스트, 2, 0);
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(null, null, 아티스트.getId(), FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).hasSize(1);
+        assertThat(결과.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void artistId를_주면_그_아티스트가_출연하지_않은_축제는_빠진다() {
+        // given
+        Host 주최 = 주최("테스트_서강대학교");
+        Festival 출연한_축제 =
+                축제(주최, "출연함", 날짜(2026, 6, 1), 날짜(2026, 6, 3), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "출연 안 함", 날짜(2026, 7, 1), 날짜(2026, 7, 3), 시각("2026-05-02T00:00:00Z"));
+        Artist 아티스트 = 아티스트("잔나비");
+        라인업(출연한_축제, 아티스트, 1, 0);
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(null, null, 아티스트.getId(), FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name).containsExactly("출연함");
+    }
+
+    @Test
+    void LATEST는_발행_시각_역순이고_동점이면_id_오름차순이다() {
+        // given
+        Host 주최 = 주최("테스트_한양대학교");
+        Instant 같은_시각 = 시각("2026-05-01T00:00:00Z");
+        축제(주최, "동점 먼저", 날짜(2026, 6, 1), 날짜(2026, 6, 3), 같은_시각);
+        축제(주최, "동점 나중", 날짜(2026, 6, 1), 날짜(2026, 6, 3), 같은_시각);
+        축제(주최, "가장 최근 발행", 날짜(2026, 9, 1), 날짜(2026, 9, 3), 시각("2026-05-02T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name)
+                .containsExactly("가장 최근 발행", "동점 먼저", "동점 나중");
+    }
+
+    @Test
+    void UPCOMING은_시작일_오름차순으로_정렬만_하고_지난_축제를_걸러내지_않는다() {
+        // given - 과거 축제만 남는 주최별 이력 화면이 통째로 비면 안 된다
+        Host 주최 = 주최("테스트_중앙대학교");
+        축제(주최, "미래", 날짜(2026, 9, 1), 날짜(2026, 9, 3), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "과거", 날짜(2024, 5, 1), 날짜(2024, 5, 3), 시각("2026-05-02T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalListSortType.UPCOMING);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name)
+                .containsExactly("과거", "미래");
+    }
+
+    @Test
+    void hostId를_주면_그_주최의_축제만_나온다() {
+        // given
+        Host 이_주최 = 주최("테스트_건국대학교");
+        Host 다른_주최 = 주최("테스트_동국대학교");
+        축제(이_주최, "이쪽", 날짜(2026, 6, 1), 날짜(2026, 6, 3), 시각("2026-05-01T00:00:00Z"));
+        축제(다른_주최, "저쪽", 날짜(2026, 6, 1), 날짜(2026, 6, 3), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(이_주최.getId(), null, null, FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name).containsExactly("이쪽");
+    }
+
+    @Test
+    void year는_시작일이_그_해에_속한_축제만_남기고_경계를_넘지_않는다() {
+        // given
+        Host 주최 = 주최("테스트_경희대학교");
+        축제(주최, "전해 마지막날", 날짜(2025, 12, 31), 날짜(2026, 1, 2), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "첫날", 날짜(2026, 1, 1), 날짜(2026, 1, 3), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "마지막날", 날짜(2026, 12, 31), 날짜(2027, 1, 2), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "다음해 첫날", 날짜(2027, 1, 1), 날짜(2027, 1, 3), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(null, 2026, null, FestivalListSortType.UPCOMING);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name)
+                .containsExactly("첫날", "마지막날");
+    }
+
+    @Test
+    void 응답에_주최_요약이_함께_담긴다() {
+        // given
+        Host 주최 = Host.builder()
+                .name("테스트_숙명여자대학교")
+                .region("Seoul")
+                .logoUrl("https://cdn.example.com/logo.png")
+                .build();
+        em.persist(주최);
+        축제(주최, "축제", 날짜(2026, 6, 1), 날짜(2026, 6, 3), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalListSortType.LATEST);
+
+        // then
+        HostSummaryResponse 담긴_주최 = 결과.items().get(0).host();
+        assertThat(담긴_주최.id()).isEqualTo(주최.getId());
+        assertThat(담긴_주최.name()).isEqualTo("테스트_숙명여자대학교");
+        assertThat(담긴_주최.logoUrl()).isEqualTo("https://cdn.example.com/logo.png");
+    }
+
+    @Test
+    void page가_음수면_INVALID_PAGE로_막힌다() {
+        // when
+        FestaException 예외 = catchThrowableOfType(
+                () -> festivalService.getFestivals(null, null, null, null, null, FestivalListSortType.LATEST, -1, 20),
+                FestaException.class
+        );
+
+        // then
+        assertThat(예외.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PAGE);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 51})
+    void size가_허용_범위를_벗어나면_INVALID_PAGE_SIZE로_막힌다(int size) {
+        // when
+        FestaException 예외 = catchThrowableOfType(
+                () -> festivalService.getFestivals(null, null, null, null, null, FestivalListSortType.LATEST, 0, size),
+                FestaException.class
+        );
+
+        // then
+        assertThat(예외.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PAGE_SIZE);
+    }
+
+    @Test
+    void status_UPCOMING은_시작일이_오늘보다_뒤인_축제만_남긴다() {
+        // given - 고정된 시계의 KST 오늘은 2026-05-21이다
+        Host 주최 = 주최("테스트_서강대학교");
+        축제(주최, "내일 시작", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "오늘 시작", 날짜(2026, 5, 21), 날짜(2026, 5, 23), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "어제 종료", 날짜(2026, 5, 18), 날짜(2026, 5, 20), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(null, null, null, FestivalStatus.UPCOMING, null, FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name)
+                .containsExactly("내일 시작");
+    }
+
+    @Test
+    void status_ONGOING은_시작일과_종료일을_포함해_오늘이_기간에_든_축제를_남긴다() {
+        // given
+        Host 주최 = 주최("테스트_성균관대학교");
+        축제(주최, "오늘 시작", 날짜(2026, 5, 21), 날짜(2026, 5, 23), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "오늘 종료", 날짜(2026, 5, 19), 날짜(2026, 5, 21), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "한창", 날짜(2026, 5, 20), 날짜(2026, 5, 22), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "내일 시작", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "어제 종료", 날짜(2026, 5, 18), 날짜(2026, 5, 20), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(null, null, null, FestivalStatus.ONGOING, null, FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name)
+                .containsExactlyInAnyOrder("오늘 시작", "오늘 종료", "한창");
+    }
+
+    @Test
+    void status_ENDED는_종료일이_오늘보다_앞인_축제만_남긴다() {
+        // given
+        Host 주최 = 주최("테스트_홍익대학교");
+        축제(주최, "어제 종료", 날짜(2026, 5, 18), 날짜(2026, 5, 20), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "오늘 종료", 날짜(2026, 5, 19), 날짜(2026, 5, 21), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(null, null, null, FestivalStatus.ENDED, null, FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name)
+                .containsExactly("어제 종료");
+    }
+
+    @Test
+    void status는_UTC가_아니라_KST의_오늘로_판정한다() {
+        // given - 시계는 UTC 2026-05-20 / KST 2026-05-21에 멈춰 있다.
+        //         하루짜리 2026-05-21 축제는 KST로는 진행 중이고 UTC로는 아직 시작 전이다
+        Host 주최 = 주최("테스트_이화여자대학교");
+        축제(주최, "오늘 하루", 날짜(2026, 5, 21), 날짜(2026, 5, 21), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 진행중 =
+                목록(null, null, null, FestivalStatus.ONGOING, null, FestivalListSortType.LATEST);
+        PageResponse<FestivalListItemResponse> 예정 =
+                목록(null, null, null, FestivalStatus.UPCOMING, null, FestivalListSortType.LATEST);
+
+        // then
+        assertThat(진행중.items()).extracting(FestivalListItemResponse::name)
+                .containsExactly("오늘 하루");
+        assertThat(예정.items()).isEmpty();
+    }
+
+    @Test
+    void sort의_UPCOMING은_거르지_않고_status만_거른다() {
+        // given - 같은 낱말이지만 sort는 순서를 정하고 status는 걸러낸다
+        Host 주최 = 주최("테스트_고려대학교");
+        축제(주최, "먼 과거", 날짜(2024, 5, 1), 날짜(2024, 5, 3), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "가까운 과거", 날짜(2025, 5, 1), 날짜(2025, 5, 3), 시각("2026-05-02T00:00:00Z"));
+        축제(주최, "미래", 날짜(2026, 9, 1), 날짜(2026, 9, 3), 시각("2026-05-03T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(null, null, null, FestivalStatus.ENDED, null, FestivalListSortType.UPCOMING);
+
+        // then - status가 미래를 걷어내고 sort는 남은 것을 시작일 오름차순으로 놓는다
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name)
+                .containsExactly("먼 과거", "가까운 과거");
+    }
+
+    @Test
+    void q는_축제_이름_부분_일치이며_대소문자를_가리지_않는다() {
+        // given
+        Host 주최 = 주최("테스트_연세대학교");
+        축제(주최, "AKARAKA 2026", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "대동제", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(null, null, null, null, "akaraka", FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name)
+                .containsExactly("AKARAKA 2026");
+    }
+
+    @Test
+    void q의_퍼센트는_와일드카드가_아니라_리터럴로_검색된다() {
+        // given - 이스케이프하지 않으면 LIKE '%%%'가 되어 전체가 나온다
+        Host 주최 = 주최("테스트_한국외국어대학교");
+        축제(주최, "할인 50% 축제", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "일반 축제", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(null, null, null, null, "%", FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name)
+                .containsExactly("할인 50% 축제");
+    }
+
+    @Test
+    void q의_언더바는_와일드카드가_아니라_리터럴로_검색된다() {
+        // given - 이스케이프하지 않으면 한 글자 와일드카드가 되어 전체가 나온다
+        Host 주최 = 주최("테스트_국민대학교");
+        축제(주최, "sub_festival", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "메인축제", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(null, null, null, null, "_", FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name)
+                .containsExactly("sub_festival");
+    }
+
+    @Test
+    void q가_공백뿐이면_검색어를_주지_않은_것과_같다() {
+        // given
+        Host 주최 = 주최("테스트_숭실대학교");
+        축제(주최, "가나다", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        축제(주최, "라마바", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 =
+                목록(null, null, null, null, "   ", FestivalListSortType.LATEST);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::name)
+                .containsExactlyInAnyOrder("가나다", "라마바");
+    }
+
+    @Test
+    void year가_LocalDate_범위를_넘으면_FESTIVAL_INVALID_FILTER로_막힌다() {
+        // when
+        FestaException 예외 = catchThrowableOfType(
+                () -> 목록(null, 2_000_000_000, null, null, null, FestivalListSortType.LATEST),
+                FestaException.class
+        );
+
+        // then
+        assertThat(예외.getErrorCode()).isEqualTo(FestivalErrorCode.FESTIVAL_INVALID_FILTER);
+    }
+
     private void 비운다() {
         em.flush();
         em.clear();
@@ -271,7 +638,7 @@ class FestivalServiceTest extends PostgresTestSupport {
     }
 
     private Host 주최(String name) {
-        Host host = Host.builder().name("테스트_" + name).region("Seoul").build();
+        Host host = Host.builder().name(name).region("Seoul").build();
         em.persist(host);
         return host;
     }
@@ -291,10 +658,62 @@ class FestivalServiceTest extends PostgresTestSupport {
 
     private Festival 축제(String 이름, String 시작일, String 종료일) {
         return Festival.builder()
-                .host(주최(이름))
+                .host(주최("테스트_" + 이름))
                 .name(이름)
                 .startDate(날짜(시작일))
                 .endDate(날짜(종료일))
                 .build();
+    }
+
+    private PageResponse<FestivalListItemResponse> 목록(
+            Long hostId, Integer year, Long artistId, FestivalListSortType sort
+    ) {
+        return 목록(hostId, year, artistId, null, null, sort);
+    }
+
+    private PageResponse<FestivalListItemResponse> 목록(
+            Long hostId, Integer year, Long artistId, FestivalStatus status, String q,
+            FestivalListSortType sort
+    ) {
+        return festivalService.getFestivals(hostId, year, artistId, status, q, sort, 0, 20);
+    }
+
+    private LocalDate 날짜(int year, int month, int day) {
+        return LocalDate.of(year, month, day);
+    }
+
+    private Instant 시각(String value) {
+        return Instant.parse(value);
+    }
+
+    private Artist 아티스트(String name) {
+        Artist artist = Artist.builder().name(name).build();
+        em.persist(artist);
+        return artist;
+    }
+
+    private Festival 축제(
+            Host host, String name, LocalDate startDate, LocalDate endDate, Instant publishedAt
+    ) {
+        Festival festival = Festival.builder()
+                .host(host)
+                .name(name)
+                .startDate(startDate)
+                .endDate(endDate)
+                .build();
+        if (publishedAt != null) {
+            festival.publish(publishedAt);
+        }
+        em.persist(festival);
+        return festival;
+    }
+
+    private void 라인업(Festival festival, Artist artist, int day, int displayOrder) {
+        em.persist(Lineup.builder()
+                .festival(festival)
+                .artist(artist)
+                .day(day)
+                .displayOrder(displayOrder)
+                .build());
     }
 }
