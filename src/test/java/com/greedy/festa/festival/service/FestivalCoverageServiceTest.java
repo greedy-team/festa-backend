@@ -234,6 +234,34 @@ class FestivalCoverageServiceTest {
                 .isEqualTo(FestivalErrorCode.FESTIVAL_COVERAGE_INVALID_STATUS);
     }
 
+    @Test
+    void 빈_status는_필터를_주지_않은_것과_같다() {
+        // EnumParser로 옮기며 바뀐 동작이다. 이전에는 null만 보고 isBlank()를 안 봐서
+        // ?status= 가 400이었다. 「필터 없음」은 전체가 아니라 PUBLISHED 제외다.
+        givenRows(
+                row(1L, "Published Host", false, true, null, null),
+                row(2L, "Needs Check Host", false, false, null, null)
+        );
+
+        FestivalCoverageResponse 결과 = service.findCoverage(2026, "", 0, 20);
+
+        assertThat(결과.hosts().items()).extracting(item -> item.hostName())
+                .containsExactly("Needs Check Host");
+    }
+
+    @Test
+    void status는_대소문자를_가리지_않는다() {
+        givenRows(
+                row(1L, "Published Host", false, true, null, null),
+                row(2L, "Needs Check Host", false, false, null, null)
+        );
+
+        FestivalCoverageResponse 결과 = service.findCoverage(2026, "published", 0, 20);
+
+        assertThat(결과.hosts().items()).extracting(item -> item.hostName())
+                .containsExactly("Published Host");
+    }
+
     @ParameterizedTest
     @CsvSource({
             "true,true,REVIEW_PENDING",

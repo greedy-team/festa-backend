@@ -8,6 +8,7 @@ import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.util.EnumParser;
 import com.greedy.festa.host.repository.HostCoverageRow;
 import com.greedy.festa.host.repository.HostRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,10 @@ public class FestivalCoverageService {
         }
         validateYear(year, today.getYear());
         validatePagination(page, size);
-        FestivalCoverageStatus statusFilter = parseStatus(requestedStatus);
+        FestivalCoverageStatus statusFilter = EnumParser.parse(
+                FestivalCoverageStatus.class, requestedStatus,
+                FestivalErrorCode.FESTIVAL_COVERAGE_INVALID_STATUS
+        );
 
         List<HostCoverageRow> rows = hostRepository.findCoverageRows(
                 LocalDate.of(year, 1, 1),
@@ -76,17 +80,6 @@ public class FestivalCoverageService {
             return item.status() != FestivalCoverageStatus.PUBLISHED;
         }
         return item.status() == statusFilter;
-    }
-
-    private FestivalCoverageStatus parseStatus(String requestedStatus) {
-        if (requestedStatus == null) {
-            return null;
-        }
-        try {
-            return FestivalCoverageStatus.valueOf(requestedStatus);
-        } catch (IllegalArgumentException e) {
-            throw new FestaException(FestivalErrorCode.FESTIVAL_COVERAGE_INVALID_STATUS);
-        }
     }
 
     private void validateYear(int year, int currentYear) {

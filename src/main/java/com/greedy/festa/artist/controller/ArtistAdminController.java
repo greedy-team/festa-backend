@@ -9,13 +9,13 @@ import com.greedy.festa.artist.dto.ArtistSortType;
 import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.exception.ArtistErrorCode;
+import com.greedy.festa.artist.service.ArtistAdminService;
 import com.greedy.festa.artist.service.ArtistMergeCandidateService;
 import com.greedy.festa.artist.service.ArtistMergeService;
-import com.greedy.festa.artist.service.ArtistAdminService;
 import com.greedy.festa.global.config.SwaggerConfig;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.ErrorResponse;
-import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.util.EnumParser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -74,7 +74,16 @@ public class ArtistAdminController {
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return artistAdminService.findAll(needsReview, q, toGenre(genre), toSortType(sort), page, size);
+        return artistAdminService.findAll(needsReview, q,
+                EnumParser.parse(
+                        ArtistGenre.class, genre,
+                        ArtistErrorCode.ARTIST_INVALID_GENRE_TYPE
+                ),
+                EnumParser.parse(
+                        ArtistSortType.class, sort,
+                        ArtistSortType.CREATED_DESC, ArtistErrorCode.ARTIST_INVALID_SORT_TYPE
+                ),
+                page, size);
     }
 
     @Operation(summary = "병합 후보 조회",
@@ -131,27 +140,5 @@ public class ArtistAdminController {
     @PostMapping("/merge")
     public ResponseEntity<ArtistMergeResponse> merge(@RequestBody ArtistMergeRequest request) {
         return ResponseEntity.ok(artistMergeService.merge(request));
-    }
-
-    private ArtistGenre toGenre(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return ArtistGenre.valueOf(value);
-        } catch (IllegalArgumentException e) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_GENRE_TYPE);
-        }
-    }
-
-    private ArtistSortType toSortType(String value) {
-        if (value == null || value.isBlank()) {
-            return ArtistSortType.CREATED_DESC;
-        }
-        try {
-            return ArtistSortType.valueOf(value);
-        } catch (IllegalArgumentException e) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_SORT_TYPE);
-        }
     }
 }

@@ -1,21 +1,22 @@
 package com.greedy.festa.importer.controller;
 
 import com.greedy.festa.global.config.SwaggerConfig;
+import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.ErrorResponse;
 import com.greedy.festa.global.exception.FestaException;
-import com.greedy.festa.importer.dto.ImportPreviewResponse;
+import com.greedy.festa.global.util.EnumParser;
 import com.greedy.festa.importer.dto.ImportCommitRequest;
 import com.greedy.festa.importer.dto.ImportCommitResponse;
+import com.greedy.festa.importer.dto.ImportHistoryItemResponse;
+import com.greedy.festa.importer.dto.ImportPreviewResponse;
+import com.greedy.festa.importer.entity.ImportBatchType;
 import com.greedy.festa.importer.entity.ImportConflictPolicy;
 import com.greedy.festa.importer.exception.ImportErrorCode;
+import com.greedy.festa.importer.model.ImportBatchStatus;
 import com.greedy.festa.importer.model.ImportSection;
-import com.greedy.festa.importer.service.ImportPreviewService;
 import com.greedy.festa.importer.service.ImportCommitService;
 import com.greedy.festa.importer.service.ImportHistoryService;
-import com.greedy.festa.importer.model.ImportBatchStatus;
-import com.greedy.festa.importer.entity.ImportBatchType;
-import com.greedy.festa.global.dto.PageResponse;
-import com.greedy.festa.importer.dto.ImportHistoryItemResponse;
+import com.greedy.festa.importer.service.ImportPreviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -26,19 +27,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Locale;
 
 @Tag(name = "관리자 - 임포트", description = "CSV를 올려 반영 전 미리보기 배치를 만든다. 이 단계에서 데이터는 바뀌지 않는다. "
         + "토큰이 없거나 만료되면 401(UNAUTHORIZED / TOKEN_EXPIRED)이다.")
@@ -65,7 +65,16 @@ public class ImportAdminController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size
     ) {
-        return importHistoryService.findAll(batchType(type), batchStatus(status), page, size);
+        return importHistoryService.findAll(
+                EnumParser.parse(
+                        ImportBatchType.class, type,
+                        ImportErrorCode.IMPORT_INVALID_TYPE
+                ),
+                EnumParser.parse(
+                        ImportBatchStatus.class, status,
+                        ImportErrorCode.IMPORT_INVALID_STATUS
+                ),
+                page, size);
     }
 
     @PostMapping("/{importId}/commit")
@@ -116,36 +125,10 @@ public class ImportAdminController {
     }
 
     private ImportConflictPolicy conflictPolicy(String value) {
-        if (value == null || value.isBlank()) {
-            return ImportConflictPolicy.UPDATE;
-        }
-        try {
-            return ImportConflictPolicy.valueOf(value.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new FestaException(ImportErrorCode.IMPORT_INVALID_CONFLICT_POLICY);
-        }
-    }
-
-    private ImportBatchType batchType(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return ImportBatchType.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new FestaException(ImportErrorCode.IMPORT_INVALID_TYPE);
-        }
-    }
-
-    private ImportBatchStatus batchStatus(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return ImportBatchStatus.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new FestaException(ImportErrorCode.IMPORT_INVALID_STATUS);
-        }
+        return EnumParser.parse(
+                ImportConflictPolicy.class, value,
+                ImportConflictPolicy.UPDATE, ImportErrorCode.IMPORT_INVALID_CONFLICT_POLICY
+        );
     }
 
     private void requireFiles(MultipartFile... files) {

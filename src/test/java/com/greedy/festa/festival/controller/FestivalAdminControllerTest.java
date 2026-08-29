@@ -7,6 +7,7 @@ import com.greedy.festa.festival.dto.FestivalCoverageSummary;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.service.FestivalAdminService;
 import com.greedy.festa.festival.service.FestivalCoverageService;
+import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
@@ -111,6 +112,30 @@ class FestivalAdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.hosts.items[0].status").value("PUBLISHED"))
                 .andExpect(jsonPath("$.summary.coverageRate").value(100));
+    }
+
+    @Test
+    void 검수_목록의_sort를_생략하면_IMPORTED_DESC로_조회한다() throws Exception {
+        // given - 기본값은 EnumParser 호출부가 고른다. 여기가 유일한 지정 지점이다
+        given(adminService.findAll(null, null, null, null, null,
+                FestivalSortType.IMPORTED_DESC, 0, 20))
+                .willReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, false, false));
+
+        // when & then
+        mockMvc.perform(get("/api/admin/festivals"))
+                .andExpect(status().isOk());
+
+        verify(adminService).findAll(null, null, null, null, null,
+                FestivalSortType.IMPORTED_DESC, 0, 20);
+    }
+
+    @Test
+    void 검수_목록의_sort가_어휘_밖이면_400_FESTIVAL_INVALID_SORT_TYPE이다() throws Exception {
+        // given - Spring Pageable 형식(hostName,desc)은 이 API의 어휘가 아니다
+        // when & then
+        mockMvc.perform(get("/api/admin/festivals").param("sort", "hostName,desc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("FESTIVAL_INVALID_SORT_TYPE"));
     }
 
     @Test
