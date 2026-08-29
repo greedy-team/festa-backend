@@ -20,6 +20,7 @@ import com.greedy.festa.artist.repository.LineupRepository;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.util.EnumParser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -51,8 +52,14 @@ public class ArtistService {
             int page, int size, String genreValue, String sortValue, String query
     ) {
         validatePage(page, size);
-        ArtistGenre genre = ArtistGenre.from(genreValue);
-        ArtistPublicSortType sort = ArtistPublicSortType.from(sortValue);
+        ArtistGenre genre = EnumParser.parse(
+                ArtistGenre.class, genreValue,
+                ArtistErrorCode.ARTIST_INVALID_GENRE_TYPE
+        );
+        ArtistPublicSortType sort = EnumParser.parse(
+                ArtistPublicSortType.class, sortValue,
+                ArtistPublicSortType.APPEARANCES, ArtistErrorCode.ARTIST_INVALID_SORT_TYPE
+        );
         String normalizedQuery = normalizeQuery(query);
         LocalDate today = today();
 

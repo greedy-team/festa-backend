@@ -11,6 +11,7 @@ import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.util.EnumParser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
@@ -86,7 +87,7 @@ public class FestivalService {
 
         Page<Festival> festivals = festivalRepository.findPublishedRows(
                 hostId, yearStart, nextYearStart, artistId,
-                FestivalStatus.nameOrNull(status), today, normalizeQuery(q),
+                EnumParser.nameOrNull(status), today, normalizeQuery(q),
                 PageRequest.of(page, size, sort.toSort())
         );
 
