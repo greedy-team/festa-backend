@@ -49,7 +49,8 @@ public class FestivalController {
     private final GlobalExceptionHandler globalExceptionHandler;
 
     @Operation(summary = "축제 목록 조회",
-            description = "sort는 LATEST(기본) / UPCOMING, status는 UPCOMING / ONGOING / ENDED다. "
+            description = "sort는 순서만 정하고 status는 걸러낸다 — sort는 LATEST(기본) / UPCOMING, "
+                    + "status는 UPCOMING / ONGOING / ENDED(한국 시간 오늘 기준, 시작일·종료일 포함)다. "
                     + "artistId를 주면 그 아티스트가 출연한 축제만 남고, q는 축제 이름 부분 일치다.")
     @ApiResponse(responseCode = "200", description = "축제 목록 페이지")
     @ApiResponse(responseCode = "400",
