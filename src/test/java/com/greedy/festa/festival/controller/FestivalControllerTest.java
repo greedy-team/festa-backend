@@ -122,7 +122,7 @@ class FestivalControllerTest {
     @Test
     void 목록_응답에는_venueName이_없다() throws Exception {
         // given
-        given(festivalService.getFestivals(null, null, null, FestivalListSortType.LATEST, 0, 20))
+        given(festivalService.getFestivals(null, null, null, null, null, FestivalListSortType.LATEST, 0, 20))
                 .willReturn(PageResponse.from(new PageImpl<>(List.of(목록_항목()),
                         PageRequest.of(0, 20), 1)));
 

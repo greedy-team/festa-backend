@@ -3,6 +3,7 @@ package com.greedy.festa.festival.service;
 import com.greedy.festa.festival.dto.FestivalListItemResponse;
 import com.greedy.festa.festival.dto.FestivalListSortType;
 import com.greedy.festa.festival.dto.FestivalRecentResponse;
+import com.greedy.festa.festival.dto.FestivalStatus;
 import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -60,7 +62,7 @@ public class FestivalService {
 
     @Transactional(readOnly = true)
     public PageResponse<FestivalListItemResponse> getFestivals(
-            Long hostId, Integer year, Long artistId,
+            Long hostId, Integer year, Long artistId, FestivalStatus status, String q,
             FestivalListSortType sort, int page, int size
     ) {
         if (page < 0) {
@@ -70,15 +72,22 @@ public class FestivalService {
             throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
         }
 
+        LocalDate today = LocalDate.now(clock.withZone(SEOUL));
         LocalDate yearStart = null;
         LocalDate nextYearStart = null;
         if (year != null) {
-            yearStart = LocalDate.of(year, 1, 1);
-            nextYearStart = LocalDate.of(year + 1, 1, 1);
+            try {
+                yearStart = LocalDate.of(year, 1, 1);
+                nextYearStart = LocalDate.of(year + 1, 1, 1);
+            } catch (DateTimeException e) {
+                throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_FILTER);
+            }
         }
 
         Page<Festival> festivals = festivalRepository.findPublishedRows(
-                hostId, yearStart, nextYearStart, artistId, PageRequest.of(page, size, sort.toSort())
+                hostId, yearStart, nextYearStart, artistId,
+                FestivalStatus.nameOrNull(status), today, normalizeQuery(q),
+                PageRequest.of(page, size, sort.toSort())
         );
 
         return PageResponse.from(festivals.map(FestivalListItemResponse::from));
@@ -88,5 +97,18 @@ public class FestivalService {
         if (limit < 1 || limit > maxLimit) {
             throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_LIMIT);
         }
+    }
+
+    private String normalizeQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+        return escapeLikePattern(query.trim());
+    }
+
+    private String escapeLikePattern(String value) {
+        return value.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 }

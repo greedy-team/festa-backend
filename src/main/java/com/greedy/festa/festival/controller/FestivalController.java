@@ -3,6 +3,7 @@ package com.greedy.festa.festival.controller;
 import com.greedy.festa.festival.dto.FestivalListItemResponse;
 import com.greedy.festa.festival.dto.FestivalListSortType;
 import com.greedy.festa.festival.dto.FestivalRecentResponse;
+import com.greedy.festa.festival.dto.FestivalStatus;
 import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.service.FestivalService;
@@ -35,10 +36,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class FestivalController {
 
-    /**
-     * 쿼리 파라미터가 선언 타입으로 바인딩되지 않을 때 쓸 에러 코드.
-     * 여기 없는 이름(경로 변수 포함)은 전역 핸들러가 판정한다 — 규칙을 두 곳에 두지 않는다.
-     */
     private static final Map<String, ErrorCode> QUERY_PARAM_ERROR_CODES = Map.of(
             "limit", FestivalErrorCode.FESTIVAL_INVALID_LIMIT,
             "page", CommonErrorCode.INVALID_PAGE,
@@ -52,23 +49,26 @@ public class FestivalController {
     private final GlobalExceptionHandler globalExceptionHandler;
 
     @Operation(summary = "축제 목록 조회",
-            description = "sort는 LATEST(기본) / UPCOMING이다. "
-                    + "artistId를 주면 그 아티스트가 출연한 축제만 남는다.")
+            description = "sort는 LATEST(기본) / UPCOMING, status는 UPCOMING / ONGOING / ENDED다. "
+                    + "artistId를 주면 그 아티스트가 출연한 축제만 남고, q는 축제 이름 부분 일치다.")
     @ApiResponse(responseCode = "200", description = "축제 목록 페이지")
     @ApiResponse(responseCode = "400",
             description = "INVALID_PAGE / INVALID_PAGE_SIZE / FESTIVAL_INVALID_SORT_TYPE "
-                    + "/ FESTIVAL_INVALID_FILTER",
+                    + "/ FESTIVAL_INVALID_STATUS_TYPE / FESTIVAL_INVALID_FILTER",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping
     public PageResponse<FestivalListItemResponse> getFestivals(
             @RequestParam(required = false) Long hostId,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Long artistId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String q,
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return festivalService.getFestivals(
-                hostId, year, artistId, FestivalListSortType.from(sort), page, size
+                hostId, year, artistId, FestivalStatus.from(status), q,
+                FestivalListSortType.from(sort), page, size
         );
     }
 
