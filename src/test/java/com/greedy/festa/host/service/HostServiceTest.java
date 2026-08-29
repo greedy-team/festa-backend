@@ -3,6 +3,7 @@ package com.greedy.festa.host.service;
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.Lineup;
 import com.greedy.festa.festival.entity.Festival;
+import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.config.JpaConfig;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.dto.HostDetailResponse;
@@ -26,6 +27,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,6 +52,11 @@ class HostServiceTest extends PostgresTestSupport {
         @Bean
         Clock clock() {
             return Clock.fixed(기준시각, ZoneOffset.UTC);
+        }
+
+        @Bean
+        ZoneId kstZoneId() {
+            return ClockConfig.KST;
         }
     }
 

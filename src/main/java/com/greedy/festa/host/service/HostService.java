@@ -29,19 +29,19 @@ import java.util.stream.IntStream;
 @RequiredArgsConstructor
 public class HostService {
 
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final int HISTORY_SIZE = 2;
     private static final Limit FREQUENT_ARTIST_LIMIT = Limit.of(3);
 
 
     private final Clock clock;
+    private final ZoneId kstZoneId;
     private final HostRepository hostRepository;
     private final FestivalRepository festivalRepository;
     private final ArtistRepository artistRepository;
 
     @Transactional(readOnly = true)
     public HostDetailResponse getHostDetail(Long hostId) {
-        LocalDate today = LocalDate.now(clock.withZone(SEOUL));
+        LocalDate today = LocalDate.now(clock.withZone(kstZoneId));
 
         Host target = hostRepository.findById(hostId)
                 .orElseThrow(() -> new FestaException(HostErrorCode.HOST_NOT_FOUND));

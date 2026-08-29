@@ -28,19 +28,19 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FestivalService {
 
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final int UPCOMING_MAX_LIMIT = 50;
     private static final int RECENT_MAX_LIMIT = 30;
     private static final int LIST_MAX_PAGE_SIZE = 50;
 
     private final FestivalRepository festivalRepository;
     private final Clock clock;
+    private final ZoneId kstZoneId;
 
     @Transactional(readOnly = true)
     public List<FestivalUpcomingResponse> getUpcomingFestivals(int limit) {
         validateLimit(limit, UPCOMING_MAX_LIMIT);
 
-        LocalDate today = LocalDate.now(clock.withZone(SEOUL));
+        LocalDate today = LocalDate.now(clock.withZone(kstZoneId));
 
         List<Festival> festivals = festivalRepository.findPublishedNotEnded(today, Limit.of(limit));
 
@@ -72,7 +72,7 @@ public class FestivalService {
             throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
         }
 
-        LocalDate today = LocalDate.now(clock.withZone(SEOUL));
+        LocalDate today = LocalDate.now(clock.withZone(kstZoneId));
         LocalDate yearStart = null;
         LocalDate nextYearStart = null;
         if (year != null) {

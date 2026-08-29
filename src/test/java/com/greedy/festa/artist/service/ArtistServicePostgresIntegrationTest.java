@@ -6,6 +6,7 @@ import com.greedy.festa.artist.entity.ArtistAlias;
 import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.entity.Lineup;
 import com.greedy.festa.festival.entity.Festival;
+import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.config.JpaConfig;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.support.PostgresTestSupport;
@@ -23,6 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -133,6 +135,11 @@ class ArtistServicePostgresIntegrationTest extends PostgresTestSupport {
         @Primary
         Clock artistClock() {
             return Clock.fixed(Instant.parse("2026-08-26T15:30:00Z"), ZoneOffset.UTC);
+        }
+
+        @Bean
+        ZoneId kstZoneId() {
+            return ClockConfig.KST;
         }
     }
 }

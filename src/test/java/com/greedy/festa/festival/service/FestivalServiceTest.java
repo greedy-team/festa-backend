@@ -11,6 +11,7 @@ import com.greedy.festa.festival.dto.HostSummaryResponse;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.global.config.JpaConfig;
+import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
@@ -21,6 +22,7 @@ import jakarta.persistence.EntityManagerFactory;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.hibernate.SessionFactory;
@@ -60,6 +62,11 @@ class FestivalServiceTest extends PostgresTestSupport {
         @Bean
         Clock clock() {
             return Clock.fixed(Instant.parse("2026-05-20T15:30:00Z"), ZoneOffset.UTC);
+        }
+
+        @Bean
+        ZoneId kstZoneId() {
+            return ClockConfig.KST;
         }
     }
 

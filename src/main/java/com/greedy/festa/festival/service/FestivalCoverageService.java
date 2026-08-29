@@ -26,17 +26,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FestivalCoverageService {
 
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final int MAX_PAGE_SIZE = 50;
 
     private final HostRepository hostRepository;
     private final Clock clock;
+    private final ZoneId kstZoneId;
 
     @Transactional(readOnly = true)
     public FestivalCoverageResponse findCoverage(
             Integer requestedYear, String requestedStatus, int page, int size
     ) {
-        LocalDate today = LocalDate.now(clock.withZone(SEOUL));
+        LocalDate today = LocalDate.now(clock.withZone(kstZoneId));
         int year = today.getYear();
         if (requestedYear != null) {
             year = requestedYear;

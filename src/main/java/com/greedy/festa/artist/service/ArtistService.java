@@ -38,13 +38,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ArtistService {
 
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final int MAX_DETAIL_ITEMS = 5;
 
     private final ArtistRepository artistRepository;
     private final ArtistAliasRepository artistAliasRepository;
     private final LineupRepository lineupRepository;
     private final Clock clock;
+    private final ZoneId kstZoneId;
 
     @Transactional(readOnly = true)
     public PageResponse<ArtistListItemResponse> findAll(
@@ -151,6 +151,6 @@ public class ArtistService {
     }
 
     private LocalDate today() {
-        return LocalDate.now(clock.withZone(KST));
+        return LocalDate.now(clock.withZone(kstZoneId));
     }
 }

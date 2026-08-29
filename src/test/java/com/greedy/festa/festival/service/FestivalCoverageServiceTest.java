@@ -3,6 +3,7 @@ package com.greedy.festa.festival.service;
 import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageStatus;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
+import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.repository.HostCoverageRow;
@@ -43,7 +44,8 @@ class FestivalCoverageServiceTest {
     void setUp() {
         service = new FestivalCoverageService(
                 hostRepository,
-                Clock.fixed(KST_NEW_YEAR, ZoneOffset.UTC)
+                Clock.fixed(KST_NEW_YEAR, ZoneOffset.UTC),
+                ClockConfig.KST
         );
     }
 
