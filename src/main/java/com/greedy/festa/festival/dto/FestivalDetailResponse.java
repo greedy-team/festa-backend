@@ -7,7 +7,6 @@ import com.greedy.festa.festival.entity.ExternalVisitorPolicy;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.entity.TicketType;
 import com.greedy.festa.festival.entity.VerificationMethod;
-import com.greedy.festa.host.entity.Host;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,7 +17,7 @@ import java.util.stream.Collectors;
 
 
 public record FestivalDetailResponse(
-        Long id, String name, HostResponse host,
+        Long id, String name, FestivalHostResponse host,
         LocalDate startDate, LocalDate endDate,
         int dday,
         String posterUrl,
@@ -32,7 +31,7 @@ public record FestivalDetailResponse(
         return new FestivalDetailResponse(
                 festival.getId(),
                 festival.getName(),
-                HostResponse.from(festival.getHost()),
+                FestivalHostResponse.from(festival.getHost()),
                 festival.getStartDate(),
                 festival.getEndDate(),
                 (int) ChronoUnit.DAYS.between(today, festival.getStartDate()),
@@ -41,19 +40,6 @@ public record FestivalDetailResponse(
                 AdmissionResponse.from(festival),
                 LocationResponse.from(festival)
         );
-    }
-
-    public record HostResponse(
-            Long id, String name, String logoUrl,
-            String instagramUrl, String homepageUrl
-    ) {
-
-        public static HostResponse from(Host host) {
-            return new HostResponse(
-                    host.getId(), host.getName(), host.getLogoUrl(),
-                    host.getInstagramUrl(), host.getHomepageUrl()
-            );
-        }
     }
 
     public record LineupDayResponse(
