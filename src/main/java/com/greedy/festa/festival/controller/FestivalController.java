@@ -68,8 +68,11 @@ public class FestivalController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return festivalService.getFestivals(
-                hostId, year, artistId, FestivalStatus.from(status), q,
-                FestivalListSortType.from(sort), page, size
+                hostId, year, artistId,
+                FestivalStatus.from(status),
+                q,
+                FestivalListSortType.from(sort),
+                page, size
         );
     }
 

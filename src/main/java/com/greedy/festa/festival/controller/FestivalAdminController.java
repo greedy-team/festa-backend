@@ -55,7 +55,9 @@ public class FestivalAdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return festivalAdminService.findAll(
-                published, hostId, year, q, discovery, FestivalSortType.from(sort), page, size
+                published, hostId, year, q, discovery,
+                FestivalSortType.from(sort),
+                page, size
         );
     }
 

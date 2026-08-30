@@ -42,7 +42,7 @@ public class ArtistController {
             @Parameter(required = true, description = "페이지 크기(1~50)")
             @RequestParam(required = false) String size,
             @RequestParam(required = false) String genre,
-            @RequestParam(defaultValue = "APPEARANCES") String sort,
+            @RequestParam(required = false) String sort,
             @RequestParam(required = false) String q
     ) {
         return artistService.findAll(parsePage(page), parseSize(size), genre, sort, q);

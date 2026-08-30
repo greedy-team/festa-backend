@@ -144,6 +144,30 @@ class FestivalControllerTest {
     }
 
     @Test
+    void 목록의_sort는_대소문자와_앞뒤_공백을_가리지_않는다() throws Exception {
+        // given - 파싱이 EnumParser로 옮겨가며 정규화가 붙었다
+        given(festivalService.getFestivals(null, null, null, null, null,
+                FestivalListSortType.UPCOMING, 0, 20))
+                .willReturn(PageResponse.from(new PageImpl<>(List.of(목록_항목()),
+                        PageRequest.of(0, 20), 1)));
+
+        // when & then
+        mockMvc.perform(get("/api/festivals").param("sort", "  upcoming  "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].name").value("대동제"));
+    }
+
+    @Test
+    void 목록의_sort가_어휘_밖이면_400_FESTIVAL_INVALID_SORT_TYPE이다() throws Exception {
+        // given - 기본값이 있어도 틀린 값은 기본값으로 흘리지 않는다
+        // when & then
+        mockMvc.perform(get("/api/festivals").param("sort", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("FESTIVAL_INVALID_SORT_TYPE"))
+                .andExpect(jsonPath("$.instance").value("/api/festivals"));
+    }
+
+    @Test
     void 목록의_q는_컨트롤러가_손대지_않고_서비스로_넘긴다() throws Exception {
         // given - 공백 정리와 LIKE 이스케이프는 서비스의 몫이다
         given(festivalService.getFestivals(null, null, null, null, "  대동  ",

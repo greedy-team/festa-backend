@@ -1,20 +1,16 @@
 package com.greedy.festa.artist.dto;
 
 import com.greedy.festa.artist.exception.ArtistErrorCode;
-import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.util.EnumParser;
 
 public enum ArtistPublicSortType {
     APPEARANCES,
     NAME;
 
     public static ArtistPublicSortType from(String value) {
-        if (value == null || value.isBlank()) {
-            return APPEARANCES;
-        }
-        try {
-            return valueOf(value);
-        } catch (IllegalArgumentException exception) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_SORT_TYPE);
-        }
+        return EnumParser.parse(
+                ArtistPublicSortType.class, value,
+                APPEARANCES, ArtistErrorCode.ARTIST_INVALID_SORT_TYPE
+        );
     }
 }

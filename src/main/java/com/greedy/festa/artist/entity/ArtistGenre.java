@@ -1,7 +1,7 @@
 package com.greedy.festa.artist.entity;
 
 import com.greedy.festa.artist.exception.ArtistErrorCode;
-import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.util.EnumParser;
 
 public enum ArtistGenre {
     HIPHOP,
@@ -10,13 +10,9 @@ public enum ArtistGenre {
     BAND;
 
     public static ArtistGenre from(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return valueOf(value);
-        } catch (IllegalArgumentException exception) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_GENRE_TYPE);
-        }
+        return EnumParser.parse(
+                ArtistGenre.class, value,
+                ArtistErrorCode.ARTIST_INVALID_GENRE_TYPE
+        );
     }
 }
