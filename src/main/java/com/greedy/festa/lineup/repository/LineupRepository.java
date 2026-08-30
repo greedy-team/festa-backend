@@ -1,7 +1,7 @@
-package com.greedy.festa.artist.repository;
+package com.greedy.festa.lineup.repository;
 
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.Lineup;
+import com.greedy.festa.lineup.entity.Lineup;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

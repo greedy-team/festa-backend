@@ -1,4 +1,6 @@
-package com.greedy.festa.artist.entity;
+package com.greedy.festa.lineup.entity;
+
+import com.greedy.festa.artist.entity.Artist;
 
 import com.greedy.festa.festival.entity.Festival;
 import jakarta.persistence.Column;

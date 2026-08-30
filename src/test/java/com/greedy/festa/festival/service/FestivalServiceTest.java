@@ -1,7 +1,6 @@
 package com.greedy.festa.festival.service;
 
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.Lineup;
 import com.greedy.festa.festival.dto.FestivalListItemResponse;
 import com.greedy.festa.festival.dto.FestivalListSortType;
 import com.greedy.festa.festival.dto.FestivalRecentResponse;
@@ -15,6 +14,7 @@ import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
+import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.support.PostgresTestSupport;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
