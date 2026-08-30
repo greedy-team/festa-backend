@@ -97,7 +97,7 @@ public class ImportAdminController {
     }
 
     @Operation(summary = "임포트 단건 미리보기",
-            description = "type은 festivals / lineups / artists 중 하나다. onConflict는 UPDATE(기본) / SKIP.")
+            description = "경로의 type은 소문자 festivals / lineups / artists만 받는다. onConflict는 UPDATE(기본) / SKIP.")
     @ApiResponse(responseCode = "201", description = "생성된 미리보기 배치와 행 목록")
     @ApiResponse(responseCode = "400", description = "IMPORT_INVALID_TYPE / IMPORT_MISSING_FILE "
             + "/ IMPORT_INVALID_CONFLICT_POLICY / IMPORT_EMPTY_CSV / IMPORT_INVALID_CSV_ENCODING / IMPORT_INVALID_CSV_HEADER / IMPORT_INVALID_CSV",
