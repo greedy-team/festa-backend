@@ -4,6 +4,7 @@ import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.artist.repository.ArtistWithAppearanceCount;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.repository.FestivalRepository;
+import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.dto.HostDetailResponse;
 import com.greedy.festa.host.dto.HostDetailResponse.FestivalHistory;
@@ -20,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -29,7 +29,6 @@ import java.util.stream.IntStream;
 @RequiredArgsConstructor
 public class HostService {
 
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final int HISTORY_SIZE = 2;
     private static final Limit FREQUENT_ARTIST_LIMIT = Limit.of(3);
 
@@ -41,7 +40,7 @@ public class HostService {
 
     @Transactional(readOnly = true)
     public HostDetailResponse getHostDetail(Long hostId) {
-        LocalDate today = LocalDate.now(clock.withZone(SEOUL));
+        LocalDate today = LocalDate.now(clock.withZone(ClockConfig.KST));
 
         Host target = hostRepository.findById(hostId)
                 .orElseThrow(() -> new FestaException(HostErrorCode.HOST_NOT_FOUND));
