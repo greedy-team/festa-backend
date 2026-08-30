@@ -14,4 +14,11 @@ public enum FestivalStatus {
                 FestivalErrorCode.FESTIVAL_INVALID_STATUS_TYPE
         );
     }
+
+    public static String nameOrNull(FestivalStatus status) {
+        if (status == null) {
+            return null;
+        }
+        return status.name();
+    }
 }

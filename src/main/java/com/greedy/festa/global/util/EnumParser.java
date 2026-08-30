@@ -26,11 +26,4 @@ public class EnumParser {
             throw new FestaException(errorCode);
         }
     }
-
-    public static String nameOrNull(Enum<?> value) {
-        if (value == null) {
-            return null;
-        }
-        return value.name();
-    }
 }
