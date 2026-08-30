@@ -30,7 +30,7 @@ import static org.mockito.Mockito.verify;
 
 @SuppressWarnings("NonAsciiCharacters")
 @ExtendWith(MockitoExtension.class)
-class FestivalAdminServiceTest {
+class FestivalPublishServiceTest {
 
     private static final Long 축제_id = 1L;
     private static final Instant 지금 = Instant.parse("2026-08-22T09:00:00Z");
@@ -39,11 +39,11 @@ class FestivalAdminServiceTest {
     @Mock
     private FestivalRepository festivalRepository;
 
-    private FestivalAdminService festivalAdminService;
+    private FestivalPublishService festivalPublishService;
 
     @BeforeEach
     void setUp() {
-        festivalAdminService = new FestivalAdminService(
+        festivalPublishService = new FestivalPublishService(
                 festivalRepository, Clock.fixed(지금, ZoneOffset.UTC)
         );
     }
@@ -56,7 +56,7 @@ class FestivalAdminServiceTest {
         given(festivalRepository.countLineupsByFestivalId(축제_id)).willReturn(3L);
 
         // when
-        FestivalPublishResponse response = festivalAdminService.publish(축제_id);
+        FestivalPublishResponse response = festivalPublishService.publish(축제_id);
 
         // then
         assertThat(festival.getPublishedAt()).isEqualTo(지금);
@@ -72,7 +72,7 @@ class FestivalAdminServiceTest {
 
         // when
         FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> festivalAdminService.publish(축제_id)
+                FestaException.class, () -> festivalPublishService.publish(축제_id)
         );
 
         // then
@@ -90,7 +90,7 @@ class FestivalAdminServiceTest {
 
         // when
         FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> festivalAdminService.publish(축제_id)
+                FestaException.class, () -> festivalPublishService.publish(축제_id)
         );
 
         // then
@@ -107,7 +107,7 @@ class FestivalAdminServiceTest {
 
         // when
         FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> festivalAdminService.publish(축제_id)
+                FestaException.class, () -> festivalPublishService.publish(축제_id)
         );
 
         // then
@@ -122,7 +122,7 @@ class FestivalAdminServiceTest {
 
         // when
         FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> festivalAdminService.publish(축제_id)
+                FestaException.class, () -> festivalPublishService.publish(축제_id)
         );
 
         // then
@@ -137,7 +137,7 @@ class FestivalAdminServiceTest {
         given(festivalRepository.findById(축제_id)).willReturn(Optional.of(festival));
 
         // when
-        FestivalPublishResponse response = festivalAdminService.unpublish(축제_id);
+        FestivalPublishResponse response = festivalPublishService.unpublish(축제_id);
 
         // then
         assertThat(festival.getPublishedAt()).isNull();
@@ -151,7 +151,7 @@ class FestivalAdminServiceTest {
         given(festivalRepository.findById(축제_id)).willReturn(Optional.of(festival));
 
         // when
-        FestivalPublishResponse response = festivalAdminService.unpublish(축제_id);
+        FestivalPublishResponse response = festivalPublishService.unpublish(축제_id);
 
         // then
         assertThat(response.publishedAt()).isNull();
@@ -164,7 +164,7 @@ class FestivalAdminServiceTest {
 
         // when
         FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> festivalAdminService.unpublish(축제_id)
+                FestaException.class, () -> festivalPublishService.unpublish(축제_id)
         );
 
         // then
@@ -172,7 +172,7 @@ class FestivalAdminServiceTest {
     }
 
     private void 검수_목록을_조회한다(int page, int size) {
-        festivalAdminService.findAll(
+        festivalPublishService.findAll(
                 null, null, null, null, null, FestivalSortType.IMPORTED_DESC, page, size
         );
     }

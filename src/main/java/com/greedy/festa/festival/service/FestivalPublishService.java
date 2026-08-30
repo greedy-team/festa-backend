@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class FestivalAdminService {
+public class FestivalPublishService {
 
     private static final int MAX_BATCH_SIZE = 100;
 

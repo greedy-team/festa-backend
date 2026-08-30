@@ -6,7 +6,7 @@ import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalPublishResponse;
 import com.greedy.festa.festival.dto.FestivalReviewItem;
 import com.greedy.festa.festival.dto.FestivalSortType;
-import com.greedy.festa.festival.service.FestivalAdminService;
+import com.greedy.festa.festival.service.FestivalPublishService;
 import com.greedy.festa.festival.service.FestivalCoverageService;
 import com.greedy.festa.global.config.SwaggerConfig;
 import com.greedy.festa.global.dto.PageResponse;
@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class FestivalAdminController {
 
-    private final FestivalAdminService festivalAdminService;
+    private final FestivalPublishService festivalPublishService;
     private final FestivalCoverageService festivalCoverageService;
 
     @Operation(summary = "축제 검수 목록 조회",
@@ -54,7 +54,7 @@ public class FestivalAdminController {
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return festivalAdminService.findAll(
+        return festivalPublishService.findAll(
                 published, hostId, year, q, discovery,
                 FestivalSortType.from(sort),
                 page, size
@@ -88,7 +88,7 @@ public class FestivalAdminController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping("/publish")
     public FestivalBatchPublishResponse batchPublish(@RequestBody FestivalBatchPublishRequest request) {
-        return festivalAdminService.batchPublish(request.festivalIds());
+        return festivalPublishService.batchPublish(request.festivalIds());
     }
 
     @Operation(summary = "축제 발행",
@@ -101,7 +101,7 @@ public class FestivalAdminController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping("/{id}/publish")
     public FestivalPublishResponse publish(@PathVariable Long id) {
-        return festivalAdminService.publish(id);
+        return festivalPublishService.publish(id);
     }
 
     @Operation(summary = "축제 발행 취소",
@@ -111,6 +111,6 @@ public class FestivalAdminController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @DeleteMapping("/{id}/publish")
     public FestivalPublishResponse unpublish(@PathVariable Long id) {
-        return festivalAdminService.unpublish(id);
+        return festivalPublishService.unpublish(id);
     }
 }
