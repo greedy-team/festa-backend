@@ -6,13 +6,11 @@ import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalPublishResponse;
 import com.greedy.festa.festival.dto.FestivalReviewItem;
 import com.greedy.festa.festival.dto.FestivalSortType;
-import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.service.FestivalAdminService;
 import com.greedy.festa.festival.service.FestivalCoverageService;
 import com.greedy.festa.global.config.SwaggerConfig;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.ErrorResponse;
-import com.greedy.festa.global.util.EnumParser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -58,8 +56,7 @@ public class FestivalAdminController {
             @RequestParam(defaultValue = "20") int size) {
         return festivalAdminService.findAll(
                 published, hostId, year, q, discovery,
-                EnumParser.parse(FestivalSortType.class, sort,
-                        FestivalSortType.IMPORTED_DESC, FestivalErrorCode.FESTIVAL_INVALID_SORT_TYPE),
+                FestivalSortType.from(sort),
                 page, size
         );
     }

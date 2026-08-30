@@ -13,7 +13,6 @@ import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.ErrorCode;
 import com.greedy.festa.global.exception.ErrorResponse;
 import com.greedy.festa.global.exception.GlobalExceptionHandler;
-import com.greedy.festa.global.util.EnumParser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -70,11 +69,9 @@ public class FestivalController {
             @RequestParam(defaultValue = "20") int size) {
         return festivalService.getFestivals(
                 hostId, year, artistId,
-                EnumParser.parse(FestivalStatus.class, status,
-                        FestivalErrorCode.FESTIVAL_INVALID_STATUS_TYPE),
+                FestivalStatus.from(status),
                 q,
-                EnumParser.parse(FestivalListSortType.class, sort,
-                        FestivalListSortType.LATEST, FestivalErrorCode.FESTIVAL_INVALID_SORT_TYPE),
+                FestivalListSortType.from(sort),
                 page, size
         );
     }

@@ -8,14 +8,12 @@ import com.greedy.festa.artist.dto.ArtistResponse;
 import com.greedy.festa.artist.dto.ArtistSortType;
 import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.ArtistGenre;
-import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.service.ArtistAdminService;
 import com.greedy.festa.artist.service.ArtistMergeCandidateService;
 import com.greedy.festa.artist.service.ArtistMergeService;
 import com.greedy.festa.global.config.SwaggerConfig;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.ErrorResponse;
-import com.greedy.festa.global.util.EnumParser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -75,14 +73,8 @@ public class ArtistAdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return artistAdminService.findAll(needsReview, q,
-                EnumParser.parse(
-                        ArtistGenre.class, genre,
-                        ArtistErrorCode.ARTIST_INVALID_GENRE_TYPE
-                ),
-                EnumParser.parse(
-                        ArtistSortType.class, sort,
-                        ArtistSortType.CREATED_DESC, ArtistErrorCode.ARTIST_INVALID_SORT_TYPE
-                ),
+                ArtistGenre.from(genre),
+                ArtistSortType.from(sort),
                 page, size);
     }
 

@@ -8,7 +8,6 @@ import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
-import com.greedy.festa.global.util.EnumParser;
 import com.greedy.festa.host.repository.HostCoverageRow;
 import com.greedy.festa.host.repository.HostRepository;
 import lombok.RequiredArgsConstructor;
@@ -44,10 +43,7 @@ public class FestivalCoverageService {
         }
         validateYear(year, today.getYear());
         validatePagination(page, size);
-        FestivalCoverageStatus statusFilter = EnumParser.parse(
-                FestivalCoverageStatus.class, requestedStatus,
-                FestivalErrorCode.FESTIVAL_COVERAGE_INVALID_STATUS
-        );
+        FestivalCoverageStatus statusFilter = FestivalCoverageStatus.from(requestedStatus);
 
         List<HostCoverageRow> rows = hostRepository.findCoverageRows(
                 LocalDate.of(year, 1, 1),

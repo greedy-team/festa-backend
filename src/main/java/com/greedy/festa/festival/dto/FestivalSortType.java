@@ -1,5 +1,7 @@
 package com.greedy.festa.festival.dto;
 
+import com.greedy.festa.festival.exception.FestivalErrorCode;
+import com.greedy.festa.global.util.EnumParser;
 import org.springframework.data.domain.Sort;
 
 public enum FestivalSortType {
@@ -8,6 +10,13 @@ public enum FestivalSortType {
     START_DATE;
 
     private static final Sort ID_ASC = Sort.by(Sort.Direction.ASC, "id");
+
+    public static FestivalSortType from(String value) {
+        return EnumParser.parse(
+                FestivalSortType.class, value,
+                IMPORTED_DESC, FestivalErrorCode.FESTIVAL_INVALID_SORT_TYPE
+        );
+    }
 
     public Sort toSort() {
         return switch (this) {

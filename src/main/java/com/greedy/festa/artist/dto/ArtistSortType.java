@@ -1,5 +1,7 @@
 package com.greedy.festa.artist.dto;
 
+import com.greedy.festa.artist.exception.ArtistErrorCode;
+import com.greedy.festa.global.util.EnumParser;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.JpaSort;
 
@@ -10,6 +12,13 @@ public enum ArtistSortType {
     NAME;
 
     private static final Sort ID_ASC = Sort.by(Sort.Direction.ASC, "id");
+
+    public static ArtistSortType from(String value) {
+        return EnumParser.parse(
+                ArtistSortType.class, value,
+                ArtistSortType.CREATED_DESC, ArtistErrorCode.ARTIST_INVALID_SORT_TYPE
+        );
+    }
 
     public Sort toSort() {
         return switch (this) {
