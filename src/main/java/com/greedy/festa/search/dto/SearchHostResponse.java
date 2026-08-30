@@ -1,0 +1,23 @@
+package com.greedy.festa.search.dto;
+
+import com.greedy.festa.host.repository.HostSearchRow;
+
+public record SearchHostResponse(
+        Long id,
+        String name,
+        String logoUrl,
+        long festivalCount,
+        String latestFestivalYearMonth
+) {
+
+    public static SearchHostResponse from(HostSearchRow row) {
+        return new SearchHostResponse(
+                row.getHost().getId(),
+                row.getHost().getName(),
+                row.getHost().getLogoUrl(),
+                row.getFestivalCount(),
+                row.getLatestFestivalDate() == null
+                        ? null : row.getLatestFestivalDate().toString().substring(0, 7)
+        );
+    }
+}
