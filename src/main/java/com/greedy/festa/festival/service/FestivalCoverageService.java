@@ -5,6 +5,7 @@ import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageStatus;
 import com.greedy.festa.festival.dto.FestivalCoverageSummary;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
+import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
@@ -18,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 
@@ -30,13 +30,12 @@ public class FestivalCoverageService {
 
     private final HostRepository hostRepository;
     private final Clock clock;
-    private final ZoneId kstZoneId;
 
     @Transactional(readOnly = true)
     public FestivalCoverageResponse findCoverage(
             Integer requestedYear, String requestedStatus, int page, int size
     ) {
-        LocalDate today = LocalDate.now(clock.withZone(kstZoneId));
+        LocalDate today = LocalDate.now(clock.withZone(ClockConfig.KST));
         int year = today.getYear();
         if (requestedYear != null) {
             year = requestedYear;

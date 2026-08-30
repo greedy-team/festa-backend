@@ -11,7 +11,6 @@ import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.artist.repository.ArtistWithAppearanceCount;
 import com.greedy.festa.artist.repository.LineupRepository;
 import com.greedy.festa.festival.entity.Festival;
-import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
@@ -54,7 +53,7 @@ class ArtistPublicServiceTest {
         lineupRepository = mock(LineupRepository.class);
         Clock clock = Clock.fixed(Instant.parse("2026-08-26T15:30:00Z"), ZoneOffset.UTC);
         artistService = new ArtistService(
-                artistRepository, artistAliasRepository, lineupRepository, clock, ClockConfig.KST);
+                artistRepository, artistAliasRepository, lineupRepository, clock);
     }
 
     @ParameterizedTest

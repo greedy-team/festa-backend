@@ -10,6 +10,7 @@ import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.entity.TicketType;
 import com.greedy.festa.festival.entity.VerificationMethod;
 import com.greedy.festa.festival.repository.FestivalRepository;
+import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.repository.HostRepository;
@@ -39,7 +40,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -78,7 +78,6 @@ public class ImportPreviewService {
     private final FestivalRepository festivalRepository;
     private final ImportBatchRepository importBatchRepository;
     private final PreviewJsonCodec previewJsonCodec;
-    private final ZoneId kstZoneId;
 
     @Transactional
     public ImportPreviewResponse previewBundle(
@@ -679,7 +678,7 @@ public class ImportPreviewService {
             return OffsetDateTime.parse(text).toInstant();
         } catch (DateTimeException ignored) {
             try {
-                return LocalDateTime.parse(text).atZone(kstZoneId).toInstant();
+                return LocalDateTime.parse(text).atZone(ClockConfig.KST).toInstant();
             } catch (DateTimeException e) {
                 errors.add(error("INVALID_TICKET_OPEN_AT",
                         "ticket_open_at은 ISO-8601 datetime이어야 합니다"));

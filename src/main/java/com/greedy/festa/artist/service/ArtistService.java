@@ -17,6 +17,7 @@ import com.greedy.festa.artist.repository.ArtistRecentFestivalRow;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.artist.repository.ArtistWithAppearanceCount;
 import com.greedy.festa.artist.repository.LineupRepository;
+import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
@@ -28,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,7 +44,6 @@ public class ArtistService {
     private final ArtistAliasRepository artistAliasRepository;
     private final LineupRepository lineupRepository;
     private final Clock clock;
-    private final ZoneId kstZoneId;
 
     @Transactional(readOnly = true)
     public PageResponse<ArtistListItemResponse> findAll(
@@ -151,6 +150,6 @@ public class ArtistService {
     }
 
     private LocalDate today() {
-        return LocalDate.now(clock.withZone(kstZoneId));
+        return LocalDate.now(clock.withZone(ClockConfig.KST));
     }
 }

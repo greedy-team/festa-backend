@@ -8,6 +8,7 @@ import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.repository.FestivalRepository;
+import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
@@ -21,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -34,13 +34,12 @@ public class FestivalService {
 
     private final FestivalRepository festivalRepository;
     private final Clock clock;
-    private final ZoneId kstZoneId;
 
     @Transactional(readOnly = true)
     public List<FestivalUpcomingResponse> getUpcomingFestivals(int limit) {
         validateLimit(limit, UPCOMING_MAX_LIMIT);
 
-        LocalDate today = LocalDate.now(clock.withZone(kstZoneId));
+        LocalDate today = LocalDate.now(clock.withZone(ClockConfig.KST));
 
         List<Festival> festivals = festivalRepository.findPublishedNotEnded(today, Limit.of(limit));
 
@@ -72,7 +71,7 @@ public class FestivalService {
             throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
         }
 
-        LocalDate today = LocalDate.now(clock.withZone(kstZoneId));
+        LocalDate today = LocalDate.now(clock.withZone(ClockConfig.KST));
         LocalDate yearStart = null;
         LocalDate nextYearStart = null;
         if (year != null) {

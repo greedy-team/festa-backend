@@ -16,8 +16,4 @@ public class ClockConfig {
         return Clock.systemUTC();
     }
 
-    @Bean
-    public ZoneId kstZoneId() {
-        return KST;
-    }
 }
