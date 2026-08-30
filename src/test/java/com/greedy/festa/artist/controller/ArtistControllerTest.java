@@ -38,10 +38,10 @@ class ArtistControllerTest {
     }
 
     @Test
-    void 목록은_요청한_페이지와_크기로_기본_출연순을_조회한다() throws Exception {
+    void 목록은_요청한_페이지와_크기로_조회하고_sort_생략은_서비스에_맡긴다() throws Exception {
         ArtistListItemResponse item = new ArtistListItemResponse(
                 1L, "BTS", null, ArtistGenre.DANCE, 3, null);
-        given(artistService.findAll(0, 10, null, "APPEARANCES", null))
+        given(artistService.findAll(0, 10, null, null, null))
                 .willReturn(new PageResponse<>(List.of(item), 0, 10, 1, 1, false, false));
 
         mockMvc.perform(get("/api/artists")
@@ -53,7 +53,7 @@ class ArtistControllerTest {
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(10));
 
-        verify(artistService).findAll(0, 10, null, "APPEARANCES", null);
+        verify(artistService).findAll(0, 10, null, null, null);
     }
 
     @Test
@@ -132,16 +132,16 @@ class ArtistControllerTest {
 
     @Test
     void 잘못된_목록_파라미터는_공통_오류_형식으로_반환한다() throws Exception {
-        given(artistService.findAll(-1, 10, null, "APPEARANCES", null))
+        given(artistService.findAll(-1, 10, null, null, null))
                 .willThrow(new FestaException(CommonErrorCode.INVALID_PAGE));
-        given(artistService.findAll(0, 51, null, "APPEARANCES", null))
+        given(artistService.findAll(0, 51, null, null, null))
                 .willThrow(new FestaException(CommonErrorCode.INVALID_PAGE_SIZE));
-        given(artistService.findAll(0, 10, "ROCK", "APPEARANCES", null))
+        given(artistService.findAll(0, 10, "ROCK", null, null))
                 .willThrow(new FestaException(ArtistErrorCode.ARTIST_INVALID_GENRE_TYPE));
         given(artistService.findAll(0, 10, null, "RECENT", null))
                 .willThrow(new FestaException(ArtistErrorCode.ARTIST_INVALID_SORT_TYPE));
         String longQuery = "가".repeat(51);
-        given(artistService.findAll(0, 10, null, "APPEARANCES", longQuery))
+        given(artistService.findAll(0, 10, null, null, longQuery))
                 .willThrow(new FestaException(ArtistErrorCode.ARTIST_INVALID_QUERY));
 
         assertListError("page", "-1", "size", "10", "INVALID_PAGE");
