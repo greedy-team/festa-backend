@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Getter
@@ -134,11 +135,64 @@ public class Festival extends BaseEntity {
         this.importedAt = importedAt;
     }
 
+    /**
+     * 어드민 수정은 전체 교체다 — 보낸 것이 전부이고 생략한 필드는 비워진다.
+     * 임포트 갱신({@link #updateFromImport})과 분리된 경로이며 정책을 섞지 않는다.
+     * 필수 넷(host·name·startDate·endDate)은 서비스가 null을 미리 막는다.
+     */
+    public void update(
+            Host host, String importKey, String name,
+            LocalDate startDate, LocalDate endDate,
+            String posterUrl, String description,
+            String venueName, String address,
+            Double latitude, Double longitude,
+            ExternalVisitorPolicy externalVisitor, VerificationMethod verification,
+            TicketType ticketType, Instant ticketOpenAt,
+            String admissionNote, String instagramUrl
+    ) {
+        this.host = host;
+        this.importKey = blankToNull(importKey);
+        this.name = name.trim();
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.posterUrl = blankToNull(posterUrl);
+        this.description = blankToNull(description);
+        this.venueName = blankToNull(venueName);
+        this.address = blankToNull(address);
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.externalVisitor = externalVisitor;
+        this.verification = verification;
+        this.ticketType = ticketType;
+        this.ticketOpenAt = ticketOpenAt;
+        this.admissionNote = blankToNull(admissionNote);
+        this.instagramUrl = blankToNull(instagramUrl);
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmedValue = value.trim();
+        if (trimmedValue.isBlank()) {
+            return null;
+        }
+        return trimmedValue;
+    }
+
     public void publish(Instant publishedAt) {
         this.publishedAt = publishedAt;
     }
 
     public void unpublish() {
         this.publishedAt = null;
+    }
+
+    public boolean withinPeriod(int day) {
+        return withinPeriod(startDate, endDate, day);
+    }
+
+    public static boolean withinPeriod(LocalDate startDate, LocalDate endDate, int day) {
+        return day <= ChronoUnit.DAYS.between(startDate, endDate) + 1;
     }
 }

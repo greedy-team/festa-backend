@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface FestivalRepository extends JpaRepository<Festival, Long> {
@@ -137,4 +138,10 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
             @Param("q") String q,
             Pageable pageable
     );
+
+    Optional<Festival> findByName(String name);
+
+    boolean existsByImportKey(String importKey);
+
+    boolean existsByImportKeyAndIdNot(String importKey, Long id);
 }
