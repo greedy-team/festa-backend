@@ -52,4 +52,13 @@ public class Lineup {
         this.day = day;
         this.displayOrder = displayOrder;
     }
+
+    /**
+     * 어드민 수정은 전체 교체다. artist가 null이면 시크릿 게스트다.
+     */
+    public void update(Artist artist, int day, int displayOrder) {
+        this.artist = artist;
+        this.day = day;
+        this.displayOrder = displayOrder;
+    }
 }
