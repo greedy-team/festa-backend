@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
         + "토큰이 없거나 만료되면 401(UNAUTHORIZED / TOKEN_EXPIRED)이다.")
 @SecurityRequirement(name = SwaggerConfig.BEARER_AUTH)
 @RestController
-@RequestMapping("/api/admin/festivals/{festivalId}/lineup")
+@RequestMapping("/api/admin/festivals/{festivalId}/lineups")
 @RequiredArgsConstructor
 public class LineupAdminController {
 
