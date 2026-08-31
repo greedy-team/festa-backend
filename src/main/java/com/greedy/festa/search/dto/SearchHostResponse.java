@@ -5,7 +5,7 @@ import com.greedy.festa.host.repository.HostSearchRow;
 import java.time.YearMonth;
 
 public record SearchHostResponse(
-        Long id,
+        Long hostId,
         String name,
         String logoUrl,
         long festivalCount,

@@ -60,11 +60,11 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
 
         assertThat(byEnglish.artists()).extracting(item -> item.artistId())
                 .containsExactly(artist.getId());
-        assertThat(byEnglish.hosts()).extracting(item -> item.id())
+        assertThat(byEnglish.hosts()).extracting(item -> item.hostId())
                 .containsExactly(host.getId());
         assertThat(byEnglish.festivals()).extracting(item -> item.festivalId())
                 .containsExactly(festival.getId());
-        assertThat(byShortName.hosts()).extracting(item -> item.id())
+        assertThat(byShortName.hosts()).extracting(item -> item.hostId())
                 .containsExactly(host.getId());
         assertThat(byShortName.artists()).isEmpty();
         assertThat(byShortName.festivals()).extracting(item -> item.festivalId())

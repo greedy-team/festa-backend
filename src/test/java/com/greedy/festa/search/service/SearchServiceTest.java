@@ -152,8 +152,10 @@ class SearchServiceTest {
 
     @Test
     void HOST_선택은_Host_목록과_나머지_count만_조회한다() {
+        Host host = Host.builder().name("봄대학교").region("서울").build();
+        ReflectionTestUtils.setField(host, "id", 1L);
         HostSearchRow hostRow = mock(HostSearchRow.class);
-        given(hostRow.getHost()).willReturn(Host.builder().name("봄대학교").region("서울").build());
+        given(hostRow.getHost()).willReturn(host);
         given(hostRow.getLatestFestivalDate()).willReturn(LocalDate.of(2026, 8, 31));
         given(hostRepository.findSearchRows("봄")).willReturn(List.of(hostRow));
         given(artistRepository.countSearchRows("봄")).willReturn(2L);
@@ -162,6 +164,7 @@ class SearchServiceTest {
         SearchResponse response = searchService.search("봄", "HOST");
 
         assertThat(response.counts()).isEqualTo(new SearchCounts(6, 3, 2, 1));
+        assertThat(response.hosts().getFirst().hostId()).isEqualTo(1L);
         assertThat(response.hosts().getFirst().latestFestivalYearMonth()).isEqualTo("2026-08");
         verify(hostRepository).findSearchRows("봄");
         verify(artistRepository).countSearchRows("봄");
