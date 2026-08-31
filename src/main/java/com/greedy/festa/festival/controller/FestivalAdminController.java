@@ -87,7 +87,8 @@ public class FestivalAdminController {
 
     @Operation(summary = "축제 수정",
             description = "전체 교체다 - 보낸 것이 전부이고 생략한 필드는 비워진다. "
-                    + "현재 값을 먼저 조회해 채운 뒤 통째로 보낸다. 발행된 축제도 수정할 수 있다.")
+                    + "현재 값을 먼저 조회해 채운 뒤 통째로 보낸다. 발행된 축제도 수정할 수 있으나, "
+                    + "발행 조건인 좌표는 비울 수 없다.")
     @ApiResponse(responseCode = "200", description = "수정된 축제")
     @ApiResponse(responseCode = "400", description = "FESTIVAL_INVALID_NAME / FESTIVAL_INVALID_START_DATE "
             + "/ FESTIVAL_INVALID_END_DATE / FESTIVAL_INVALID_HOST_ID / INVALID_DATE_RANGE",
@@ -95,7 +96,8 @@ public class FestivalAdminController {
     @ApiResponse(responseCode = "404", description = "FESTIVAL_NOT_FOUND / HOST_NOT_FOUND",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "FESTIVAL_DUPLICATE_IMPORT_KEY "
-            + "/ FESTIVAL_PERIOD_CONFLICTS_LINEUP - 기간을 줄이면 기존 라인업이 밖으로 나가는 경우",
+            + "/ FESTIVAL_PERIOD_CONFLICTS_LINEUP - 기간을 줄이면 기존 라인업이 밖으로 나가는 경우 "
+            + "/ FESTIVAL_PUBLISHED_COORDINATES_REQUIRED - 발행된 축제의 좌표를 비우는 경우",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PatchMapping("/{id}")
     public FestivalResponse update(@PathVariable Long id, @RequestBody FestivalUpdateRequest request) {

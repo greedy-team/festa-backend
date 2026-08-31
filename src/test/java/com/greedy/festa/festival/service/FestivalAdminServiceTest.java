@@ -295,12 +295,44 @@ class FestivalAdminServiceTest extends PostgresTestSupport {
         void 발행된_축제도_수정된다() {
             Long id = 발행된_축제를_만든다();
 
-            festivalAdminService.update(id, 최소한만_담은_수정요청("이름만 바꾼다"));
+            festivalAdminService.update(id, 좌표를_담은_수정요청("이름만 바꾼다"));
             반영한다();
 
             Festival saved = festivalRepository.findById(id).orElseThrow();
             assertThat(saved.getName()).isEqualTo("이름만 바꾼다");
             assertThat(saved.getPublishedAt()).isEqualTo(발행_시각);
+        }
+
+        @Test
+        void 발행된_축제의_좌표를_비우면_거부한다() {
+            Long id = 발행된_축제를_만든다();
+
+            assertThat(에러코드(() -> festivalAdminService.update(id, 최소한만_담은_수정요청("이름만 바꾼다"))))
+                    .isEqualTo(FestivalErrorCode.FESTIVAL_PUBLISHED_COORDINATES_REQUIRED);
+        }
+
+        @Test
+        void 발행된_축제의_좌표를_한쪽만_보내도_거부한다() {
+            Long id = 발행된_축제를_만든다();
+            FestivalUpdateRequest 위도만 = new FestivalUpdateRequest(
+                    주최.getId(), null, "세종연회", 시작일, 종료일,
+                    null, null, null, null, 37.5509, null,
+                    null, null, null, null, null, null);
+
+            assertThat(에러코드(() -> festivalAdminService.update(id, 위도만)))
+                    .isEqualTo(FestivalErrorCode.FESTIVAL_PUBLISHED_COORDINATES_REQUIRED);
+        }
+
+        @Test
+        void 미발행_축제는_좌표가_없어도_수정된다() {
+            Long id = 축제를_만든다();
+
+            festivalAdminService.update(id, 최소한만_담은_수정요청("이름만 바꾼다"));
+            반영한다();
+
+            Festival saved = festivalRepository.findById(id).orElseThrow();
+            assertThat(saved.getName()).isEqualTo("이름만 바꾼다");
+            assertThat(saved.getLatitude()).isNull();
         }
 
         @Test
@@ -369,6 +401,13 @@ class FestivalAdminServiceTest extends PostgresTestSupport {
         return new FestivalUpdateRequest(
                 주최.getId(), null, name, 시작일, 종료일,
                 null, null, null, null, null, null,
+                null, null, null, null, null, null);
+    }
+
+    private FestivalUpdateRequest 좌표를_담은_수정요청(String name) {
+        return new FestivalUpdateRequest(
+                주최.getId(), null, name, 시작일, 종료일,
+                null, null, null, null, 37.5509, 127.0743,
                 null, null, null, null, null, null);
     }
 

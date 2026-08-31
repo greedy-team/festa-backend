@@ -23,6 +23,10 @@ public enum FestivalErrorCode implements ErrorCode {
     FESTIVAL_DUPLICATE_IMPORT_KEY("이미 등록된 import_key입니다", HttpStatus.CONFLICT),
     FESTIVAL_HAS_LINEUPS("라인업이 등록된 축제는 삭제할 수 없습니다", HttpStatus.CONFLICT),
     FESTIVAL_ALREADY_PUBLISHED("발행된 축제는 삭제할 수 없습니다. 발행을 해제한 뒤 삭제하세요", HttpStatus.CONFLICT),
+    FESTIVAL_PUBLISHED_COORDINATES_REQUIRED(
+            "발행된 축제는 좌표를 비울 수 없습니다. 발행을 해제한 뒤 수정하세요",
+            HttpStatus.CONFLICT
+    ),
     FESTIVAL_COVERAGE_INVALID_STATUS(
             "status는 PUBLISHED, REVIEW_PENDING 또는 NEEDS_CHECK만 사용할 수 있습니다.",
             HttpStatus.BAD_REQUEST

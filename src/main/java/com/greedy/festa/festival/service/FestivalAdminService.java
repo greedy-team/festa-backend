@@ -73,6 +73,7 @@ public class FestivalAdminService {
         validatePeriod(request.startDate(), request.endDate());
         validateHostId(request.hostId());
         validatePeriodCoversLineup(id, request.startDate(), request.endDate());
+        validateCoordinatesKept(festival, request.latitude(), request.longitude());
 
         String importKey = blankToNull(request.importKey());
         if (importKey != null && festivalRepository.existsByImportKeyAndIdNot(importKey, id)) {
@@ -144,6 +145,15 @@ public class FestivalAdminService {
     private void validateHostId(Long hostId) {
         if (hostId == null) {
             throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_HOST_ID);
+        }
+    }
+
+    private void validateCoordinatesKept(Festival festival, Double latitude, Double longitude) {
+        if (festival.getPublishedAt() == null) {
+            return;
+        }
+        if (latitude == null || longitude == null) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_PUBLISHED_COORDINATES_REQUIRED);
         }
     }
 
