@@ -135,11 +135,6 @@ public class Festival extends BaseEntity {
         this.importedAt = importedAt;
     }
 
-    /**
-     * 어드민 수정은 전체 교체다 — 보낸 것이 전부이고 생략한 필드는 비워진다.
-     * 임포트 갱신({@link #updateFromImport})과 분리된 경로이며 정책을 섞지 않는다.
-     * 필수 넷(host·name·startDate·endDate)은 서비스가 null을 미리 막는다.
-     */
     public void update(
             Host host, String importKey, String name,
             LocalDate startDate, LocalDate endDate,
@@ -169,17 +164,6 @@ public class Festival extends BaseEntity {
         this.instagramUrl = blankToNull(instagramUrl);
     }
 
-    private static String blankToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmedValue = value.trim();
-        if (trimmedValue.isBlank()) {
-            return null;
-        }
-        return trimmedValue;
-    }
-
     public void publish(Instant publishedAt) {
         this.publishedAt = publishedAt;
     }
@@ -194,5 +178,16 @@ public class Festival extends BaseEntity {
 
     public static boolean withinPeriod(LocalDate startDate, LocalDate endDate, int day) {
         return day <= ChronoUnit.DAYS.between(startDate, endDate) + 1;
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmedValue = value.trim();
+        if (trimmedValue.isBlank()) {
+            return null;
+        }
+        return trimmedValue;
     }
 }
