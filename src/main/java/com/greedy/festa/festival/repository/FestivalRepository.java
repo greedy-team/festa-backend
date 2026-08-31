@@ -17,6 +17,9 @@ import java.util.Optional;
 @Repository
 public interface FestivalRepository extends JpaRepository<Festival, Long> {
 
+    @Query("SELECT f FROM Festival f LEFT JOIN FETCH f.host WHERE f.id = :id")
+    Optional<Festival> findDetailById(@Param("id") Long id);
+
     @Query(value = """
             SELECT f AS festival, h AS host, COUNT(l) AS lineupCount
             FROM Festival f

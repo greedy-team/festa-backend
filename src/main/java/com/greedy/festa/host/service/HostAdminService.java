@@ -60,39 +60,31 @@ public class HostAdminService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public HostResponse findOne(Long id) {
+        Host host = hostRepository.findById(id)
+                .orElseThrow(() -> new FestaException(HostErrorCode.HOST_NOT_FOUND));
+        return HostResponse.of(host, hostRepository.countFestivalsByHostId(id));
+    }
+
     @Transactional
     public HostResponse update(Long id, HostUpdateRequest request) {
         Host host = hostRepository.findById(id)
                 .orElseThrow(() -> new FestaException(HostErrorCode.HOST_NOT_FOUND));
 
-        if (request.name() != null) {
-            validateName(request.name());
-            if (hostRepository.existsByNameAndIdNot(request.name(), id)) {
-                throw new FestaException(HostErrorCode.HOST_DUPLICATE_NAME);
-            }
-            host.changeName(request.name());
+        validateName(request.name());
+        if (hostRepository.existsByNameAndIdNot(request.name(), id)) {
+            throw new FestaException(HostErrorCode.HOST_DUPLICATE_NAME);
         }
+        validateRegion(request.region());
 
-        if (request.region() != null) {
-            validateRegion(request.region());
-            host.changeRegion(request.region());
-        }
-
-        if (request.shortName() != null) {
-            host.changeShortName(blankToNull(request.shortName()));
-        }
-        if (request.logoUrl() != null){
-            host.changeLogoUrl(blankToNull(request.logoUrl()));
-        }
-        if (request.bannerUrl() != null){
-            host.changeBannerUrl(blankToNull(request.bannerUrl()));
-        }
-        if (request.homepageUrl() != null) {
-            host.changeHomepageUrl(blankToNull(request.homepageUrl()));
-        }
-        if (request.instagramUrl() != null) {
-            host.changeInstagramUrl(blankToNull(request.instagramUrl()));
-        }
+        host.changeName(request.name());
+        host.changeRegion(request.region());
+        host.changeShortName(blankToNull(request.shortName()));
+        host.changeLogoUrl(blankToNull(request.logoUrl()));
+        host.changeBannerUrl(blankToNull(request.bannerUrl()));
+        host.changeInstagramUrl(blankToNull(request.instagramUrl()));
+        host.changeHomepageUrl(blankToNull(request.homepageUrl()));
 
         return HostResponse.of(host, hostRepository.countFestivalsByHostId(id));
     }
@@ -122,7 +114,7 @@ public class HostAdminService {
     }
 
     private String blankToNull(String value) {
-        if (value.isBlank()) {
+        if (value == null || value.isBlank()) {
             return null;
         }
         return value;

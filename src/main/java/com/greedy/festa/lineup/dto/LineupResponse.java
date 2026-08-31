@@ -5,7 +5,9 @@ import com.greedy.festa.lineup.entity.Lineup;
 public record LineupResponse(
         Long lineupId,
         Long festivalId,
+        String festivalName,
         Long artistId,
+        String artistName,
         int day,
         int displayOrder
 ) {
@@ -14,7 +16,9 @@ public record LineupResponse(
         return new LineupResponse(
                 lineup.getId(),
                 lineup.getFestival().getId(),
+                lineup.getFestival().getName(),
                 artistId(lineup),
+                artistName(lineup),
                 lineup.getDay(),
                 lineup.getDisplayOrder()
         );
@@ -25,5 +29,12 @@ public record LineupResponse(
             return null;
         }
         return lineup.getArtist().getId();
+    }
+
+    private static String artistName(Lineup lineup) {
+        if (lineup.getArtist() == null) {
+            return null;
+        }
+        return lineup.getArtist().getName();
     }
 }

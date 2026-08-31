@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,7 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "관리자 - 라인업", description = "축제 라인업의 등록·수정·삭제. "
-        + "artistId를 비우면 시크릿 게스트이며 자리는 유지된다. "
+        + "artistId를 비우면 시크릿 게스트이며 자리는 유지되고, 응답의 artistId·artistName도 null이다. "
         + "토큰이 없거나 만료되면 401(UNAUTHORIZED / TOKEN_EXPIRED)이다.")
 @SecurityRequirement(name = SwaggerConfig.BEARER_AUTH)
 @RestController
@@ -34,9 +35,18 @@ public class LineupAdminController {
 
     private final LineupAdminService lineupAdminService;
 
+    @Operation(summary = "라인업 단건 조회", description = "관리자 수정에 필요한 라인업의 현재 값을 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "라인업 상세")
+    @ApiResponse(responseCode = "404", description = "LINEUP_NOT_FOUND",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @GetMapping("/{lineupId}")
+    public LineupResponse findOne(@PathVariable Long festivalId, @PathVariable Long lineupId) {
+        return lineupAdminService.findOne(festivalId, lineupId);
+    }
+
     @Operation(summary = "라인업 등록",
-            description = "day는 1 이상이고 축제 기간을 벗어날 수 없다. "
-                    + "artistId를 비우면 시크릿 게스트로 저장된다.")
+            description = "day·displayOrder는 필수이며 생략하거나 1 미만이면 400이고, "
+                    + "day가 축제 기간을 벗어나도 400이다. artistId를 비우면 시크릿 게스트로 저장된다.")
     @ApiResponse(responseCode = "201", description = "등록된 라인업")
     @ApiResponse(responseCode = "400", description = "LINEUP_INVALID_DAY / LINEUP_INVALID_DISPLAY_ORDER "
             + "/ LINEUP_DAY_OUT_OF_RANGE",
@@ -54,7 +64,8 @@ public class LineupAdminController {
     }
 
     @Operation(summary = "라인업 수정",
-            description = "전체 교체다 - 보낸 것이 전부다. artistId를 비우면 시크릿 게스트가 된다.")
+            description = "전체 교체다 - 보낸 것이 전부다. day·displayOrder는 필수이며 생략하거나 1 미만이면 400이고, "
+                    + "day가 축제 기간을 벗어나도 400이다. artistId를 비우면 시크릿 게스트가 된다.")
     @ApiResponse(responseCode = "200", description = "수정된 라인업")
     @ApiResponse(responseCode = "400", description = "LINEUP_INVALID_DAY / LINEUP_INVALID_DISPLAY_ORDER "
             + "/ LINEUP_DAY_OUT_OF_RANGE",

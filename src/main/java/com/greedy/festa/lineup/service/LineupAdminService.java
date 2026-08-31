@@ -25,6 +25,13 @@ public class LineupAdminService {
     private final ArtistRepository artistRepository;
     private final LineupRepository lineupRepository;
 
+    @Transactional(readOnly = true)
+    public LineupResponse findOne(Long festivalId, Long lineupId) {
+        Lineup lineup = lineupRepository.findByIdAndFestivalId(lineupId, festivalId)
+                .orElseThrow(() -> new FestaException(LineupErrorCode.LINEUP_NOT_FOUND));
+        return LineupResponse.of(lineup);
+    }
+
     @Transactional
     public LineupResponse create(Long festivalId, LineupCreateRequest request) {
         Festival festival = festivalRepository.findById(festivalId)

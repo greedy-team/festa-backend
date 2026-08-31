@@ -276,6 +276,35 @@ class LineupAdminServiceTest extends PostgresTestSupport {
         }
     }
 
+    @Nested
+    class 단건조회 {
+
+        @Test
+        void 축제명과_아티스트명을_함께_돌려준다() {
+            Long lineupId = 라인업을_만든다(아티스트.getId(), 1, 1);
+
+            LineupResponse response = lineupAdminService.findOne(축제.getId(), lineupId);
+
+            assertThat(response.festivalName()).isEqualTo(축제.getName());
+            assertThat(response.artistName()).isEqualTo(아티스트.getName());
+        }
+
+        @Test
+        void 다른_축제의_라인업이면_거부한다() {
+            Long lineupId = 라인업을_만든다(아티스트.getId(), 1, 1);
+            Long 다른_축제 = 다른_축제를_만든다();
+
+            assertThat(에러코드(() -> lineupAdminService.findOne(다른_축제, lineupId)))
+                    .isEqualTo(LineupErrorCode.LINEUP_NOT_FOUND);
+        }
+
+        @Test
+        void 없는_라인업이면_거부한다() {
+            assertThat(에러코드(() -> lineupAdminService.findOne(축제.getId(), 999_999L)))
+                    .isEqualTo(LineupErrorCode.LINEUP_NOT_FOUND);
+        }
+    }
+
     private Long 라인업을_만든다(Long artistId, int day, int displayOrder) {
         Long id = lineupAdminService.create(
                 축제.getId(), new LineupCreateRequest(artistId, day, displayOrder)).lineupId();

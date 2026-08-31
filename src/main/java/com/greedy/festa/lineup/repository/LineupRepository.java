@@ -15,6 +15,14 @@ public interface LineupRepository extends JpaRepository<Lineup, Long> {
 
     @Query("""
             SELECT l FROM Lineup l
+            JOIN FETCH l.festival
+            LEFT JOIN FETCH l.artist
+            WHERE l.id = :id
+            """)
+    Optional<Lineup> findDetailById(@Param("id") Long id);
+
+    @Query("""
+            SELECT l FROM Lineup l
             JOIN FETCH l.festival f
             JOIN FETCH f.host
             WHERE l.artist.id = :artistId

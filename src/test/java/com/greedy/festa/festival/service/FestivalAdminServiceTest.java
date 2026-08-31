@@ -386,6 +386,29 @@ class FestivalAdminServiceTest extends PostgresTestSupport {
         }
     }
 
+    @Nested
+    class 단건조회 {
+
+        @Test
+        void 주최명과_라인업_수를_함께_돌려준다() {
+            Long id = 축제를_만든다();
+            라인업을_넣는다(id, 1);
+
+            FestivalResponse response = festivalAdminService.findOne(id);
+
+            assertThat(response.festivalId()).isEqualTo(id);
+            assertThat(response.hostId()).isEqualTo(주최.getId());
+            assertThat(response.hostName()).isEqualTo(주최.getName());
+            assertThat(response.lineupCount()).isEqualTo(1L);
+        }
+
+        @Test
+        void 없는_축제면_거부한다() {
+            assertThat(에러코드(() -> festivalAdminService.findOne(999_999L)))
+                    .isEqualTo(FestivalErrorCode.FESTIVAL_NOT_FOUND);
+        }
+    }
+
     private FestivalCreateRequest 등록요청(
             Long hostId, String importKey, String name, LocalDate startDate, LocalDate endDate
     ) {

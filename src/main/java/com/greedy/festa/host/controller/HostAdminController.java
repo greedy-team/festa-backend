@@ -36,7 +36,7 @@ public class HostAdminController {
 
     private final HostAdminService hostAdminService;
 
-    @Operation(summary = "주최 등록")
+    @Operation(summary = "주최 등록", description = "name·region은 필수이며 생략·null·공백이면 400이다.")
     @ApiResponse(responseCode = "201", description = "등록된 주최")
     @ApiResponse(responseCode = "400", description = "HOST_INVALID_NAME / HOST_INVALID_REGION",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -58,7 +58,17 @@ public class HostAdminController {
         return hostAdminService.findAll(page, size);
     }
 
-    @Operation(summary = "주최 수정", description = "보내온 항목만 반영한다. 보내지 않은 항목은 기존 값을 그대로 둔다.")
+    @Operation(summary = "주최 단건 조회", description = "관리자 수정에 필요한 주최의 현재 값을 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "주최 상세")
+    @ApiResponse(responseCode = "404", description = "HOST_NOT_FOUND",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @GetMapping("/{id}")
+    public HostResponse findOne(@PathVariable Long id) {
+        return hostAdminService.findOne(id);
+    }
+
+    @Operation(summary = "주최 수정", description = "전체 교체다 - name·region은 필수이며 생략·null·공백이면 400이다. "
+            + "shortName·logoUrl·bannerUrl·instagramUrl·homepageUrl은 생략·null·공백을 모두 삭제로 읽는다.")
     @ApiResponse(responseCode = "200", description = "수정된 주최")
     @ApiResponse(responseCode = "400", description = "HOST_INVALID_NAME / HOST_INVALID_REGION",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

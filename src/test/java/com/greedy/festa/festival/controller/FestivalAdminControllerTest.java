@@ -47,6 +47,22 @@ class FestivalAdminControllerTest {
     }
 
     @Test
+    void 단건_조회는_서비스에_위임한다() throws Exception {
+        mockMvc.perform(get("/api/admin/festivals/1")).andExpect(status().isOk());
+
+        verify(adminService).findOne(1L);
+    }
+
+    @Test
+    void 없는_축제를_단건_조회하면_404_계약을_따른다() throws Exception {
+        given(adminService.findOne(1L)).willThrow(new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
+
+        mockMvc.perform(get("/api/admin/festivals/1"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("FESTIVAL_NOT_FOUND"));
+    }
+
+    @Test
     void coverage_api는_summary와_hosts_page를_반환한다() throws Exception {
         FestivalCoverageItem item = new FestivalCoverageItem(
                 1L, 10L, "성균관대학교", "대동제 2026",

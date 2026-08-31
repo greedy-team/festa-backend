@@ -13,6 +13,7 @@ import java.util.List;
 public record FestivalResponse(
         Long festivalId,
         Long hostId,
+        String hostName,
         String importKey,
         String name,
         LocalDate startDate,
@@ -30,6 +31,7 @@ public record FestivalResponse(
         String admissionNote,
         String instagramUrl,
         Instant publishedAt,
+        long lineupCount,
         List<FestivalPublishBlocker> blockers
 ) {
 
@@ -37,6 +39,7 @@ public record FestivalResponse(
         return new FestivalResponse(
                 festival.getId(),
                 hostId(festival),
+                hostName(festival),
                 festival.getImportKey(),
                 festival.getName(),
                 festival.getStartDate(),
@@ -54,6 +57,7 @@ public record FestivalResponse(
                 festival.getAdmissionNote(),
                 festival.getInstagramUrl(),
                 festival.getPublishedAt(),
+                lineupCount,
                 FestivalPublishBlocker.evaluate(
                         festival.getHost() != null,
                         festival.getLatitude(),
@@ -68,5 +72,12 @@ public record FestivalResponse(
             return null;
         }
         return festival.getHost().getId();
+    }
+
+    private static String hostName(Festival festival) {
+        if (festival.getHost() == null) {
+            return null;
+        }
+        return festival.getHost().getName();
     }
 }

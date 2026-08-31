@@ -63,6 +63,13 @@ public class FestivalAdminService {
         return FestivalResponse.of(festival, 0L);
     }
 
+    @Transactional(readOnly = true)
+    public FestivalResponse findOne(Long id) {
+        Festival festival = festivalRepository.findDetailById(id)
+                .orElseThrow(() -> new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
+        return FestivalResponse.of(festival, lineupRepository.countByFestivalId(id));
+    }
+
     @Transactional
     public FestivalResponse update(Long id, FestivalUpdateRequest request) {
         Festival festival = festivalRepository.findById(id)

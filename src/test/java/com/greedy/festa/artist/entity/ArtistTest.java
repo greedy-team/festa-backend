@@ -7,10 +7,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ArtistTest {
 
     @Test
-    void 모든_수정값이_null이면_기존_값을_유지한다() {
+    void genre와_needsReview가_null이면_기존_값을_유지한다() {
         Artist artist = artist();
 
-        artist.update(null, null, null, null);
+        artist.update("아티스트", null, null);
 
         assertThat(artist.getName()).isEqualTo("아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
@@ -23,7 +23,7 @@ class ArtistTest {
     void name만_수정한다() {
         Artist artist = artist();
 
-        artist.update("변경된 아티스트", null, null, null);
+        artist.update("변경된 아티스트", null, null);
 
         assertThat(artist.getName()).isEqualTo("변경된 아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
@@ -36,7 +36,7 @@ class ArtistTest {
     void genre만_수정한다() {
         Artist artist = artist();
 
-        artist.update(null, ArtistGenre.HIPHOP, null, null);
+        artist.update("아티스트", ArtistGenre.HIPHOP, null);
 
         assertThat(artist.getName()).isEqualTo("아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.HIPHOP);
@@ -49,7 +49,7 @@ class ArtistTest {
     void instagramUrl만_수정한다() {
         Artist artist = artist();
 
-        artist.update(null, null, "https://instagram.com/updated", null);
+        artist.changeInstagramUrl("https://instagram.com/updated");
 
         assertThat(artist.getName()).isEqualTo("아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
@@ -62,25 +62,16 @@ class ArtistTest {
     void instagramUrl이_null이면_기존_값을_유지한다() {
         Artist artist = artist();
 
-        artist.update("변경된 아티스트", null, null, null);
+        artist.update("변경된 아티스트", null, null);
 
         assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
     }
 
     @Test
-    void instagramUrl이_빈_문자열이면_null로_변경한다() {
+    void instagramUrl_변경_메서드는_null을_저장한다() {
         Artist artist = artist();
 
-        artist.update(null, null, "", null);
-
-        assertThat(artist.getInstagramUrl()).isNull();
-    }
-
-    @Test
-    void instagramUrl이_공백_문자열이면_null로_변경한다() {
-        Artist artist = artist();
-
-        artist.update(null, null, "   ", null);
+        artist.changeInstagramUrl(null);
 
         assertThat(artist.getInstagramUrl()).isNull();
     }
@@ -89,7 +80,7 @@ class ArtistTest {
     void needsReview를_true에서_false로_수정한다() {
         Artist artist = artist();
 
-        artist.update(null, null, null, false);
+        artist.update("아티스트", null, false);
 
         assertThat(artist.getName()).isEqualTo("아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
@@ -102,8 +93,8 @@ class ArtistTest {
     void 일부_필드만_수정하고_나머지는_유지한다() {
         Artist artist = artist();
 
-        artist.update(null, ArtistGenre.DANCE,
-                "https://instagram.com/updated", null);
+        artist.update("아티스트", ArtistGenre.DANCE, null);
+        artist.changeInstagramUrl("https://instagram.com/updated");
 
         assertThat(artist.getName()).isEqualTo("아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.DANCE);
@@ -116,8 +107,8 @@ class ArtistTest {
     void update해도_imageUrl은_기존_값을_유지한다() {
         Artist artist = artist();
 
-        artist.update("변경된 아티스트", ArtistGenre.HIPHOP,
-                "https://instagram.com/updated", false);
+        artist.update("변경된 아티스트", ArtistGenre.HIPHOP, false);
+        artist.changeInstagramUrl("https://instagram.com/updated");
 
         assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
     }
