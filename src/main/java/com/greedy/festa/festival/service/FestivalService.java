@@ -98,7 +98,7 @@ public class FestivalService {
 
     @Transactional(readOnly = true)
     public FestivalDetailResponse getFestivalDetail(Long id) {
-        LocalDate today = LocalDate.now(clock.withZone(SEOUL));
+        LocalDate today = LocalDate.now(clock.withZone(ClockConfig.KST));
 
         Festival target = festivalRepository.findPublishedDetailById(id)
                 .orElseThrow(() -> new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
