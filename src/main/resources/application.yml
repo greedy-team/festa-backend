@@ -57,6 +57,30 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
+# 로그는 두 갈래로 나간다.
+#  - 화면(stdout): 도커가 받아 파일로 모은다. 전부 담기지만 컨테이너에 딸려 있어
+#    배포로 컨테이너가 교체되면 사라진다. 상한은 deploy/compose.yaml의 logging이 건다.
+#  - 파일: app-logs 볼륨에 남아 배포를 넘겨 살아남는다. 그래서 오래 보존할 가치가 있는
+#    WARN 이상만 담는다. 접속 기록 같은 INFO까지 넣으면 이 볼륨이 금방 밀려난다.
+#
+# total-size-cap 기본값이 0(무제한)이라 반드시 적는다. max-history와 함께 걸리며 둘 중
+# 먼저 닿는 쪽이 적용되므로, 보존을 "3개월"처럼 기간으로 약속하지 않는다.
+# 오래된 아카이브는 Boot 기본 설정대로 .gz로 압축된다.
+#
+# 파일 경로(logging.file.name)는 여기에 두지 않는다. 절대 경로를 적으면 로컬과 CI도
+# 그 경로를 만들려 들어 개발기에 엉뚱한 디렉터리가 생기고, 쓰기 권한이 없는 리눅스
+# 러너에서는 매 실행마다 logback 오류가 찍힌다. 경로는 볼륨을 붙이는 쪽과 짝이므로
+# deploy/compose.yaml이 LOGGING_FILE_NAME으로 준다 — 안 주면 파일 로그가 꺼진다.
+logging:
+  threshold:
+    console: INFO
+    file: WARN
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 90
+      total-size-cap: 200MB
+
 management:
   endpoints:
     web:
