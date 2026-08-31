@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface FestivalRepository extends JpaRepository<Festival, Long> {
@@ -160,4 +161,11 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
             @Param("q") String q,
             Pageable pageable
     );
+
+    @Query("""
+        SELECT f FROM Festival f
+        JOIN FETCH f.host
+        WHERE f.id = :id AND f.publishedAt IS NOT NULL
+        """)
+    Optional<Festival> findPublishedDetailById(@Param("id") Long id);
 }

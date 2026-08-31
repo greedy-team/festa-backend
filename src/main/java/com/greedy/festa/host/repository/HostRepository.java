@@ -22,7 +22,8 @@ public interface HostRepository extends JpaRepository<Host, Long> {
     @Query(value = "SELECT h AS host, COUNT(f) AS festivalCount " +
             "FROM Host h " +
             "LEFT JOIN Festival f ON f.host = h " +
-            "GROUP BY h",
+            "GROUP BY h " +
+            "ORDER BY h.id DESC",
             countQuery = "SELECT COUNT(h) FROM Host h")
     Page<HostWithFestivalCount> findAllWithFestivalCount(Pageable pageable);
 

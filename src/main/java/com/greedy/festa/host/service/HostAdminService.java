@@ -1,6 +1,7 @@
 package com.greedy.festa.host.service;
 
 import com.greedy.festa.global.dto.PageResponse;
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.dto.HostCreateRequest;
 import com.greedy.festa.host.dto.HostResponse;
@@ -9,7 +10,7 @@ import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
 import com.greedy.festa.host.repository.HostRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,9 +43,16 @@ public class HostAdminService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<HostResponse> findAll(Pageable pageable) {
+    public PageResponse<HostResponse> findAll(int page, int size) {
+        if (page < 0) {
+            throw new FestaException(CommonErrorCode.INVALID_PAGE);
+        }
+        if (size < 1 || size > 50) {
+            throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
+        }
+
         return PageResponse.from(
-                hostRepository.findAllWithFestivalCount(pageable)
+                hostRepository.findAllWithFestivalCount(PageRequest.of(page, size))
                         .map(row -> HostResponse.of(
                                 row.getHost(),
                                 row.getFestivalCount()
