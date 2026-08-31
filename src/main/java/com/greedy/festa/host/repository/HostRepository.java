@@ -30,6 +30,28 @@ public interface HostRepository extends JpaRepository<Host, Long> {
     @Query("SELECT count(f) FROM Festival f WHERE f.host.id = :hostId")
     long countFestivalsByHostId(@Param("hostId") Long hostId);
 
+    @Query("""
+            SELECT h AS host,
+                   COUNT(DISTINCT f) AS festivalCount,
+                   MAX(f.startDate) AS latestFestivalDate
+            FROM Host h
+            LEFT JOIN Festival f ON f.host = h
+                 AND f.publishedAt IS NOT NULL
+            WHERE LOWER(h.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+               OR LOWER(h.shortName) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+            GROUP BY h
+            ORDER BY h.id ASC
+            """)
+    List<HostSearchRow> findSearchRows(@Param("q") String q);
+
+    @Query("""
+            SELECT COUNT(h)
+            FROM Host h
+            WHERE LOWER(h.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+               OR LOWER(h.shortName) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+            """)
+    long countSearchRows(@Param("q") String q);
+
     @Query(value = """
             SELECT h.id AS "hostId",
                    h.name AS "hostName",

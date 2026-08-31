@@ -92,6 +92,29 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
         """)
     List<Festival> findRecentlyPublished(Limit limit);
 
+    @Query("""
+            SELECT f
+            FROM Festival f
+            JOIN FETCH f.host h
+            WHERE f.publishedAt IS NOT NULL
+              AND (LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(h.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(h.shortName) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+            ORDER BY f.id ASC
+            """)
+    List<Festival> findPublishedSearchRows(@Param("q") String q);
+
+    @Query("""
+            SELECT COUNT(f)
+            FROM Festival f
+            JOIN f.host h
+            WHERE f.publishedAt IS NOT NULL
+              AND (LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(h.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(h.shortName) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+            """)
+    long countPublishedSearchRows(@Param("q") String q);
+
     @Query(value = """
         SELECT f
         FROM Festival f
