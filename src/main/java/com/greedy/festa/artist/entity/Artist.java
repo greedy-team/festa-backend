@@ -52,9 +52,7 @@ public class Artist extends BaseEntity {
     }
 
     public void update(String name, ArtistGenre genre, Boolean needsReview) {
-        if (name != null) {
-            this.name = name;
-        }
+        this.name = name;
         if (genre != null) {
             this.genre = genre;
         }

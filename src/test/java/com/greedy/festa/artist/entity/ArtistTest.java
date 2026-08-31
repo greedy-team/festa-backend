@@ -7,10 +7,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ArtistTest {
 
     @Test
-    void 모든_수정값이_null이면_기존_값을_유지한다() {
+    void genre와_needsReview가_null이면_기존_값을_유지한다() {
         Artist artist = artist();
 
-        artist.update(null, null, null);
+        artist.update("아티스트", null, null);
 
         assertThat(artist.getName()).isEqualTo("아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
@@ -36,7 +36,7 @@ class ArtistTest {
     void genre만_수정한다() {
         Artist artist = artist();
 
-        artist.update(null, ArtistGenre.HIPHOP, null);
+        artist.update("아티스트", ArtistGenre.HIPHOP, null);
 
         assertThat(artist.getName()).isEqualTo("아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.HIPHOP);
@@ -80,7 +80,7 @@ class ArtistTest {
     void needsReview를_true에서_false로_수정한다() {
         Artist artist = artist();
 
-        artist.update(null, null, false);
+        artist.update("아티스트", null, false);
 
         assertThat(artist.getName()).isEqualTo("아티스트");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
@@ -93,7 +93,7 @@ class ArtistTest {
     void 일부_필드만_수정하고_나머지는_유지한다() {
         Artist artist = artist();
 
-        artist.update(null, ArtistGenre.DANCE, null);
+        artist.update("아티스트", ArtistGenre.DANCE, null);
         artist.changeInstagramUrl("https://instagram.com/updated");
 
         assertThat(artist.getName()).isEqualTo("아티스트");

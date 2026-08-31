@@ -103,4 +103,30 @@ class ArtistAdminPatchContractTest {
                 FestaException.class, () -> service.update(1L, request));
         assertThat(exception.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_INVALID_NAME);
     }
+
+    @Test
+    void omittedGenreKeepsExistingValue() throws Exception {
+        ArtistUpdateRequest request = objectMapper.readValue(
+                "{\"name\":\"기존 이름\"}", ArtistUpdateRequest.class);
+
+        assertThat(service.update(1L, request).genre()).isEqualTo(ArtistGenre.DANCE);
+    }
+
+    @Test
+    void explicitNullGenreKeepsExistingValue() throws Exception {
+        ArtistUpdateRequest request = objectMapper.readValue(
+                "{\"name\":\"기존 이름\",\"genre\":null}", ArtistUpdateRequest.class);
+
+        assertThat(service.update(1L, request).genre()).isEqualTo(ArtistGenre.DANCE);
+    }
+
+    @Test
+    void omittedNeedsReviewKeepsExistingValue() throws Exception {
+        artist.markNeedsReview();
+
+        ArtistUpdateRequest request = objectMapper.readValue(
+                "{\"name\":\"기존 이름\"}", ArtistUpdateRequest.class);
+
+        assertThat(service.update(1L, request).needsReview()).isTrue();
+    }
 }
