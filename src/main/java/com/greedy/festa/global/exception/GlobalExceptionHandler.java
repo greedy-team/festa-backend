@@ -10,9 +10,17 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
+import java.util.Map;
+
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // page·size는 도메인과 무관하게 뜻이 같아 전역에서 400으로 가른다.
+    private static final Map<String, ErrorCode> COMMON_QUERY_PARAM_ERROR_CODES = Map.of(
+            "page", CommonErrorCode.INVALID_PAGE,
+            "size", CommonErrorCode.INVALID_PAGE_SIZE
+    );
 
     @ExceptionHandler(FestaException.class)
     public ResponseEntity<ErrorResponse> handleFestaException(
@@ -58,21 +66,36 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
             MethodArgumentTypeMismatchException e, HttpServletRequest request) {
 
-        // 경로 변수만 400으로 가른다. 쿼리 파라미터 타입 불일치도 같은 예외로 오지만
-        // 대상이 전부 인증 뒤(/api/admin/**)라 기존 500 동작을 그대로 둔다.
         if (e.getParameter().hasParameterAnnotation(PathVariable.class)) {
-            log.warn("{} - {}", CommonErrorCode.INVALID_PATH_VARIABLE.name(), e.getName());
-            return toResponse(
-                    CommonErrorCode.INVALID_PATH_VARIABLE,
-                    CommonErrorCode.INVALID_PATH_VARIABLE.getMessage(),
-                    request);
+            return toTypeMismatchResponse(CommonErrorCode.INVALID_PATH_VARIABLE, e, request);
         }
 
-        log.error("예상하지 못한 예외", e);
+        // page·size 밖의 쿼리 파라미터는 도메인마다 에러 코드가 갈려(limit이 축제에선
+        // FESTIVAL_INVALID_LIMIT, 아티스트에선 ARTIST_INVALID_LIMIT) 전역에서 정할 수 없다.
+        // 컨트롤러 로컬 @ExceptionHandler가 맡고, 맡는 곳이 없으면 여기서 500으로 남는다.
+        ErrorCode queryParamErrorCode = COMMON_QUERY_PARAM_ERROR_CODES.get(e.getName());
+        if (queryParamErrorCode != null) {
+            return toTypeMismatchResponse(queryParamErrorCode, e, request);
+        }
+
+        // 이 예외는 컨트롤러 메서드 진입 전 인자 바인딩 단계에서 던져져 스택트레이스에
+        // 컨트롤러가 올라오지 않는다. 요청 정보를 함께 남겨야 어느 API인지 특정할 수 있다.
+        log.error("{} - {} {} (param={}, value={})",
+                CommonErrorCode.INTERNAL_SERVER_ERROR.name(),
+                request.getMethod(), request.getRequestURI(), e.getName(), e.getValue(), e);
         return toResponse(
                 CommonErrorCode.INTERNAL_SERVER_ERROR,
                 CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
                 request);
+    }
+
+    private ResponseEntity<ErrorResponse> toTypeMismatchResponse(
+            ErrorCode errorCode, MethodArgumentTypeMismatchException e, HttpServletRequest request) {
+
+        log.warn("{} - {} {} (param={}, value={})",
+                errorCode.name(),
+                request.getMethod(), request.getRequestURI(), e.getName(), e.getValue());
+        return toResponse(errorCode, errorCode.getMessage(), request);
     }
 
     private ResponseEntity<ErrorResponse> toResponse(
