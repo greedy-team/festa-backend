@@ -36,7 +36,7 @@ public class HostAdminController {
 
     private final HostAdminService hostAdminService;
 
-    @Operation(summary = "주최 등록")
+    @Operation(summary = "주최 등록", description = "name·region은 필수이며 생략·null·공백이면 400이다.")
     @ApiResponse(responseCode = "201", description = "등록된 주최")
     @ApiResponse(responseCode = "400", description = "HOST_INVALID_NAME / HOST_INVALID_REGION",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

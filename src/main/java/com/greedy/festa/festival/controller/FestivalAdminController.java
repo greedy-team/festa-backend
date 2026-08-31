@@ -95,9 +95,12 @@ public class FestivalAdminController {
     }
 
     @Operation(summary = "축제 수정",
-            description = "전체 교체다 - 보낸 것이 전부이고 생략한 필드는 비워진다. "
+            description = "전체 교체다 - name·startDate·endDate·hostId는 필수이며 생략·null(name은 공백도 포함)이면 400이다. "
+                    + "importKey·posterUrl·description·venueName·address·admissionNote·instagramUrl과 "
+                    + "latitude·longitude·externalVisitor·verification·ticketType·ticketOpenAt은 "
+                    + "생략하거나 null이면 삭제된다(문자열은 공백도 삭제로 읽는다). "
                     + "현재 값을 먼저 조회해 채운 뒤 통째로 보낸다. 발행된 축제도 수정할 수 있으나, "
-                    + "발행 조건인 좌표는 비울 수 없다.")
+                    + "발행 조건인 좌표(latitude·longitude)는 비울 수 없다.")
     @ApiResponse(responseCode = "200", description = "수정된 축제")
     @ApiResponse(responseCode = "400", description = "FESTIVAL_INVALID_NAME / FESTIVAL_INVALID_START_DATE "
             + "/ FESTIVAL_INVALID_END_DATE / FESTIVAL_INVALID_HOST_ID / INVALID_DATE_RANGE",

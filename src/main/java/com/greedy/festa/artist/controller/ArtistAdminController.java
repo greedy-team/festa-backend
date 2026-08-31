@@ -46,7 +46,8 @@ public class ArtistAdminController {
     private final ArtistMergeCandidateService artistMergeCandidateService;
 
     @Operation(summary = "아티스트 등록",
-            description = "이름은 기존 아티스트의 이름뿐 아니라 별칭과도 겹칠 수 없다.")
+            description = "name은 필수이며 생략·null·공백이면 400이다. "
+                    + "이름은 기존 아티스트의 이름뿐 아니라 별칭과도 겹칠 수 없다.")
     @ApiResponse(responseCode = "201", description = "등록된 아티스트")
     @ApiResponse(responseCode = "400", description = "ARTIST_INVALID_NAME / ARTIST_INVALID_ALIAS",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -105,7 +106,8 @@ public class ArtistAdminController {
     @Operation(summary = "아티스트 수정",
             description = "전체 교체다 - name은 필수이며 생략·null·공백이면 400이다. "
                     + "instagramUrl은 생략·null·공백을 모두 삭제로 읽는다. "
-                    + "otherNames를 보내면 전체 교체하고, 생략하면 기존 별칭을 유지한다. "
+                    + "otherNames는 생략하거나 null이면 기존 별칭을 유지하고, 빈 배열([])이면 전체 삭제하며, "
+                    + "값이 있으면 그 배열로 전체 교체한다. "
                     + "genre·needsReview는 생략하거나 null이면 기존 값을 유지한다.")
     @ApiResponse(responseCode = "200", description = "수정된 아티스트")
     @ApiResponse(responseCode = "400", description = "ARTIST_INVALID_NAME / ARTIST_INVALID_ALIAS",
