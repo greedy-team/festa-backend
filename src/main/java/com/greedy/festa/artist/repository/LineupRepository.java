@@ -9,8 +9,17 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface LineupRepository extends JpaRepository<Lineup, Long> {
+
+    @Query("""
+            SELECT l FROM Lineup l
+            JOIN FETCH l.festival
+            LEFT JOIN FETCH l.artist
+            WHERE l.id = :id
+            """)
+    Optional<Lineup> findDetailById(@Param("id") Long id);
 
     @Query("""
             SELECT l FROM Lineup l

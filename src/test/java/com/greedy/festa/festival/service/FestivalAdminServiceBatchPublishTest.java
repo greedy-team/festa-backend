@@ -60,7 +60,8 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
     @BeforeEach
     void setUp() {
         festivalAdminService = new FestivalAdminService(
-                festivalRepository, Clock.fixed(지금, ZoneOffset.UTC)
+                festivalRepository, org.mockito.Mockito.mock(com.greedy.festa.host.repository.HostRepository.class),
+                Clock.fixed(지금, ZoneOffset.UTC)
         );
         주최 = em.merge(Host.builder().name("테스트대학교").region("서울 광진구").build());
         아티스트 = 아티스트를_넣는다();

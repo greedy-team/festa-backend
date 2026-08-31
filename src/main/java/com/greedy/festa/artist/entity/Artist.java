@@ -70,4 +70,8 @@ public class Artist extends BaseEntity {
     public void markNeedsReview() {
         this.needsReview = true;
     }
+
+    public void changeInstagramUrl(String instagramUrl) {
+        this.instagramUrl = instagramUrl;
+    }
 }

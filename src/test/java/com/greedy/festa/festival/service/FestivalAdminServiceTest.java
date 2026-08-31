@@ -44,7 +44,8 @@ class FestivalAdminServiceTest {
     @BeforeEach
     void setUp() {
         festivalAdminService = new FestivalAdminService(
-                festivalRepository, Clock.fixed(지금, ZoneOffset.UTC)
+                festivalRepository, org.mockito.Mockito.mock(com.greedy.festa.host.repository.HostRepository.class),
+                Clock.fixed(지금, ZoneOffset.UTC)
         );
     }
 

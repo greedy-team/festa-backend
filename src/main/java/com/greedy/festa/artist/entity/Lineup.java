@@ -50,4 +50,10 @@ public class Lineup {
         this.day = day;
         this.displayOrder = displayOrder;
     }
+
+    public void update(Artist artist, int day, int displayOrder) {
+        this.artist = artist;
+        this.day = day;
+        this.displayOrder = displayOrder;
+    }
 }

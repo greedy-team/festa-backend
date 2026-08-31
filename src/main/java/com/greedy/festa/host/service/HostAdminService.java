@@ -52,38 +52,48 @@ public class HostAdminService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public HostResponse findOne(Long id) {
+        Host host = hostRepository.findById(id)
+                .orElseThrow(() -> new FestaException(HostErrorCode.HOST_NOT_FOUND));
+        return HostResponse.of(host, hostRepository.countFestivalsByHostId(id));
+    }
+
     @Transactional
     public HostResponse update(Long id, HostUpdateRequest request) {
         Host host = hostRepository.findById(id)
                 .orElseThrow(() -> new FestaException(HostErrorCode.HOST_NOT_FOUND));
 
-        if (request.name() != null) {
-            validateName(request.name());
-            if (hostRepository.existsByNameAndIdNot(request.name(), id)) {
-                throw new FestaException(HostErrorCode.HOST_DUPLICATE_NAME);
-            }
-            host.changeName(request.name());
+        if (!request.isNamePresent()) {
+            throw new FestaException(HostErrorCode.HOST_INVALID_NAME);
         }
+        validateName(request.name());
+        if (hostRepository.existsByNameAndIdNot(request.name(), id)) {
+            throw new FestaException(HostErrorCode.HOST_DUPLICATE_NAME);
+        }
+        host.changeName(request.name());
 
-        if (request.region() != null) {
+        if (!request.isInstagramUrlPresent() || request.instagramUrl() == null) {
+            throw new FestaException(HostErrorCode.HOST_INVALID_INSTAGRAM_URL);
+        }
+        host.changeInstagramUrl(blankToNull(request.instagramUrl()));
+
+        if (request.isRegionPresent()) {
             validateRegion(request.region());
             host.changeRegion(request.region());
         }
 
-        if (request.shortName() != null) {
+        if (request.isShortNamePresent()) {
             host.changeShortName(blankToNull(request.shortName()));
         }
-        if (request.logoUrl() != null){
+        if (request.isLogoUrlPresent()){
             host.changeLogoUrl(blankToNull(request.logoUrl()));
         }
-        if (request.bannerUrl() != null){
+        if (request.isBannerUrlPresent()){
             host.changeBannerUrl(blankToNull(request.bannerUrl()));
         }
-        if (request.homepageUrl() != null) {
+        if (request.isHomepageUrlPresent()) {
             host.changeHomepageUrl(blankToNull(request.homepageUrl()));
-        }
-        if (request.instagramUrl() != null) {
-            host.changeInstagramUrl(blankToNull(request.instagramUrl()));
         }
 
         return HostResponse.of(host, hostRepository.countFestivalsByHostId(id));
@@ -114,7 +124,7 @@ public class HostAdminService {
     }
 
     private String blankToNull(String value) {
-        if (value.isBlank()) {
+        if (value == null || value.isBlank()) {
             return null;
         }
         return value;

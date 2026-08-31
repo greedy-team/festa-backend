@@ -10,6 +10,12 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum FestivalErrorCode implements ErrorCode {
 
+    FESTIVAL_INVALID_NAME("축제 이름이 올바르지 않습니다", HttpStatus.BAD_REQUEST),
+    FESTIVAL_INVALID_DATE("축제 날짜가 올바르지 않습니다", HttpStatus.BAD_REQUEST),
+    FESTIVAL_INVALID_HOST_ID("주최 id가 올바르지 않습니다", HttpStatus.BAD_REQUEST),
+    FESTIVAL_INVALID_OPTIONAL_STRING("선택 문자열 필드가 누락되었거나 null입니다", HttpStatus.BAD_REQUEST),
+    FESTIVAL_INVALID_UPDATE_VALUE("축제 수정 값의 형식이 올바르지 않습니다", HttpStatus.BAD_REQUEST),
+
     FESTIVAL_INVALID_SORT_TYPE("지원하지 않는 정렬 기준입니다", HttpStatus.BAD_REQUEST),
     FESTIVAL_INVALID_IDS("festivalIds는 1개 이상 100개 이하여야 하며 null을 담을 수 없습니다", HttpStatus.BAD_REQUEST),
     FESTIVAL_INVALID_LIMIT("조회 개수가 올바르지 않습니다", HttpStatus.BAD_REQUEST),

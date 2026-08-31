@@ -452,7 +452,8 @@ public class ArtistAdminServiceTest {
 
     private ArtistUpdateRequest 수정_요청(String name, List<String> otherNames,
                                           ArtistGenre genre, String instagramUrl, Boolean needsReview) {
-        return new ArtistUpdateRequest(name, otherNames, genre, instagramUrl, needsReview);
+        return new ArtistUpdateRequest(name == null ? 아티스트_이름 : name, otherNames, genre,
+                instagramUrl == null ? 아티스트_인스타 : instagramUrl, needsReview);
     }
 
     private void 저장은_받은_엔티티를_그대로_돌려준다() {

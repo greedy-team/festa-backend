@@ -1,11 +1,13 @@
 package com.greedy.festa.festival.controller;
 
+import com.greedy.festa.festival.dto.FestivalAdminDetailResponse;
 import com.greedy.festa.festival.dto.FestivalBatchPublishRequest;
 import com.greedy.festa.festival.dto.FestivalBatchPublishResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalPublishResponse;
 import com.greedy.festa.festival.dto.FestivalReviewItem;
 import com.greedy.festa.festival.dto.FestivalSortType;
+import com.greedy.festa.festival.dto.FestivalUpdateRequest;
 import com.greedy.festa.festival.service.FestivalAdminService;
 import com.greedy.festa.festival.service.FestivalCoverageService;
 import com.greedy.festa.global.config.SwaggerConfig;
@@ -21,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -59,6 +62,24 @@ public class FestivalAdminController {
                 FestivalSortType.from(sort),
                 page, size
         );
+    }
+
+    @Operation(summary = "축제 단건 조회", description = "관리자 수정·검수에 필요한 축제의 현재 값을 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "축제 상세")
+    @ApiResponse(responseCode = "404", description = "FESTIVAL_NOT_FOUND",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @GetMapping("/{id}")
+    public FestivalAdminDetailResponse findOne(@PathVariable Long id) {
+        return festivalAdminService.findOne(id);
+    }
+
+    @Operation(summary = "축제 수정", description = "필수·nullable 문자열 필드는 모두 보내야 하며, nullable 비문자열은 빈 값이면 삭제합니다.")
+    @ApiResponse(responseCode = "200", description = "수정된 축제")
+    @ApiResponse(responseCode = "400", description = "FESTIVAL_INVALID_*",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @PatchMapping("/{id}")
+    public FestivalAdminDetailResponse update(@PathVariable Long id, @RequestBody FestivalUpdateRequest request) {
+        return festivalAdminService.update(id, request);
     }
 
     @Operation(summary = "대시보드 - 주최별 축제 데이터 구축 현황",

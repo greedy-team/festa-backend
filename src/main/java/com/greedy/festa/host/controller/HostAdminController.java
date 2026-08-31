@@ -56,7 +56,18 @@ public class HostAdminController {
         return hostAdminService.findAll(pageable);
     }
 
-    @Operation(summary = "주최 수정", description = "보내온 항목만 반영한다. 보내지 않은 항목은 기존 값을 그대로 둔다.")
+    @Operation(summary = "주최 단건 조회", description = "관리자 수정에 필요한 주최의 현재 값을 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "주최 상세")
+    @ApiResponse(responseCode = "404", description = "HOST_NOT_FOUND",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @GetMapping("/{id}")
+    public HostResponse findOne(@PathVariable Long id) {
+        return hostAdminService.findOne(id);
+    }
+
+    @Operation(summary = "주최 수정", description = "name과 instagramUrl은 반드시 보내야 한다. "
+            + "instagramUrl은 blank면 삭제하고 null은 거절한다. "
+            + "logoUrl, bannerUrl, homepageUrl은 생략하면 유지하고 blank면 삭제한다.")
     @ApiResponse(responseCode = "200", description = "수정된 주최")
     @ApiResponse(responseCode = "400", description = "HOST_INVALID_NAME / HOST_INVALID_REGION",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

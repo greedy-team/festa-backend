@@ -134,6 +134,32 @@ public class Festival extends BaseEntity {
         this.importedAt = importedAt;
     }
 
+    public void updateByAdmin(
+            Host host, String importKey, String name, LocalDate startDate, LocalDate endDate,
+            String posterUrl, String description, String venueName, String address,
+            Double latitude, Double longitude, ExternalVisitorPolicy externalVisitor,
+            VerificationMethod verification, TicketType ticketType, Instant ticketOpenAt,
+            String admissionNote, String instagramUrl
+    ) {
+        this.host = host;
+        this.importKey = importKey;
+        this.name = name;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.posterUrl = posterUrl;
+        this.description = description;
+        this.venueName = venueName;
+        this.address = address;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.externalVisitor = externalVisitor;
+        this.verification = verification;
+        this.ticketType = ticketType;
+        this.ticketOpenAt = ticketOpenAt;
+        this.admissionNote = admissionNote;
+        this.instagramUrl = instagramUrl;
+    }
+
     public void publish(Instant publishedAt) {
         this.publishedAt = publishedAt;
     }

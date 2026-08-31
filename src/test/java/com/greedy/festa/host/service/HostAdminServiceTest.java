@@ -130,7 +130,7 @@ class HostAdminServiceTest {
         given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
         given(hostRepository.countFestivalsByHostId(1L)).willReturn(2L);
         HostUpdateRequest request = new HostUpdateRequest(
-                null, null, null, null, null, null, "https://yonsei.ac.kr");
+                "연세대학교", null, null, null, null, "https://instagram.com/yonsei", "https://yonsei.ac.kr");
 
         // when
         HostResponse response = hostAdminService.update(1L, request);
@@ -152,7 +152,7 @@ class HostAdminServiceTest {
         given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
         given(hostRepository.countFestivalsByHostId(1L)).willReturn(0L);
         HostUpdateRequest request = new HostUpdateRequest(
-                null, null, null, null, "", null, null);
+                "연세대학교", null, null, null, "", "https://instagram.com/yonsei", null);
 
         // when
         HostResponse response = hostAdminService.update(1L, request);

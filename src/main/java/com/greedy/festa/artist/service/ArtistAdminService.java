@@ -90,25 +90,35 @@ public class ArtistAdminService {
                 )));
     }
 
+    @Transactional(readOnly = true)
+    public ArtistResponse findOne(Long id) {
+        Artist artist = artistRepository.findById(id)
+                .orElseThrow(() -> new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND));
+        List<String> aliases = artistAliasRepository.findByArtistId(id).stream()
+                .map(ArtistAlias::getName)
+                .toList();
+        return ArtistResponse.of(artist, aliases, artistRepository.countAppearancesByArtistId(id));
+    }
+
     @Transactional
     public ArtistResponse update(Long id, ArtistUpdateRequest request) {
         Artist artist = artistRepository.findById(id)
                 .orElseThrow(() -> new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
-        String name = request.name();
-        if (name != null) {
-            name = name.trim();
-            validateNameForUpdate(name, id);
+        if (!request.isNamePresent() || request.name() == null) {
+            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_NAME);
         }
-        if (name != null && request.otherNames() == null) {
+        if (!request.isInstagramUrlPresent() || request.instagramUrl() == null) {
+            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_INSTAGRAM_URL);
+        }
+        String name = request.name().trim();
+        validateNameForUpdate(name, id);
+        if (request.otherNames() == null) {
             artistAliasRepository.deleteByArtistIdAndName(id, name);
         }
-        String instagramUrl = request.instagramUrl();
-        if (instagramUrl != null) {
-            instagramUrl = instagramUrl.trim();
-        }
 
-        artist.update(name, request.genre(), instagramUrl, request.needsReview());
+        artist.update(name, request.genre(), null, request.needsReview());
+        artist.changeInstagramUrl(blankToNull(request.instagramUrl()));
 
         List<String> aliasNames;
         if (request.otherNames() != null) {
