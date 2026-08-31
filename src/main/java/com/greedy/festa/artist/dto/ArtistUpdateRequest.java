@@ -13,7 +13,6 @@ public class ArtistUpdateRequest {
     private ArtistGenre genre;
     private String instagramUrl;
     private Boolean needsReview;
-    private boolean namePresent;
     private boolean instagramUrlPresent;
 
     public ArtistUpdateRequest() {
@@ -28,7 +27,6 @@ public class ArtistUpdateRequest {
         this.genre = genre;
         this.instagramUrl = instagramUrl;
         this.needsReview = needsReview;
-        this.namePresent = name != null;
         this.instagramUrlPresent = instagramUrl != null;
     }
 
@@ -39,15 +37,10 @@ public class ArtistUpdateRequest {
     public Boolean needsReview() { return needsReview; }
     @JsonIgnore
     @Schema(hidden = true)
-    public boolean isNamePresent() { return namePresent; }
-
-    @JsonIgnore
-    @Schema(hidden = true)
     public boolean isInstagramUrlPresent() { return instagramUrlPresent; }
 
     public void setName(String name) {
         this.name = name;
-        this.namePresent = true;
     }
 
     public void setOtherNames(List<String> otherNames) { this.otherNames = otherNames; }

@@ -1,11 +1,9 @@
 package com.greedy.festa.importer.service;
 
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.Lineup;
 import com.greedy.festa.artist.entity.ArtistAlias;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
-import com.greedy.festa.artist.repository.LineupRepository;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.repository.FestivalHashtagRepository;
 import com.greedy.festa.festival.repository.FestivalRepository;
@@ -27,6 +25,8 @@ import com.greedy.festa.importer.model.StoredImportPreview;
 import com.greedy.festa.importer.model.StoredPreviewRow;
 import com.greedy.festa.importer.repository.ImportBatchRepository;
 import com.greedy.festa.importer.repository.ImportCommitRowRepository;
+import com.greedy.festa.lineup.entity.Lineup;
+import com.greedy.festa.lineup.repository.LineupRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

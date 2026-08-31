@@ -6,13 +6,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public class HostUpdateRequest {
 
     private String name;
+    @Schema(description = "null 또는 빈 문자열이면 삭제")
     private String shortName;
+    @Schema(description = "생략하면 유지, null 또는 빈 문자열은 허용하지 않음")
     private String region;
     private String logoUrl;
     private String bannerUrl;
     private String instagramUrl;
     private String homepageUrl;
-    private boolean namePresent;
     private boolean shortNamePresent;
     private boolean regionPresent;
     private boolean logoUrlPresent;
@@ -34,7 +35,6 @@ public class HostUpdateRequest {
         this.bannerUrl = bannerUrl;
         this.instagramUrl = instagramUrl;
         this.homepageUrl = homepageUrl;
-        this.namePresent = name != null;
         this.shortNamePresent = shortName != null;
         this.regionPresent = region != null;
         this.logoUrlPresent = logoUrl != null;
@@ -50,7 +50,6 @@ public class HostUpdateRequest {
     public String bannerUrl() { return bannerUrl; }
     public String instagramUrl() { return instagramUrl; }
     public String homepageUrl() { return homepageUrl; }
-    @JsonIgnore @Schema(hidden = true) public boolean isNamePresent() { return namePresent; }
     @JsonIgnore @Schema(hidden = true) public boolean isShortNamePresent() { return shortNamePresent; }
     @JsonIgnore @Schema(hidden = true) public boolean isRegionPresent() { return regionPresent; }
     @JsonIgnore @Schema(hidden = true) public boolean isLogoUrlPresent() { return logoUrlPresent; }
@@ -58,7 +57,7 @@ public class HostUpdateRequest {
     @JsonIgnore @Schema(hidden = true) public boolean isInstagramUrlPresent() { return instagramUrlPresent; }
     @JsonIgnore @Schema(hidden = true) public boolean isHomepageUrlPresent() { return homepageUrlPresent; }
 
-    public void setName(String value) { name = value; namePresent = true; }
+    public void setName(String value) { name = value; }
     public void setShortName(String value) { shortName = value; shortNamePresent = true; }
     public void setRegion(String value) { region = value; regionPresent = true; }
     public void setLogoUrl(String value) { logoUrl = value; logoUrlPresent = true; }

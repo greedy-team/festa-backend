@@ -1,5 +1,6 @@
 package com.greedy.festa.host.service;
 
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.dto.HostCreateRequest;
 import com.greedy.festa.host.dto.HostResponse;
@@ -14,6 +15,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.Arrays;
 import java.util.List;
@@ -192,6 +195,49 @@ class HostAdminServiceTest {
 
         // then
         verify(hostRepository).delete(host);
+    }
+
+    static List<Integer> 잘못된_크기() {
+        return Arrays.asList(0, -1, 51);
+    }
+
+    @ParameterizedTest
+    @MethodSource("잘못된_크기")
+    void 크기가_1과_50_밖이면_목록_조회에_실패한다(int size) {
+        // when
+        FestaException 예외 = catchThrowableOfType(
+                () -> hostAdminService.findAll(0, size), FestaException.class);
+
+        // then
+        assertSoftly(soft -> {
+            soft.assertThat(예외.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PAGE_SIZE);
+            verify(hostRepository, never()).findAllWithFestivalCount(any());
+        });
+    }
+
+    @Test
+    void 페이지가_음수면_목록_조회에_실패한다() {
+        // when
+        FestaException 예외 = catchThrowableOfType(
+                () -> hostAdminService.findAll(-1, 20), FestaException.class);
+
+        // then
+        assertSoftly(soft -> {
+            soft.assertThat(예외.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PAGE);
+            verify(hostRepository, never()).findAllWithFestivalCount(any());
+        });
+    }
+
+    @Test
+    void 목록_조회는_받은_페이지와_크기를_그대로_리포지토리에_넘긴다() {
+        // given
+        given(hostRepository.findAllWithFestivalCount(any())).willReturn(Page.empty());
+
+        // when
+        hostAdminService.findAll(2, 50);
+
+        // then
+        verify(hostRepository).findAllWithFestivalCount(PageRequest.of(2, 50));
     }
 
     private Host host() {

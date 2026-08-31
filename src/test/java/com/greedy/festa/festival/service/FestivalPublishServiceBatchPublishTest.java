@@ -2,7 +2,6 @@ package com.greedy.festa.festival.service;
 
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistGenre;
-import com.greedy.festa.artist.entity.Lineup;
 import com.greedy.festa.festival.dto.FestivalBatchPublishResponse;
 import com.greedy.festa.festival.dto.FestivalPublishFailure;
 import com.greedy.festa.festival.dto.FestivalPublishFailureReason;
@@ -12,6 +11,7 @@ import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.config.JpaConfig;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
+import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.support.PostgresTestSupport;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.tuple;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 @Import(JpaConfig.class)
-class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
+class FestivalPublishServiceBatchPublishTest extends PostgresTestSupport {
 
     private static final Instant 지금 = Instant.parse("2026-08-23T09:00:00Z");
     private static final Instant 예전에_발행한_시각 = Instant.parse("2026-07-01T00:00:00Z");
@@ -52,16 +52,15 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
     @Autowired
     private EntityManager em;
 
-    private FestivalAdminService festivalAdminService;
+    private FestivalPublishService festivalPublishService;
     private Host 주최;
     private Artist 아티스트;
     private int 다음_출연_순서 = 1;
 
     @BeforeEach
     void setUp() {
-        festivalAdminService = new FestivalAdminService(
-                festivalRepository, org.mockito.Mockito.mock(com.greedy.festa.host.repository.HostRepository.class),
-                Clock.fixed(지금, ZoneOffset.UTC)
+        festivalPublishService = new FestivalPublishService(
+                festivalRepository, Clock.fixed(지금, ZoneOffset.UTC)
         );
         주최 = em.merge(Host.builder().name("테스트대학교").region("서울 광진구").build());
         아티스트 = 아티스트를_넣는다();
@@ -75,7 +74,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
         반영한다();
 
         // when
-        FestivalBatchPublishResponse response = festivalAdminService.batchPublish(
+        FestivalBatchPublishResponse response = festivalPublishService.batchPublish(
                 List.of(축제1.getId(), 축제2.getId())
         );
 
@@ -94,7 +93,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
         반영한다();
 
         // when
-        FestivalBatchPublishResponse response = festivalAdminService.batchPublish(
+        FestivalBatchPublishResponse response = festivalPublishService.batchPublish(
                 List.of(온전한_축제.getId(), 라인업이_없는_축제.getId())
         );
 
@@ -118,7 +117,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
 
         // when
         FestivalBatchPublishResponse response =
-                festivalAdminService.batchPublish(List.of(festival.getId()));
+                festivalPublishService.batchPublish(List.of(festival.getId()));
 
         // then
         assertThat(response.publishedIds()).isEmpty();
@@ -137,7 +136,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
 
         // when
         FestivalBatchPublishResponse response =
-                festivalAdminService.batchPublish(List.of(festival.getId()));
+                festivalPublishService.batchPublish(List.of(festival.getId()));
 
         // then
         assertThat(response.publishedIds()).isEmpty();
@@ -155,7 +154,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
 
         // when
         FestivalBatchPublishResponse response =
-                festivalAdminService.batchPublish(List.of(festival.getId()));
+                festivalPublishService.batchPublish(List.of(festival.getId()));
 
         // then
         assertThat(response.failed())
@@ -172,7 +171,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
 
         // when
         FestivalBatchPublishResponse response =
-                festivalAdminService.batchPublish(List.of(festival.getId(), 없는_id));
+                festivalPublishService.batchPublish(List.of(festival.getId(), 없는_id));
 
         // then
         assertThat(response.publishedIds()).containsExactly(festival.getId());
@@ -190,7 +189,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
 
         // when
         FestivalBatchPublishResponse response =
-                festivalAdminService.batchPublish(List.of(festival.getId()));
+                festivalPublishService.batchPublish(List.of(festival.getId()));
 
         // then
         assertThat(response.publishedIds()).containsExactly(festival.getId());
@@ -207,7 +206,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
 
         // when
         FestivalBatchPublishResponse response =
-                festivalAdminService.batchPublish(List.of(festival.getId()));
+                festivalPublishService.batchPublish(List.of(festival.getId()));
 
         // then
         assertThat(response.publishedIds()).containsExactly(festival.getId());
@@ -221,7 +220,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
         반영한다();
 
         // when
-        FestivalBatchPublishResponse response = festivalAdminService.batchPublish(
+        FestivalBatchPublishResponse response = festivalPublishService.batchPublish(
                 List.of(festival.getId(), festival.getId(), festival.getId())
         );
 
@@ -237,7 +236,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
         반영한다();
 
         // when - id 오름차순의 반대로 요청한다
-        FestivalBatchPublishResponse response = festivalAdminService.batchPublish(
+        FestivalBatchPublishResponse response = festivalPublishService.batchPublish(
                 List.of(나중에_넣은_축제.getId(), 먼저_넣은_축제.getId())
         );
 
@@ -250,7 +249,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
     void 빈_목록이면_FESTIVAL_INVALID_IDS로_막힌다() {
         // when
         FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> festivalAdminService.batchPublish(List.of())
+                FestaException.class, () -> festivalPublishService.batchPublish(List.of())
         );
 
         // then
@@ -264,7 +263,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
 
         // when
         FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> festivalAdminService.batchPublish(백한_개)
+                FestaException.class, () -> festivalPublishService.batchPublish(백한_개)
         );
 
         // then
@@ -278,7 +277,7 @@ class FestivalAdminServiceBatchPublishTest extends PostgresTestSupport {
 
         // when
         FestaException thrown = catchThrowableOfType(
-                FestaException.class, () -> festivalAdminService.batchPublish(가변_목록)
+                FestaException.class, () -> festivalPublishService.batchPublish(가변_목록)
         );
 
         // then

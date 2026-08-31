@@ -76,11 +76,10 @@ class HostAdminPatchContractTest {
     }
 
     @Test
-    void explicitNullInstagramUrlIsRejected() throws Exception {
+    void explicitNullInstagramUrlDeletesValue() throws Exception {
         HostUpdateRequest request = objectMapper.readValue(
                 "{\"name\":\"기존 학교\",\"instagramUrl\":null}", HostUpdateRequest.class);
-        FestaException exception = catchThrowableOfType(FestaException.class, () -> service.update(1L, request));
-        assertThat(exception.getErrorCode()).isEqualTo(HostErrorCode.HOST_INVALID_INSTAGRAM_URL);
+        assertThat(service.update(1L, request).instagramUrl()).isNull();
     }
 
     @Test
@@ -119,6 +118,16 @@ class HostAdminPatchContractTest {
         service.update(1L, objectMapper.readValue(
                 "{\"name\":\"기존 학교\",\"instagramUrl\":\"https://old.example\",\""
                         + field + "\":\"\"}", HostUpdateRequest.class));
+
+        assertThat(url(field)).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"logoUrl", "bannerUrl", "homepageUrl"})
+    void optionalUrlExplicitNullDeletesValue(String field) throws Exception {
+        service.update(1L, objectMapper.readValue(
+                "{\"name\":\"기존 학교\",\"instagramUrl\":\"https://old.example\",\""
+                        + field + "\":null}", HostUpdateRequest.class));
 
         assertThat(url(field)).isNull();
     }

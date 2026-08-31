@@ -105,10 +105,10 @@ public class ArtistAdminService {
         Artist artist = artistRepository.findById(id)
                 .orElseThrow(() -> new FestaException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
-        if (!request.isNamePresent() || request.name() == null) {
+        if (request.name() == null) {
             throw new FestaException(ArtistErrorCode.ARTIST_INVALID_NAME);
         }
-        if (!request.isInstagramUrlPresent() || request.instagramUrl() == null) {
+        if (!request.isInstagramUrlPresent()) {
             throw new FestaException(ArtistErrorCode.ARTIST_INVALID_INSTAGRAM_URL);
         }
         String name = request.name().trim();
@@ -117,7 +117,7 @@ public class ArtistAdminService {
             artistAliasRepository.deleteByArtistIdAndName(id, name);
         }
 
-        artist.update(name, request.genre(), null, request.needsReview());
+        artist.update(name, request.genre(), request.needsReview());
         artist.changeInstagramUrl(blankToNull(request.instagramUrl()));
 
         List<String> aliasNames;

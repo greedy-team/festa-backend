@@ -1,4 +1,6 @@
-package com.greedy.festa.artist.entity;
+package com.greedy.festa.lineup.entity;
+
+import com.greedy.festa.artist.entity.Artist;
 
 import com.greedy.festa.festival.entity.Festival;
 import jakarta.persistence.Column;
@@ -51,6 +53,9 @@ public class Lineup {
         this.displayOrder = displayOrder;
     }
 
+    /**
+     * 어드민 수정은 전체 교체다. artist가 null이면 시크릿 게스트다.
+     */
     public void update(Artist artist, int day, int displayOrder) {
         this.artist = artist;
         this.day = day;

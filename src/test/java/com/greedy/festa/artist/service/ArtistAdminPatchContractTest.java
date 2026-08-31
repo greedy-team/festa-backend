@@ -79,12 +79,11 @@ class ArtistAdminPatchContractTest {
     }
 
     @Test
-    void explicitNullNullableStringIsRejected() throws Exception {
+    void explicitNullNullableStringDeletesValue() throws Exception {
         ArtistUpdateRequest request = objectMapper.readValue(
                 "{\"name\":\"기존 이름\",\"instagramUrl\":null}", ArtistUpdateRequest.class);
 
-        FestaException exception = catchThrowableOfType(FestaException.class, () -> service.update(1L, request));
-        assertThat(exception.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_INVALID_INSTAGRAM_URL);
+        assertThat(service.update(1L, request).instagramUrl()).isNull();
     }
 
     @Test
