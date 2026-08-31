@@ -36,30 +36,41 @@ class HostAdminPatchContractTest {
     }
 
     @Test
-    void omittedRequiredFieldIsRejected() throws Exception {
+    void omittedRequiredNameIsRejected() throws Exception {
         FestaException exception = catchThrowableOfType(FestaException.class,
                 () -> service.update(1L, objectMapper.readValue(
-                        "{\"instagramUrl\":\"https://old.example\"}", HostUpdateRequest.class)));
+                        "{\"region\":\"서울\"}", HostUpdateRequest.class)));
         assertThat(exception.getErrorCode()).isEqualTo(HostErrorCode.HOST_INVALID_NAME);
+    }
+
+    @Test
+    void omittedRequiredRegionIsRejected() throws Exception {
+        FestaException exception = catchThrowableOfType(FestaException.class,
+                () -> service.update(1L, objectMapper.readValue(
+                        "{\"name\":\"기존 학교\"}", HostUpdateRequest.class)));
+        assertThat(exception.getErrorCode()).isEqualTo(HostErrorCode.HOST_INVALID_REGION);
     }
 
     @Test
     void suppliedFieldsChangeIndependently() throws Exception {
         HostResponse response = service.update(1L, objectMapper.readValue(
-                "{\"name\":\"새 학교\",\"instagramUrl\":\"https://new.example\",\"logoUrl\":\"new-logo\",\"bannerUrl\":\"\"}",
+                "{\"name\":\"새 학교\",\"region\":\"서울\",\"instagramUrl\":\"https://new.example\","
+                        + "\"logoUrl\":\"new-logo\",\"bannerUrl\":\"\"}",
                 HostUpdateRequest.class));
 
         assertThat(response.name()).isEqualTo("새 학교");
+        assertThat(response.region()).isEqualTo("서울");
         assertThat(response.logoUrl()).isEqualTo("new-logo");
         assertThat(response.bannerUrl()).isNull();
-        assertThat(response.shortName()).isEqualTo("기존대");
+        assertThat(response.instagramUrl()).isEqualTo("https://new.example");
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"", "   "})
     void blankNullableStringDeletesValue(String value) throws Exception {
         HostUpdateRequest request = objectMapper.readValue(
-                "{\"name\":\"기존 학교\",\"instagramUrl\":\"https://old.example\",\"logoUrl\":\"" + value + "\"}", HostUpdateRequest.class);
+                "{\"name\":\"기존 학교\",\"region\":\"서울\",\"instagramUrl\":\"https://old.example\",\"logoUrl\":\""
+                        + value + "\"}", HostUpdateRequest.class);
 
         assertThat(service.update(1L, request).logoUrl()).isNull();
     }
@@ -75,68 +86,89 @@ class HostAdminPatchContractTest {
         assertThat(exception.getErrorCode()).isEqualTo(HostErrorCode.HOST_INVALID_REGION);
     }
 
-    @Test
-    void explicitNullInstagramUrlDeletesValue() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   "})
+    void blankRequiredNameIsRejected(String value) throws Exception {
         HostUpdateRequest request = objectMapper.readValue(
-                "{\"name\":\"기존 학교\",\"instagramUrl\":null}", HostUpdateRequest.class);
-        assertThat(service.update(1L, request).instagramUrl()).isNull();
-    }
-
-    @Test
-    void explicitNullRequiredNameIsRejected() throws Exception {
-        HostUpdateRequest request = objectMapper.readValue(
-                "{\"name\":null,\"instagramUrl\":\"https://old.example\"}", HostUpdateRequest.class);
+                "{\"name\":\"" + value + "\",\"region\":\"서울\",\"instagramUrl\":\"https://old.example\"}", HostUpdateRequest.class);
 
         FestaException exception = catchThrowableOfType(
                 FestaException.class, () -> service.update(1L, request));
         assertThat(exception.getErrorCode()).isEqualTo(HostErrorCode.HOST_INVALID_NAME);
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"logoUrl", "bannerUrl", "homepageUrl"})
-    void optionalUrlOmissionKeepsExistingValue(String field) throws Exception {
-        service.update(1L, objectMapper.readValue(
-                "{\"name\":\"기존 학교\",\"instagramUrl\":\"https://old.example\"}",
-                HostUpdateRequest.class));
+    @Test
+    void explicitNullInstagramUrlDeletesValue() throws Exception {
+        HostUpdateRequest request = objectMapper.readValue(
+                "{\"name\":\"기존 학교\",\"region\":\"서울\",\"instagramUrl\":null}", HostUpdateRequest.class);
+        assertThat(service.update(1L, request).instagramUrl()).isNull();
+    }
 
-        assertThat(url(field)).isEqualTo(oldUrl(field));
+    @Test
+    void explicitNullRequiredNameIsRejected() throws Exception {
+        HostUpdateRequest request = objectMapper.readValue(
+                "{\"name\":null,\"region\":\"서울\",\"instagramUrl\":\"https://old.example\"}", HostUpdateRequest.class);
+
+        FestaException exception = catchThrowableOfType(
+                FestaException.class, () -> service.update(1L, request));
+        assertThat(exception.getErrorCode()).isEqualTo(HostErrorCode.HOST_INVALID_NAME);
+    }
+
+    @Test
+    void explicitNullRequiredRegionIsRejected() throws Exception {
+        HostUpdateRequest request = objectMapper.readValue(
+                "{\"name\":\"기존 학교\",\"region\":null,\"instagramUrl\":\"https://old.example\"}", HostUpdateRequest.class);
+
+        FestaException exception = catchThrowableOfType(
+                FestaException.class, () -> service.update(1L, request));
+        assertThat(exception.getErrorCode()).isEqualTo(HostErrorCode.HOST_INVALID_REGION);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"logoUrl", "bannerUrl", "homepageUrl"})
-    void optionalUrlValueReplacesExistingValue(String field) throws Exception {
+    @ValueSource(strings = {"shortName", "logoUrl", "bannerUrl", "homepageUrl"})
+    void optionalStringOmissionDeletesValue(String field) throws Exception {
         service.update(1L, objectMapper.readValue(
-                "{\"name\":\"기존 학교\",\"instagramUrl\":\"https://old.example\",\""
+                "{\"name\":\"기존 학교\",\"region\":\"서울\",\"instagramUrl\":\"https://old.example\"}",
+                HostUpdateRequest.class));
+
+        assertThat(url(field)).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"shortName", "logoUrl", "bannerUrl", "homepageUrl"})
+    void optionalStringValueReplacesExistingValue(String field) throws Exception {
+        service.update(1L, objectMapper.readValue(
+                "{\"name\":\"기존 학교\",\"region\":\"서울\",\"instagramUrl\":\"https://old.example\",\""
                         + field + "\":\"new-value\"}", HostUpdateRequest.class));
 
         assertThat(url(field)).isEqualTo("new-value");
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"logoUrl", "bannerUrl", "homepageUrl"})
-    void optionalUrlEmptyStringDeletesValue(String field) throws Exception {
+    @ValueSource(strings = {"shortName", "logoUrl", "bannerUrl", "homepageUrl"})
+    void optionalStringEmptyStringDeletesValue(String field) throws Exception {
         service.update(1L, objectMapper.readValue(
-                "{\"name\":\"기존 학교\",\"instagramUrl\":\"https://old.example\",\""
+                "{\"name\":\"기존 학교\",\"region\":\"서울\",\"instagramUrl\":\"https://old.example\",\""
                         + field + "\":\"\"}", HostUpdateRequest.class));
 
         assertThat(url(field)).isNull();
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"logoUrl", "bannerUrl", "homepageUrl"})
-    void optionalUrlExplicitNullDeletesValue(String field) throws Exception {
+    @ValueSource(strings = {"shortName", "logoUrl", "bannerUrl", "homepageUrl"})
+    void optionalStringExplicitNullDeletesValue(String field) throws Exception {
         service.update(1L, objectMapper.readValue(
-                "{\"name\":\"기존 학교\",\"instagramUrl\":\"https://old.example\",\""
+                "{\"name\":\"기존 학교\",\"region\":\"서울\",\"instagramUrl\":\"https://old.example\",\""
                         + field + "\":null}", HostUpdateRequest.class));
 
         assertThat(url(field)).isNull();
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"logoUrl", "bannerUrl", "homepageUrl"})
-    void optionalUrlWhitespaceDeletesValue(String field) throws Exception {
+    @ValueSource(strings = {"shortName", "logoUrl", "bannerUrl", "homepageUrl"})
+    void optionalStringWhitespaceDeletesValue(String field) throws Exception {
         service.update(1L, objectMapper.readValue(
-                "{\"name\":\"기존 학교\",\"instagramUrl\":\"https://old.example\",\""
+                "{\"name\":\"기존 학교\",\"region\":\"서울\",\"instagramUrl\":\"https://old.example\",\""
                         + field + "\":\"   \"}", HostUpdateRequest.class));
 
         assertThat(url(field)).isNull();
@@ -144,18 +176,10 @@ class HostAdminPatchContractTest {
 
     private String url(String field) {
         return switch (field) {
+            case "shortName" -> host.getShortName();
             case "logoUrl" -> host.getLogoUrl();
             case "bannerUrl" -> host.getBannerUrl();
             case "homepageUrl" -> host.getHomepageUrl();
-            default -> throw new IllegalArgumentException(field);
-        };
-    }
-
-    private String oldUrl(String field) {
-        return switch (field) {
-            case "logoUrl" -> "old-logo";
-            case "bannerUrl" -> "old-banner";
-            case "homepageUrl" -> "old-homepage";
             default -> throw new IllegalArgumentException(field);
         };
     }

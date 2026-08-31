@@ -108,9 +108,6 @@ public class ArtistAdminService {
         if (request.name() == null) {
             throw new FestaException(ArtistErrorCode.ARTIST_INVALID_NAME);
         }
-        if (!request.isInstagramUrlPresent()) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_INSTAGRAM_URL);
-        }
         String name = request.name().trim();
         validateNameForUpdate(name, id);
         if (request.otherNames() == null) {

@@ -103,8 +103,9 @@ public class ArtistAdminController {
     }
 
     @Operation(summary = "아티스트 수정",
-            description = "name과 instagramUrl은 반드시 보내야 한다. instagramUrl은 blank면 삭제하고 null은 거절한다. "
-                    + "otherNames를 보내면 전체 교체한다.")
+            description = "전체 교체다 - name은 필수이며 생략·null·공백이면 400이다. "
+                    + "instagramUrl은 생략·null·공백을 모두 삭제로 읽는다. "
+                    + "otherNames를 보내면 전체 교체하고, 생략하면 기존 별칭을 유지한다.")
     @ApiResponse(responseCode = "200", description = "수정된 아티스트")
     @ApiResponse(responseCode = "400", description = "ARTIST_INVALID_NAME / ARTIST_INVALID_ALIAS",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

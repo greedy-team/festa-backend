@@ -87,6 +87,14 @@ class ArtistAdminPatchContractTest {
     }
 
     @Test
+    void omittedNullableStringDeletesValue() throws Exception {
+        ArtistUpdateRequest request = objectMapper.readValue(
+                "{\"name\":\"기존 이름\"}", ArtistUpdateRequest.class);
+
+        assertThat(service.update(1L, request).instagramUrl()).isNull();
+    }
+
+    @Test
     void explicitNullRequiredNameIsRejected() throws Exception {
         ArtistUpdateRequest request = objectMapper.readValue(
                 "{\"name\":null,\"instagramUrl\":\"https://old.example\"}", ArtistUpdateRequest.class);

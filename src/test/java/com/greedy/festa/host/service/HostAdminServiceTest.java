@@ -128,12 +128,12 @@ class HostAdminServiceTest {
     }
 
     @Test
-    void 보내지_않은_필드는_수정되지_않는다() {
+    void 생략한_선택_필드는_삭제된다() {
         // given
         given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
         given(hostRepository.countFestivalsByHostId(1L)).willReturn(2L);
         HostUpdateRequest request = new HostUpdateRequest(
-                "연세대학교", null, null, null, null, "https://instagram.com/yonsei", "https://yonsei.ac.kr");
+                "연세대학교", null, "서울 서대문구", null, null, "https://instagram.com/yonsei", "https://yonsei.ac.kr");
 
         // when
         HostResponse response = hostAdminService.update(1L, request);
@@ -141,12 +141,27 @@ class HostAdminServiceTest {
         // then
         assertSoftly(softly -> {
             softly.assertThat(response.name()).isEqualTo("연세대학교");
-            softly.assertThat(response.shortName()).isEqualTo("연세대");
+            softly.assertThat(response.shortName()).isNull();
             softly.assertThat(response.region()).isEqualTo("서울 서대문구");
-            softly.assertThat(response.bannerUrl()).isEqualTo("https://cdn.festa.kr/hosts/3/banner.jpg");
+            softly.assertThat(response.bannerUrl()).isNull();
             softly.assertThat(response.homepageUrl()).isEqualTo("https://yonsei.ac.kr");
             softly.assertThat(response.festivalCount()).isEqualTo(2L);
         });
+    }
+
+    @Test
+    void 생략한_필수_필드는_거부된다() {
+        // given
+        given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
+        HostUpdateRequest request = new HostUpdateRequest(
+                "연세대학교", null, null, null, null, "https://instagram.com/yonsei", null);
+
+        // when
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class, () -> hostAdminService.update(1L, request));
+
+        // then
+        assertThat(thrown.getErrorCode()).isEqualTo(HostErrorCode.HOST_INVALID_REGION);
     }
 
     @Test
@@ -155,7 +170,7 @@ class HostAdminServiceTest {
         given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
         given(hostRepository.countFestivalsByHostId(1L)).willReturn(0L);
         HostUpdateRequest request = new HostUpdateRequest(
-                "연세대학교", null, null, null, "", "https://instagram.com/yonsei", null);
+                "연세대학교", null, "서울 서대문구", null, "", "https://instagram.com/yonsei", null);
 
         // when
         HostResponse response = hostAdminService.update(1L, request);

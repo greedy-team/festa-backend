@@ -67,9 +67,8 @@ public class HostAdminController {
         return hostAdminService.findOne(id);
     }
 
-    @Operation(summary = "주최 수정", description = "name과 instagramUrl은 반드시 보내야 한다. "
-            + "instagramUrl은 blank면 삭제하고 null은 거절한다. "
-            + "logoUrl, bannerUrl, homepageUrl은 생략하면 유지하고 blank면 삭제한다.")
+    @Operation(summary = "주최 수정", description = "전체 교체다 - name·region은 필수이며 생략·null·공백이면 400이다. "
+            + "shortName·logoUrl·bannerUrl·instagramUrl·homepageUrl은 생략·null·공백을 모두 삭제로 읽는다.")
     @ApiResponse(responseCode = "200", description = "수정된 주최")
     @ApiResponse(responseCode = "400", description = "HOST_INVALID_NAME / HOST_INVALID_REGION",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

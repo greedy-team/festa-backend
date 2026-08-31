@@ -76,30 +76,15 @@ public class HostAdminService {
         if (hostRepository.existsByNameAndIdNot(request.name(), id)) {
             throw new FestaException(HostErrorCode.HOST_DUPLICATE_NAME);
         }
+        validateRegion(request.region());
+
         host.changeName(request.name());
-
-        if (!request.isInstagramUrlPresent()) {
-            throw new FestaException(HostErrorCode.HOST_INVALID_INSTAGRAM_URL);
-        }
+        host.changeRegion(request.region());
+        host.changeShortName(blankToNull(request.shortName()));
+        host.changeLogoUrl(blankToNull(request.logoUrl()));
+        host.changeBannerUrl(blankToNull(request.bannerUrl()));
         host.changeInstagramUrl(blankToNull(request.instagramUrl()));
-
-        if (request.isRegionPresent()) {
-            validateRegion(request.region());
-            host.changeRegion(request.region());
-        }
-
-        if (request.isShortNamePresent()) {
-            host.changeShortName(blankToNull(request.shortName()));
-        }
-        if (request.isLogoUrlPresent()){
-            host.changeLogoUrl(blankToNull(request.logoUrl()));
-        }
-        if (request.isBannerUrlPresent()){
-            host.changeBannerUrl(blankToNull(request.bannerUrl()));
-        }
-        if (request.isHomepageUrlPresent()) {
-            host.changeHomepageUrl(blankToNull(request.homepageUrl()));
-        }
+        host.changeHomepageUrl(blankToNull(request.homepageUrl()));
 
         return HostResponse.of(host, hostRepository.countFestivalsByHostId(id));
     }
