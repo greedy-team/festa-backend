@@ -1,7 +1,5 @@
 package com.greedy.festa.festival.service;
 
-import com.greedy.festa.artist.entity.Lineup;
-import com.greedy.festa.artist.repository.LineupRepository;
 import com.greedy.festa.festival.dto.FestivalDetailResponse;
 import com.greedy.festa.festival.dto.FestivalListItemResponse;
 import com.greedy.festa.festival.dto.FestivalListSortType;
@@ -15,6 +13,8 @@ import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.lineup.entity.Lineup;
+import com.greedy.festa.lineup.repository.LineupRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;

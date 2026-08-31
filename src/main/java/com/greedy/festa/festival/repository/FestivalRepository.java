@@ -168,4 +168,10 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
         WHERE f.id = :id AND f.publishedAt IS NOT NULL
         """)
     Optional<Festival> findPublishedDetailById(@Param("id") Long id);
+
+    Optional<Festival> findByName(String name);
+
+    boolean existsByImportKey(String importKey);
+
+    boolean existsByImportKeyAndIdNot(String importKey, Long id);
 }

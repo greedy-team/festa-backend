@@ -5,6 +5,7 @@ import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageStatus;
 import com.greedy.festa.festival.dto.FestivalCoverageSummary;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
+import com.greedy.festa.festival.service.FestivalPublishService;
 import com.greedy.festa.festival.service.FestivalAdminService;
 import com.greedy.festa.festival.service.FestivalCoverageService;
 import com.greedy.festa.festival.dto.FestivalSortType;
@@ -30,15 +31,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class FestivalAdminControllerTest {
 
     private FestivalAdminService adminService;
+    private FestivalPublishService publishService;
     private FestivalCoverageService service;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         adminService = mock(FestivalAdminService.class);
+        publishService = mock(FestivalPublishService.class);
         service = mock(FestivalCoverageService.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new FestivalAdminController(adminService, service))
+                .standaloneSetup(new FestivalAdminController(adminService, publishService, service))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -117,7 +120,7 @@ class FestivalAdminControllerTest {
     @Test
     void 검수_목록의_sort를_생략하면_IMPORTED_DESC로_조회한다() throws Exception {
         // given - 기본값은 EnumParser 호출부가 고른다. 여기가 유일한 지정 지점이다
-        given(adminService.findAll(null, null, null, null, null,
+        given(publishService.findAll(null, null, null, null, null,
                 FestivalSortType.IMPORTED_DESC, 0, 20))
                 .willReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, false, false));
 
@@ -125,7 +128,7 @@ class FestivalAdminControllerTest {
         mockMvc.perform(get("/api/admin/festivals"))
                 .andExpect(status().isOk());
 
-        verify(adminService).findAll(null, null, null, null, null,
+        verify(publishService).findAll(null, null, null, null, null,
                 FestivalSortType.IMPORTED_DESC, 0, 20);
     }
 

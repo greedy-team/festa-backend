@@ -2,7 +2,6 @@ package com.greedy.festa.festival.service;
 
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistGenre;
-import com.greedy.festa.artist.entity.Lineup;
 import com.greedy.festa.festival.dto.FestivalDetailResponse;
 import com.greedy.festa.festival.dto.FestivalDetailResponse.LineupArtistResponse;
 import com.greedy.festa.festival.dto.FestivalDetailResponse.LineupDayResponse;
@@ -22,6 +21,7 @@ import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
+import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.support.PostgresTestSupport;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -165,7 +165,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
     @Test
     void recent는_발행_시각_역순이고_동점이면_id_역순이다() {
-        // given - 일괄 발행이 배치 전체에 같은 Instant를 넣는다(FestivalAdminService).
+        // given - 일괄 발행이 배치 전체에 같은 Instant를 넣는다(FestivalPublishService).
         // 동점 tiebreaker가 없으면 이 구간의 순서가 호출마다 달라진다
         발행된_축제("가장_먼저_발행", "2026-06-01", "2026-06-03", "2026-05-01T00:00:00Z");
         발행된_축제("일괄_발행_1", "2026-06-01", "2026-06-03", "2026-05-10T00:00:00Z");

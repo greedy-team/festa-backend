@@ -1,7 +1,7 @@
-package com.greedy.festa.artist.repository;
+package com.greedy.festa.lineup.repository;
 
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.Lineup;
+import com.greedy.festa.lineup.entity.Lineup;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface LineupRepository extends JpaRepository<Lineup, Long> {
 
@@ -44,4 +45,18 @@ public interface LineupRepository extends JpaRepository<Lineup, Long> {
             "AND EXISTS (SELECT 1 FROM Lineup e " +
             "WHERE e.artist = :target AND e.festival = l.festival AND e.day = l.day AND e.displayOrder < l.displayOrder)")
     int removeDuplicates(@Param("target") Artist target);
+
+    boolean existsByFestivalIdAndDayAndDisplayOrder(Long festivalId, int day, int displayOrder);
+
+    boolean existsByFestivalIdAndDayAndDisplayOrderAndIdNot(
+            Long festivalId, int day, int displayOrder, Long id);
+
+    Optional<Lineup> findByIdAndFestivalId(Long lineupId, Long festivalId);
+
+    boolean existsByFestivalId(Long festivalId);
+
+    long countByFestivalId(Long festivalId);
+
+    @Query("SELECT MAX(l.day) FROM Lineup l WHERE l.festival.id = :festivalId")
+    Integer findMaxDayByFestivalId(@Param("festivalId") Long festivalId);
 }

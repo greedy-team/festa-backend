@@ -1,16 +1,16 @@
 package com.greedy.festa.host.service;
 
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.Lineup;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.global.config.JpaConfig;
 import com.greedy.festa.global.exception.FestaException;
-import com.greedy.festa.host.dto.HostDetailResponse;
 import com.greedy.festa.host.dto.HostDetailResponse.FrequentArtist;
 import com.greedy.festa.host.dto.HostDetailResponse.HistoryItem;
 import com.greedy.festa.host.dto.HostDetailResponse.UpcomingFestival;
+import com.greedy.festa.host.dto.HostDetailResponse;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
+import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.support.PostgresTestSupport;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;

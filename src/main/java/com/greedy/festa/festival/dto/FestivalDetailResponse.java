@@ -2,11 +2,11 @@ package com.greedy.festa.festival.dto;
 
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistGenre;
-import com.greedy.festa.artist.entity.Lineup;
 import com.greedy.festa.festival.entity.ExternalVisitorPolicy;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.entity.TicketType;
 import com.greedy.festa.festival.entity.VerificationMethod;
+import com.greedy.festa.lineup.entity.Lineup;
 
 import java.time.Instant;
 import java.time.LocalDate;

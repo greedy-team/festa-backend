@@ -2,10 +2,10 @@ package com.greedy.festa.search.service;
 
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistAlias;
-import com.greedy.festa.artist.entity.Lineup;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.global.config.JpaConfig;
 import com.greedy.festa.host.entity.Host;
+import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.search.dto.SearchResponse;
 import com.greedy.festa.support.PostgresTestSupport;
 import jakarta.persistence.EntityManager;
