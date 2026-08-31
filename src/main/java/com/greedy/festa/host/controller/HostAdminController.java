@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "관리자 - 주최", description = "축제를 여는 주최의 등록·조회·수정·삭제. "
@@ -52,8 +52,10 @@ public class HostAdminController {
     @ApiResponse(responseCode = "400", description = "INVALID_PAGE / INVALID_PAGE_SIZE",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping
-    public PageResponse<HostResponse> findAll(Pageable pageable) {
-        return hostAdminService.findAll(pageable);
+    public PageResponse<HostResponse> findAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return hostAdminService.findAll(page, size);
     }
 
     @Operation(summary = "주최 수정", description = "보내온 항목만 반영한다. 보내지 않은 항목은 기존 값을 그대로 둔다.")

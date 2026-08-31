@@ -22,6 +22,14 @@ public interface LineupRepository extends JpaRepository<Lineup, Long> {
             """)
     List<Lineup> findPublishedByArtistId(@Param("artistId") Long artistId);
 
+    @Query("""
+            SELECT l FROM Lineup l
+            LEFT JOIN FETCH l.artist
+            WHERE l.festival.id = :festivalId
+            ORDER BY l.day ASC, l.displayOrder ASC
+            """)
+    List<Lineup> findDetailRowsByFestivalId(@Param("festivalId") Long festivalId);
+
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM Lineup lineup WHERE lineup.festival.id = :festivalId")
     void deleteAllByFestivalId(@Param("festivalId") Long festivalId);

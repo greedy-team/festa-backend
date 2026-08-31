@@ -189,6 +189,37 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     List<ArtistAppearanceCount> countAllAppearances();
 
     @Query("""
+            SELECT a AS artist,
+                   COUNT(DISTINCT f) AS appearanceCount,
+                   MAX(f.endDate) AS latestAppearanceDate
+            FROM Artist a
+            LEFT JOIN Lineup l ON l.artist = a
+            LEFT JOIN Festival f ON f = l.festival
+                 AND f.publishedAt IS NOT NULL
+                 AND f.endDate < :today
+            WHERE LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+               OR EXISTS (SELECT 1 FROM ArtistAlias al
+                          WHERE al.artist = a
+                            AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+            GROUP BY a
+            ORDER BY a.id ASC
+            """)
+    List<ArtistSearchRow> findSearchRows(
+            @Param("q") String q,
+            @Param("today") LocalDate today
+    );
+
+    @Query("""
+            SELECT COUNT(a)
+            FROM Artist a
+            WHERE LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+               OR EXISTS (SELECT 1 FROM ArtistAlias al
+                          WHERE al.artist = a
+                            AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+            """)
+    long countSearchRows(@Param("q") String q);
+
+    @Query("""
             SELECT DISTINCT other.artist.id
             FROM Lineup mine
             JOIN Lineup other ON other.festival = mine.festival
