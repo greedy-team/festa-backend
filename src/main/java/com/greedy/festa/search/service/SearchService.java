@@ -50,14 +50,13 @@ public class SearchService {
         long festivalCount = includes(type, SearchType.FESTIVAL)
                 ? festivals.size() : festivalRepository.countPublishedSearchRows(likeQuery);
         SearchCounts counts = SearchCounts.of(festivalCount, artistCount, hostCount);
-        return new SearchResponse(
+        return SearchResponse.of(
                 normalizedQuery,
                 type,
                 counts,
                 festivals,
                 artists,
-                hosts,
-                List.of()
+                hosts
         );
     }
 
@@ -83,7 +82,11 @@ public class SearchService {
         if (query == null || query.trim().isEmpty()) {
             throw new FestaException(SearchErrorCode.SEARCH_INVALID_QUERY);
         }
-        return query.trim();
+        String normalized = query.trim();
+        if (normalized.length() > 50) {
+            throw new FestaException(SearchErrorCode.SEARCH_INVALID_QUERY);
+        }
+        return normalized;
     }
 
     private String escapeLikePattern(String value) {

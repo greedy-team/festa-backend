@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum SearchErrorCode implements ErrorCode {
 
-    SEARCH_INVALID_QUERY("검색어를 입력해주세요", HttpStatus.BAD_REQUEST),
+    SEARCH_INVALID_QUERY("검색어가 올바르지 않습니다", HttpStatus.BAD_REQUEST),
     SEARCH_INVALID_TYPE("지원하지 않는 검색 유형입니다", HttpStatus.BAD_REQUEST);
 
     private final String message;

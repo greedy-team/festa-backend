@@ -97,7 +97,8 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
             JOIN FETCH f.host h
             WHERE f.publishedAt IS NOT NULL
               AND (LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
-                   OR LOWER(h.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+                   OR LOWER(h.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(h.shortName) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
             ORDER BY f.id ASC
             """)
     List<Festival> findPublishedSearchRows(@Param("q") String q);
@@ -108,7 +109,8 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
             JOIN f.host h
             WHERE f.publishedAt IS NOT NULL
               AND (LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
-                   OR LOWER(h.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+                   OR LOWER(h.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(h.shortName) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
             """)
     long countPublishedSearchRows(@Param("q") String q);
 

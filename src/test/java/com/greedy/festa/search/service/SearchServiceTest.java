@@ -62,6 +62,33 @@ class SearchServiceTest {
     }
 
     @Test
+    void trim_후_50자_검색어는_허용한다() {
+        String query = "가".repeat(50);
+        given(artistRepository.findSearchRows(query, LocalDate.of(2026, 8, 27)))
+                .willReturn(List.of());
+        given(hostRepository.findSearchRows(query)).willReturn(List.of());
+        given(festivalRepository.findPublishedSearchRows(query)).willReturn(List.of());
+
+        SearchResponse response = searchService.search("  " + query + "  ", null);
+
+        assertThat(response.query()).isEqualTo(query);
+        verify(artistRepository).findSearchRows(query, LocalDate.of(2026, 8, 27));
+        verify(hostRepository).findSearchRows(query);
+        verify(festivalRepository).findPublishedSearchRows(query);
+    }
+
+    @Test
+    void trim_후_51자_검색어는_계약_오류로_거절한다() {
+        String query = "  " + "가".repeat(51) + "  ";
+
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class, () -> searchService.search(query, null));
+
+        assertThat(thrown.getErrorCode()).isEqualTo(SearchErrorCode.SEARCH_INVALID_QUERY);
+        verifyNoInteractions(artistRepository, hostRepository, festivalRepository);
+    }
+
+    @Test
     void 지원하지_않는_검색_유형은_계약_오류로_거절한다() {
         FestaException thrown = catchThrowableOfType(
                 FestaException.class, () -> searchService.search("봄", "SCHOOL"));
@@ -125,13 +152,17 @@ class SearchServiceTest {
 
     @Test
     void HOST_선택은_Host_목록과_나머지_count만_조회한다() {
-        given(hostRepository.findSearchRows("봄")).willReturn(List.of());
+        HostSearchRow hostRow = mock(HostSearchRow.class);
+        given(hostRow.getHost()).willReturn(Host.builder().name("봄대학교").region("서울").build());
+        given(hostRow.getLatestFestivalDate()).willReturn(LocalDate.of(2026, 8, 31));
+        given(hostRepository.findSearchRows("봄")).willReturn(List.of(hostRow));
         given(artistRepository.countSearchRows("봄")).willReturn(2L);
         given(festivalRepository.countPublishedSearchRows("봄")).willReturn(3L);
 
         SearchResponse response = searchService.search("봄", "HOST");
 
-        assertThat(response.counts()).isEqualTo(new SearchCounts(5, 3, 2, 0));
+        assertThat(response.counts()).isEqualTo(new SearchCounts(6, 3, 2, 1));
+        assertThat(response.hosts().getFirst().latestFestivalYearMonth()).isEqualTo("2026-08");
         verify(hostRepository).findSearchRows("봄");
         verify(artistRepository).countSearchRows("봄");
         verify(festivalRepository).countPublishedSearchRows("봄");

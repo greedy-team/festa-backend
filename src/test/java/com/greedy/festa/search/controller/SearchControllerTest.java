@@ -56,6 +56,21 @@ class SearchControllerTest {
 
     }
 
+    @Test
+    void 길이_50자_검색어는_허용한다() throws Exception {
+        mockMvc.perform(get("/api/search").param("q", "가".repeat(50)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.query").value("가".repeat(50)));
+    }
+
+    @Test
+    void trim_후_51자_검색어는_400을_반환한다() throws Exception {
+        mockMvc.perform(get("/api/search").param("q", "  " + "가".repeat(51) + "  "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("SEARCH_INVALID_QUERY"))
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
     @ParameterizedTest
     @MethodSource("invalidQueries")
     void 잘못된_검색어는_4필드_검색_오류로_반환한다(MultiValueMap<String, String> params)

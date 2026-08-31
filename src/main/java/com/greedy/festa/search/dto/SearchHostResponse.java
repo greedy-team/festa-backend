@@ -2,6 +2,8 @@ package com.greedy.festa.search.dto;
 
 import com.greedy.festa.host.repository.HostSearchRow;
 
+import java.time.YearMonth;
+
 public record SearchHostResponse(
         Long id,
         String name,
@@ -17,7 +19,7 @@ public record SearchHostResponse(
                 row.getHost().getLogoUrl(),
                 row.getFestivalCount(),
                 row.getLatestFestivalDate() == null
-                        ? null : row.getLatestFestivalDate().toString().substring(0, 7)
+                        ? null : YearMonth.from(row.getLatestFestivalDate()).toString()
         );
     }
 }

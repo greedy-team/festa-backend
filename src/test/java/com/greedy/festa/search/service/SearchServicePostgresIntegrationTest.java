@@ -55,7 +55,8 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
         flushAndClear();
 
         SearchResponse byEnglish = searchService.search("spring", "ALL");
-        SearchResponse byShortName = searchService.search("봄", "HOST");
+        SearchResponse byShortName = searchService.search("봄", "ALL");
+        SearchResponse byShortNameHostOnly = searchService.search("봄", "HOST");
 
         assertThat(byEnglish.artists()).extracting(item -> item.artistId())
                 .containsExactly(artist.getId());
@@ -66,7 +67,11 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
         assertThat(byShortName.hosts()).extracting(item -> item.id())
                 .containsExactly(host.getId());
         assertThat(byShortName.artists()).isEmpty();
-        assertThat(byShortName.festivals()).isEmpty();
+        assertThat(byShortName.festivals()).extracting(item -> item.festivalId())
+                .containsExactly(festival.getId());
+        assertThat(byShortName.counts().festival()).isEqualTo(1);
+        assertThat(byShortNameHostOnly.festivals()).isEmpty();
+        assertThat(byShortNameHostOnly.counts().festival()).isEqualTo(1);
     }
 
     @Test
