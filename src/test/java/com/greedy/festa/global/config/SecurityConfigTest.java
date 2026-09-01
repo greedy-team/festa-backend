@@ -84,6 +84,13 @@ public class SecurityConfigTest {
     }
 
     @Test
+    void 토큰_없이_관리자_라인업_목록에_접근하면_401이다() throws Exception {
+        mockMvc.perform(get("/api/admin/festivals/1/lineups"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
+    }
+
+    @Test
     void 공개_아티스트_목록과_상세는_토큰_없이_접근할_수_있다() throws Exception {
         mockMvc.perform(get("/api/artists"))
                 .andExpect(status().isOk());
@@ -157,6 +164,11 @@ public class SecurityConfigTest {
         @GetMapping("/api/admin/imports")
         String imports() {
             return "imports";
+        }
+
+        @GetMapping("/api/admin/festivals/{festivalId}/lineups")
+        String lineups() {
+            return "lineups";
         }
 
         @GetMapping("/api/artists")

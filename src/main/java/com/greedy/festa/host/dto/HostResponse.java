@@ -3,7 +3,7 @@ package com.greedy.festa.host.dto;
 import com.greedy.festa.host.entity.Host;
 
 public record HostResponse(
-        Long id, String name, String shortName, String region,
+        Long hostId, String name, String shortName, String region,
         String logoUrl, String bannerUrl, String homepageUrl, String instagramUrl, Long festivalCount
 ) {
 

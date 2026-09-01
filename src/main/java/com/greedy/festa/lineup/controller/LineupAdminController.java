@@ -7,6 +7,7 @@ import com.greedy.festa.lineup.dto.LineupResponse;
 import com.greedy.festa.lineup.dto.LineupUpdateRequest;
 import com.greedy.festa.lineup.service.LineupAdminService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,6 +25,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @Tag(name = "관리자 - 라인업", description = "축제 라인업의 등록·수정·삭제. "
         + "artistId를 비우면 시크릿 게스트이며 자리는 유지되고, 응답의 artistId·artistName도 null이다. "
         + "토큰이 없거나 만료되면 401(UNAUTHORIZED / TOKEN_EXPIRED)이다.")
@@ -34,6 +37,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class LineupAdminController {
 
     private final LineupAdminService lineupAdminService;
+
+    @Operation(summary = "라인업 목록 조회",
+            description = "발행 여부와 관계없이 축제에 저장된 라인업 전체를 day·displayOrder 오름차순으로 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "라인업 목록. 라인업이 없으면 빈 배열",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = LineupResponse.class))))
+    @ApiResponse(responseCode = "404", description = "FESTIVAL_NOT_FOUND",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @GetMapping
+    public List<LineupResponse> findAll(@PathVariable Long festivalId) {
+        return lineupAdminService.findAll(festivalId);
+    }
 
     @Operation(summary = "라인업 단건 조회", description = "관리자 수정에 필요한 라인업의 현재 값을 조회합니다.")
     @ApiResponse(responseCode = "200", description = "라인업 상세")
