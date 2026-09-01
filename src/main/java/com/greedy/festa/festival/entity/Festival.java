@@ -44,13 +44,10 @@ public class Festival extends BaseEntity {
     private Double latitude;
     private Double longitude;
 
-    @Enumerated(EnumType.STRING)
     private ExternalVisitorPolicy externalVisitor;
 
-    @Enumerated(EnumType.STRING)
     private VerificationMethod verification;
 
-    @Enumerated(EnumType.STRING)
     private TicketType ticketType;
 
     private Instant ticketOpenAt;
@@ -170,6 +167,16 @@ public class Festival extends BaseEntity {
 
     public void unpublish() {
         this.publishedAt = null;
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void preventUnknownAdmissionValues() {
+        if (externalVisitor == ExternalVisitorPolicy.UNKNOWN
+                || verification == VerificationMethod.UNKNOWN
+                || ticketType == TicketType.UNKNOWN) {
+            throw new IllegalStateException("UNKNOWN 입장 정책은 저장할 수 없습니다.");
+        }
     }
 
     public boolean withinPeriod(int day) {

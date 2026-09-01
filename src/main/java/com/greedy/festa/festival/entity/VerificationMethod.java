@@ -5,5 +5,6 @@ public enum VerificationMethod {
     STUDENT_ID,
     PRE_BOOKING,
     INVITATION,
-    OTHER
+    OTHER,
+    UNKNOWN
 }

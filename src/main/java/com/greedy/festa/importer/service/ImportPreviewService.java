@@ -695,10 +695,20 @@ public class ImportPreviewService {
             return;
         }
         try {
-            Enum.valueOf(type, text);
+            E parsed = Enum.valueOf(type, text);
+            if (isUnknownAdmissionValue(type, parsed)) {
+                errors.add(error("INVALID_ENUM", field + " 값이 올바르지 않습니다"));
+            }
         } catch (IllegalArgumentException e) {
             errors.add(error("INVALID_ENUM", field + " 값이 올바르지 않습니다"));
         }
+    }
+
+    private boolean isUnknownAdmissionValue(Class<?> type, Enum<?> value) {
+        return value.name().equals("UNKNOWN")
+                && (type == ExternalVisitorPolicy.class
+                || type == VerificationMethod.class
+                || type == TicketType.class);
     }
 
     private void enumText(

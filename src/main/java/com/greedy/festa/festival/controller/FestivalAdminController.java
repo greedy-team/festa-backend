@@ -83,7 +83,8 @@ public class FestivalAdminController {
                     + "좌표는 크롤러 시드가 원본이지만 손으로 만든 축제는 여기서만 채울 수 있다.")
     @ApiResponse(responseCode = "201", description = "등록된 축제")
     @ApiResponse(responseCode = "400", description = "FESTIVAL_INVALID_NAME / FESTIVAL_INVALID_START_DATE "
-            + "/ FESTIVAL_INVALID_END_DATE / FESTIVAL_INVALID_HOST_ID / INVALID_DATE_RANGE",
+            + "/ FESTIVAL_INVALID_END_DATE / FESTIVAL_INVALID_HOST_ID / INVALID_DATE_RANGE "
+            + "/ INVALID_REQUEST_BODY - UNKNOWN 입장 정책을 요청한 경우",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "HOST_NOT_FOUND",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -103,7 +104,8 @@ public class FestivalAdminController {
                     + "발행 조건인 좌표(latitude·longitude)는 비울 수 없다.")
     @ApiResponse(responseCode = "200", description = "수정된 축제")
     @ApiResponse(responseCode = "400", description = "FESTIVAL_INVALID_NAME / FESTIVAL_INVALID_START_DATE "
-            + "/ FESTIVAL_INVALID_END_DATE / FESTIVAL_INVALID_HOST_ID / INVALID_DATE_RANGE",
+            + "/ FESTIVAL_INVALID_END_DATE / FESTIVAL_INVALID_HOST_ID / INVALID_DATE_RANGE "
+            + "/ INVALID_REQUEST_BODY - UNKNOWN 입장 정책을 요청한 경우",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "FESTIVAL_NOT_FOUND / HOST_NOT_FOUND",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

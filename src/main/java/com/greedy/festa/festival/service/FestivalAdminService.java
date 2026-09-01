@@ -3,7 +3,10 @@ package com.greedy.festa.festival.service;
 import com.greedy.festa.festival.dto.FestivalCreateRequest;
 import com.greedy.festa.festival.dto.FestivalUpdateRequest;
 import com.greedy.festa.festival.dto.FestivalResponse;
+import com.greedy.festa.festival.entity.ExternalVisitorPolicy;
 import com.greedy.festa.festival.entity.Festival;
+import com.greedy.festa.festival.entity.TicketType;
+import com.greedy.festa.festival.entity.VerificationMethod;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.exception.CommonErrorCode;
@@ -28,6 +31,7 @@ public class FestivalAdminService {
 
     @Transactional
     public FestivalResponse create(FestivalCreateRequest request) {
+        validateAdmissionValues(request.externalVisitor(), request.verification(), request.ticketType());
         String name = blankToNull(request.name());
         validateName(name);
         validatePeriod(request.startDate(), request.endDate());
@@ -75,6 +79,7 @@ public class FestivalAdminService {
         Festival festival = festivalRepository.findById(id)
                 .orElseThrow(() -> new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
 
+        validateAdmissionValues(request.externalVisitor(), request.verification(), request.ticketType());
         String name = blankToNull(request.name());
         validateName(name);
         validatePeriod(request.startDate(), request.endDate());
@@ -152,6 +157,18 @@ public class FestivalAdminService {
     private void validateHostId(Long hostId) {
         if (hostId == null) {
             throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_HOST_ID);
+        }
+    }
+
+    private void validateAdmissionValues(
+            ExternalVisitorPolicy externalVisitor,
+            VerificationMethod verification,
+            TicketType ticketType
+    ) {
+        if (externalVisitor == ExternalVisitorPolicy.UNKNOWN
+                || verification == VerificationMethod.UNKNOWN
+                || ticketType == TicketType.UNKNOWN) {
+            throw new FestaException(CommonErrorCode.INVALID_REQUEST_BODY);
         }
     }
 

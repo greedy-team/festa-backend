@@ -3,6 +3,7 @@ package com.greedy.festa.festival.dto;
 import com.greedy.festa.festival.entity.ExternalVisitorPolicy;
 import com.greedy.festa.festival.entity.TicketType;
 import com.greedy.festa.festival.entity.VerificationMethod;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -19,9 +20,11 @@ public record FestivalCreateRequest(
         String address,
         Double latitude,
         Double longitude,
+        @Schema(allowableValues = {"ALLOWED", "CONDITIONAL", "DENIED"})
         ExternalVisitorPolicy externalVisitor,
+        @Schema(allowableValues = {"NONE", "STUDENT_ID", "PRE_BOOKING", "INVITATION", "OTHER"})
         VerificationMethod verification,
-        TicketType ticketType,
+        @Schema(allowableValues = {"FREE", "PAID"}) TicketType ticketType,
         Instant ticketOpenAt,
         String admissionNote,
         String instagramUrl

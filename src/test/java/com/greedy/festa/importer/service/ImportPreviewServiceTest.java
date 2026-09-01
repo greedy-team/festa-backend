@@ -22,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -500,6 +501,33 @@ class ImportPreviewServiceTest {
                 ImportConflictPolicy.UPDATE, Instant.EPOCH);
 
         assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "external_visitor_policy, UNKNOWN",
+            "verification_method, UNKNOWN",
+            "ticket_type, UNKNOWN",
+            "external_visitor_policy, NOT_A_VALUE",
+            "verification_method, NOT_A_VALUE",
+            "ticket_type, NOT_A_VALUE"
+    })
+    void 입장_정책의_UNKNOWN과_기존_미지값은_INVALID_ENUM이다(String field, String value) {
+        Host host = host(1L, "연세대학교", "연세대");
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
+        String[] values = festivalRow("연세대학교", "", "", "").split(",", -1);
+        values[ImportSection.FESTIVALS.headers().indexOf(field)] = value;
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.FESTIVALS, csv("file", "festivals.csv",
+                        String.join(",", ImportSection.FESTIVALS.headers())
+                                + "\n" + String.join(",", values) + "\n"),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
+        assertThat(response.rows().getFirst().errors()).extracting("code")
+                .containsExactly("INVALID_ENUM");
     }
 
     @Test

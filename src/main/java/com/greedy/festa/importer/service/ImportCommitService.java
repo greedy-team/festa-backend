@@ -663,7 +663,17 @@ public class ImportCommitService {
 
     private <E extends Enum<E>> E enumValue(Map<String, Object> map, String key, Class<E> type) {
         String value = text(map, key);
-        return value.isBlank() ? null : Enum.valueOf(type, value);
+        if (value.isBlank()) {
+            return null;
+        }
+        E parsed = Enum.valueOf(type, value);
+        if (parsed.name().equals("UNKNOWN")
+                && (type == ExternalVisitorPolicy.class
+                || type == VerificationMethod.class
+                || type == TicketType.class)) {
+            throw error(ImportErrorCode.IMPORT_INVALID_PREVIEW);
+        }
+        return parsed;
     }
 
     private List<String> strings(Object value) {
