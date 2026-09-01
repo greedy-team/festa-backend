@@ -1,5 +1,6 @@
 package com.greedy.festa.global.config;
 
+import com.greedy.festa.global.logging.AccessLogFilter;
 import com.greedy.festa.global.security.JwtAuthenticationEntryPoint;
 import com.greedy.festa.global.security.JwtAuthenticationFilter;
 import com.greedy.festa.global.security.JwtTokenProvider;
@@ -58,6 +59,8 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenProvider),
                         UsernamePasswordAuthenticationFilter.class)
+                // 인증 필터보다 앞에 둔다. 뒤에 두면 인증이 막은 요청은 기록에 남지 않는다.
+                .addFilterBefore(new AccessLogFilter(), JwtAuthenticationFilter.class)
                 .build();
     }
 
