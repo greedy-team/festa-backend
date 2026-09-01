@@ -10,7 +10,6 @@ import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.service.FestivalService;
 import com.greedy.festa.global.dto.ItemsResponse;
 import com.greedy.festa.global.dto.PageResponse;
-import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.ErrorCode;
 import com.greedy.festa.global.exception.ErrorResponse;
 import com.greedy.festa.global.exception.GlobalExceptionHandler;
@@ -38,10 +37,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class FestivalController {
 
+    // page·size는 GlobalExceptionHandler가 전역에서 400으로 가르므로 여기서 다루지 않는다.
     private static final Map<String, ErrorCode> QUERY_PARAM_ERROR_CODES = Map.of(
             "limit", FestivalErrorCode.FESTIVAL_INVALID_LIMIT,
-            "page", CommonErrorCode.INVALID_PAGE,
-            "size", CommonErrorCode.INVALID_PAGE_SIZE,
             "hostId", FestivalErrorCode.FESTIVAL_INVALID_FILTER,
             "year", FestivalErrorCode.FESTIVAL_INVALID_FILTER,
             "artistId", FestivalErrorCode.FESTIVAL_INVALID_FILTER
