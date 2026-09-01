@@ -6,8 +6,8 @@ import com.greedy.festa.festival.dto.FestivalDetailResponse;
 import com.greedy.festa.festival.dto.FestivalDetailResponse.LineupArtistResponse;
 import com.greedy.festa.festival.dto.FestivalDetailResponse.LineupDayResponse;
 import com.greedy.festa.festival.dto.FestivalListItemResponse;
-import com.greedy.festa.festival.dto.FestivalListSortType;
 import com.greedy.festa.festival.dto.FestivalRecentResponse;
+import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.festival.dto.FestivalStatus;
 import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
 import com.greedy.festa.festival.dto.HostSummaryResponse;
@@ -285,7 +285,7 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalListSortType.LATEST);
+        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name).containsExactly("발행됨");
@@ -301,7 +301,7 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalListSortType.LATEST);
+        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name).containsExactly("주최 있음");
@@ -320,7 +320,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(null, null, 아티스트.getId(), FestivalListSortType.LATEST);
+                목록(null, null, 아티스트.getId(), FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).hasSize(1);
@@ -340,7 +340,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(null, null, 아티스트.getId(), FestivalListSortType.LATEST);
+                목록(null, null, 아티스트.getId(), FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name).containsExactly("출연함");
@@ -357,7 +357,7 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalListSortType.LATEST);
+        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name)
@@ -373,7 +373,7 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalListSortType.UPCOMING);
+        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalSortType.UPCOMING);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name)
@@ -391,7 +391,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(이_주최.getId(), null, null, FestivalListSortType.LATEST);
+                목록(이_주최.getId(), null, null, FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name).containsExactly("이쪽");
@@ -409,7 +409,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(null, 2026, null, FestivalListSortType.UPCOMING);
+                목록(null, 2026, null, FestivalSortType.UPCOMING);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name)
@@ -429,7 +429,7 @@ class FestivalServiceTest extends PostgresTestSupport {
         비운다();
 
         // when
-        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalListSortType.LATEST);
+        PageResponse<FestivalListItemResponse> 결과 = 목록(null, null, null, FestivalSortType.LATEST);
 
         // then
         HostSummaryResponse 담긴_주최 = 결과.items().get(0).host();
@@ -442,7 +442,7 @@ class FestivalServiceTest extends PostgresTestSupport {
     void page가_음수면_INVALID_PAGE로_막힌다() {
         // when
         FestaException 예외 = catchThrowableOfType(
-                () -> festivalService.getFestivals(null, null, null, null, null, FestivalListSortType.LATEST, -1, 20),
+                () -> festivalService.getFestivals(null, null, null, null, null, FestivalSortType.LATEST, -1, 20),
                 FestaException.class
         );
 
@@ -455,7 +455,7 @@ class FestivalServiceTest extends PostgresTestSupport {
     void size가_허용_범위를_벗어나면_INVALID_PAGE_SIZE로_막힌다(int size) {
         // when
         FestaException 예외 = catchThrowableOfType(
-                () -> festivalService.getFestivals(null, null, null, null, null, FestivalListSortType.LATEST, 0, size),
+                () -> festivalService.getFestivals(null, null, null, null, null, FestivalSortType.LATEST, 0, size),
                 FestaException.class
         );
 
@@ -474,7 +474,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(null, null, null, FestivalStatus.UPCOMING, null, FestivalListSortType.LATEST);
+                목록(null, null, null, FestivalStatus.UPCOMING, null, FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name)
@@ -494,7 +494,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(null, null, null, FestivalStatus.ONGOING, null, FestivalListSortType.LATEST);
+                목록(null, null, null, FestivalStatus.ONGOING, null, FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name)
@@ -511,7 +511,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(null, null, null, FestivalStatus.ENDED, null, FestivalListSortType.LATEST);
+                목록(null, null, null, FestivalStatus.ENDED, null, FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name)
@@ -528,9 +528,9 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 진행중 =
-                목록(null, null, null, FestivalStatus.ONGOING, null, FestivalListSortType.LATEST);
+                목록(null, null, null, FestivalStatus.ONGOING, null, FestivalSortType.LATEST);
         PageResponse<FestivalListItemResponse> 예정 =
-                목록(null, null, null, FestivalStatus.UPCOMING, null, FestivalListSortType.LATEST);
+                목록(null, null, null, FestivalStatus.UPCOMING, null, FestivalSortType.LATEST);
 
         // then
         assertThat(진행중.items()).extracting(FestivalListItemResponse::name)
@@ -549,7 +549,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(null, null, null, FestivalStatus.ENDED, null, FestivalListSortType.UPCOMING);
+                목록(null, null, null, FestivalStatus.ENDED, null, FestivalSortType.UPCOMING);
 
         // then - status가 미래를 걷어내고 sort는 남은 것을 시작일 오름차순으로 놓는다
         assertThat(결과.items()).extracting(FestivalListItemResponse::name)
@@ -566,7 +566,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(null, null, null, null, "akaraka", FestivalListSortType.LATEST);
+                목록(null, null, null, null, "akaraka", FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name)
@@ -583,7 +583,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(null, null, null, null, "%", FestivalListSortType.LATEST);
+                목록(null, null, null, null, "%", FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name)
@@ -600,7 +600,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(null, null, null, null, "_", FestivalListSortType.LATEST);
+                목록(null, null, null, null, "_", FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name)
@@ -617,7 +617,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
         // when
         PageResponse<FestivalListItemResponse> 결과 =
-                목록(null, null, null, null, "   ", FestivalListSortType.LATEST);
+                목록(null, null, null, null, "   ", FestivalSortType.LATEST);
 
         // then
         assertThat(결과.items()).extracting(FestivalListItemResponse::name)
@@ -628,7 +628,7 @@ class FestivalServiceTest extends PostgresTestSupport {
     void year가_LocalDate_범위를_넘으면_FESTIVAL_INVALID_FILTER로_막힌다() {
         // when
         FestaException 예외 = catchThrowableOfType(
-                () -> 목록(null, 2_000_000_000, null, null, null, FestivalListSortType.LATEST),
+                () -> 목록(null, 2_000_000_000, null, null, null, FestivalSortType.LATEST),
                 FestaException.class
         );
 
@@ -888,14 +888,14 @@ class FestivalServiceTest extends PostgresTestSupport {
     }
 
     private PageResponse<FestivalListItemResponse> 목록(
-            Long hostId, Integer year, Long artistId, FestivalListSortType sort
+            Long hostId, Integer year, Long artistId, FestivalSortType sort
     ) {
         return 목록(hostId, year, artistId, null, null, sort);
     }
 
     private PageResponse<FestivalListItemResponse> 목록(
             Long hostId, Integer year, Long artistId, FestivalStatus status, String q,
-            FestivalListSortType sort
+            FestivalSortType sort
     ) {
         return festivalService.getFestivals(hostId, year, artistId, status, q, sort, 0, 20);
     }

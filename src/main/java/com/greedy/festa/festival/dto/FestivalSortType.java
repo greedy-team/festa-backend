@@ -5,23 +5,22 @@ import com.greedy.festa.global.util.EnumParser;
 import org.springframework.data.domain.Sort;
 
 public enum FestivalSortType {
-
-    IMPORTED_DESC,
-    START_DATE;
+    LATEST,
+    UPCOMING;
 
     private static final Sort ID_ASC = Sort.by(Sort.Direction.ASC, "id");
 
     public static FestivalSortType from(String value) {
         return EnumParser.parse(
                 FestivalSortType.class, value,
-                IMPORTED_DESC, FestivalErrorCode.FESTIVAL_INVALID_SORT_TYPE
+                LATEST, FestivalErrorCode.FESTIVAL_INVALID_SORT_TYPE
         );
     }
 
     public Sort toSort() {
         return switch (this) {
-            case IMPORTED_DESC -> Sort.by(Sort.Order.desc("importedAt").nullsLast()).and(ID_ASC);
-            case START_DATE -> Sort.by(Sort.Direction.ASC, "startDate").and(ID_ASC);
+            case LATEST -> Sort.by(Sort.Direction.DESC, "publishedAt").and(ID_ASC);
+            case UPCOMING -> Sort.by(Sort.Direction.ASC, "startDate").and(ID_ASC);
         };
     }
 }

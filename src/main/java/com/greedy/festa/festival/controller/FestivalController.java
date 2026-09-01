@@ -2,8 +2,8 @@ package com.greedy.festa.festival.controller;
 
 import com.greedy.festa.festival.dto.FestivalDetailResponse;
 import com.greedy.festa.festival.dto.FestivalListItemResponse;
-import com.greedy.festa.festival.dto.FestivalListSortType;
 import com.greedy.festa.festival.dto.FestivalRecentResponse;
+import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.festival.dto.FestivalStatus;
 import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
@@ -71,7 +71,7 @@ public class FestivalController {
                 hostId, year, artistId,
                 FestivalStatus.from(status),
                 q,
-                FestivalListSortType.from(sort),
+                FestivalSortType.from(sort),
                 page, size
         );
     }
