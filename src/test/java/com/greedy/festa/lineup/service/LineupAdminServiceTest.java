@@ -71,6 +71,38 @@ class LineupAdminServiceTest extends PostgresTestSupport {
     }
 
     @Nested
+    class 목록조회 {
+
+        @Test
+        void 미발행_축제도_day와_displayOrder_오름차순으로_조회한다() {
+            라인업을_만든다(아티스트.getId(), 2, 2);
+            라인업을_만든다(null, 1, 2);
+            라인업을_만든다(아티스트.getId(), 2, 1);
+            라인업을_만든다(아티스트.getId(), 1, 1);
+
+            assertThat(축제.getPublishedAt()).isNull();
+            assertThat(lineupAdminService.findAll(축제.getId()))
+                    .extracting(LineupResponse::day, LineupResponse::displayOrder)
+                    .containsExactly(
+                            org.assertj.core.groups.Tuple.tuple(1, 1),
+                            org.assertj.core.groups.Tuple.tuple(1, 2),
+                            org.assertj.core.groups.Tuple.tuple(2, 1),
+                            org.assertj.core.groups.Tuple.tuple(2, 2));
+        }
+
+        @Test
+        void 라인업이_없으면_빈_목록이다() {
+            assertThat(lineupAdminService.findAll(축제.getId())).isEmpty();
+        }
+
+        @Test
+        void 없는_축제면_FESTIVAL_NOT_FOUND다() {
+            assertThat(에러코드(() -> lineupAdminService.findAll(999_999L)))
+                    .isEqualTo(FestivalErrorCode.FESTIVAL_NOT_FOUND);
+        }
+    }
+
+    @Nested
     class 등록 {
 
         @Test

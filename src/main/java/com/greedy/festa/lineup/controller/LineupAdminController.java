@@ -1,6 +1,7 @@
 package com.greedy.festa.lineup.controller;
 
 import com.greedy.festa.global.config.SwaggerConfig;
+import com.greedy.festa.global.dto.ItemsResponse;
 import com.greedy.festa.global.exception.ErrorResponse;
 import com.greedy.festa.lineup.dto.LineupCreateRequest;
 import com.greedy.festa.lineup.dto.LineupResponse;
@@ -34,6 +35,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class LineupAdminController {
 
     private final LineupAdminService lineupAdminService;
+
+    @Operation(summary = "라인업 목록 조회",
+            description = "발행 여부와 관계없이 축제에 저장된 라인업 전체를 day·displayOrder 오름차순으로 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "라인업 목록. 라인업이 없으면 items가 빈 배열")
+    @ApiResponse(responseCode = "404", description = "FESTIVAL_NOT_FOUND",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @GetMapping
+    public ItemsResponse<LineupResponse> findAll(@PathVariable Long festivalId) {
+        return ItemsResponse.of(lineupAdminService.findAll(festivalId));
+    }
 
     @Operation(summary = "라인업 단건 조회", description = "관리자 수정에 필요한 라인업의 현재 값을 조회합니다.")
     @ApiResponse(responseCode = "200", description = "라인업 상세")

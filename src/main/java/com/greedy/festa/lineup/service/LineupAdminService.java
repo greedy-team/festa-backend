@@ -17,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class LineupAdminService {
@@ -24,6 +26,16 @@ public class LineupAdminService {
     private final FestivalRepository festivalRepository;
     private final ArtistRepository artistRepository;
     private final LineupRepository lineupRepository;
+
+    @Transactional(readOnly = true)
+    public List<LineupResponse> findAll(Long festivalId) {
+        if (!festivalRepository.existsById(festivalId)) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND);
+        }
+        return lineupRepository.findDetailRowsByFestivalId(festivalId).stream()
+                .map(LineupResponse::of)
+                .toList();
+    }
 
     @Transactional(readOnly = true)
     public LineupResponse findOne(Long festivalId, Long lineupId) {
