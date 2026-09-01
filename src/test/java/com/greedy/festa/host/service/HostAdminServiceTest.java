@@ -1,5 +1,6 @@
 package com.greedy.festa.host.service;
 
+import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.dto.HostCreateRequest;
 import com.greedy.festa.host.dto.HostResponse;
@@ -14,6 +15,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.Arrays;
 import java.util.List;
@@ -125,12 +128,12 @@ class HostAdminServiceTest {
     }
 
     @Test
-    void 보내지_않은_필드는_수정되지_않는다() {
+    void 생략한_선택_필드는_삭제된다() {
         // given
         given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
         given(hostRepository.countFestivalsByHostId(1L)).willReturn(2L);
         HostUpdateRequest request = new HostUpdateRequest(
-                null, null, null, null, null, null, "https://yonsei.ac.kr");
+                "연세대학교", null, "서울 서대문구", null, null, "https://instagram.com/yonsei", "https://yonsei.ac.kr");
 
         // when
         HostResponse response = hostAdminService.update(1L, request);
@@ -138,12 +141,27 @@ class HostAdminServiceTest {
         // then
         assertSoftly(softly -> {
             softly.assertThat(response.name()).isEqualTo("연세대학교");
-            softly.assertThat(response.shortName()).isEqualTo("연세대");
+            softly.assertThat(response.shortName()).isNull();
             softly.assertThat(response.region()).isEqualTo("서울 서대문구");
-            softly.assertThat(response.bannerUrl()).isEqualTo("https://cdn.festa.kr/hosts/3/banner.jpg");
+            softly.assertThat(response.bannerUrl()).isNull();
             softly.assertThat(response.homepageUrl()).isEqualTo("https://yonsei.ac.kr");
             softly.assertThat(response.festivalCount()).isEqualTo(2L);
         });
+    }
+
+    @Test
+    void 생략한_필수_필드는_거부된다() {
+        // given
+        given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
+        HostUpdateRequest request = new HostUpdateRequest(
+                "연세대학교", null, null, null, null, "https://instagram.com/yonsei", null);
+
+        // when
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class, () -> hostAdminService.update(1L, request));
+
+        // then
+        assertThat(thrown.getErrorCode()).isEqualTo(HostErrorCode.HOST_INVALID_REGION);
     }
 
     @Test
@@ -152,7 +170,7 @@ class HostAdminServiceTest {
         given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
         given(hostRepository.countFestivalsByHostId(1L)).willReturn(0L);
         HostUpdateRequest request = new HostUpdateRequest(
-                null, null, null, null, "", null, null);
+                "연세대학교", null, "서울 서대문구", null, "", "https://instagram.com/yonsei", null);
 
         // when
         HostResponse response = hostAdminService.update(1L, request);
@@ -192,6 +210,49 @@ class HostAdminServiceTest {
 
         // then
         verify(hostRepository).delete(host);
+    }
+
+    static List<Integer> 잘못된_크기() {
+        return Arrays.asList(0, -1, 51);
+    }
+
+    @ParameterizedTest
+    @MethodSource("잘못된_크기")
+    void 크기가_1과_50_밖이면_목록_조회에_실패한다(int size) {
+        // when
+        FestaException 예외 = catchThrowableOfType(
+                () -> hostAdminService.findAll(0, size), FestaException.class);
+
+        // then
+        assertSoftly(soft -> {
+            soft.assertThat(예외.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PAGE_SIZE);
+            verify(hostRepository, never()).findAllWithFestivalCount(any());
+        });
+    }
+
+    @Test
+    void 페이지가_음수면_목록_조회에_실패한다() {
+        // when
+        FestaException 예외 = catchThrowableOfType(
+                () -> hostAdminService.findAll(-1, 20), FestaException.class);
+
+        // then
+        assertSoftly(soft -> {
+            soft.assertThat(예외.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_PAGE);
+            verify(hostRepository, never()).findAllWithFestivalCount(any());
+        });
+    }
+
+    @Test
+    void 목록_조회는_받은_페이지와_크기를_그대로_리포지토리에_넘긴다() {
+        // given
+        given(hostRepository.findAllWithFestivalCount(any())).willReturn(Page.empty());
+
+        // when
+        hostAdminService.findAll(2, 50);
+
+        // then
+        verify(hostRepository).findAllWithFestivalCount(PageRequest.of(2, 50));
     }
 
     private Host host() {

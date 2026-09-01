@@ -12,9 +12,13 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface FestivalRepository extends JpaRepository<Festival, Long> {
+
+    @Query("SELECT f FROM Festival f LEFT JOIN FETCH f.host WHERE f.id = :id")
+    Optional<Festival> findDetailById(@Param("id") Long id);
 
     @Query(value = """
             SELECT f AS festival, h AS host, COUNT(l) AS lineupCount
@@ -91,6 +95,29 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
         """)
     List<Festival> findRecentlyPublished(Limit limit);
 
+    @Query("""
+            SELECT f
+            FROM Festival f
+            JOIN FETCH f.host h
+            WHERE f.publishedAt IS NOT NULL
+              AND (LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(h.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(h.shortName) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+            ORDER BY f.id ASC
+            """)
+    List<Festival> findPublishedSearchRows(@Param("q") String q);
+
+    @Query("""
+            SELECT COUNT(f)
+            FROM Festival f
+            JOIN f.host h
+            WHERE f.publishedAt IS NOT NULL
+              AND (LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(h.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(h.shortName) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+            """)
+    long countPublishedSearchRows(@Param("q") String q);
+
     @Query(value = """
         SELECT f
         FROM Festival f
@@ -137,4 +164,17 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
             @Param("q") String q,
             Pageable pageable
     );
+
+    @Query("""
+        SELECT f FROM Festival f
+        JOIN FETCH f.host
+        WHERE f.id = :id AND f.publishedAt IS NOT NULL
+        """)
+    Optional<Festival> findPublishedDetailById(@Param("id") Long id);
+
+    Optional<Festival> findByName(String name);
+
+    boolean existsByImportKey(String importKey);
+
+    boolean existsByImportKeyAndIdNot(String importKey, Long id);
 }

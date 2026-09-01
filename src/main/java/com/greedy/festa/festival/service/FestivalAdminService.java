@@ -1,161 +1,176 @@
 package com.greedy.festa.festival.service;
 
-import com.greedy.festa.festival.dto.FestivalBatchPublishResponse;
-import com.greedy.festa.festival.dto.FestivalPublishFailure;
-import com.greedy.festa.festival.dto.FestivalPublishFailureReason;
-import com.greedy.festa.festival.dto.FestivalPublishResponse;
-import com.greedy.festa.festival.dto.FestivalReviewItem;
-import com.greedy.festa.festival.dto.FestivalSortType;
+import com.greedy.festa.festival.dto.FestivalCreateRequest;
+import com.greedy.festa.festival.dto.FestivalUpdateRequest;
+import com.greedy.festa.festival.dto.FestivalResponse;
 import com.greedy.festa.festival.entity.Festival;
-import com.greedy.festa.festival.entity.FestivalPublishBlocker;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.repository.FestivalRepository;
-import com.greedy.festa.festival.repository.FestivalWithLineupCount;
-import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.host.entity.Host;
+import com.greedy.festa.host.exception.HostErrorCode;
+import com.greedy.festa.host.repository.HostRepository;
+import com.greedy.festa.lineup.repository.LineupRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class FestivalAdminService {
 
-    private static final int MAX_BATCH_SIZE = 100;
-
     private final FestivalRepository festivalRepository;
-    private final Clock clock;
+    private final LineupRepository lineupRepository;
+    private final HostRepository hostRepository;
+
+    @Transactional
+    public FestivalResponse create(FestivalCreateRequest request) {
+        String name = blankToNull(request.name());
+        validateName(name);
+        validatePeriod(request.startDate(), request.endDate());
+        validateHostId(request.hostId());
+
+        String importKey = blankToNull(request.importKey());
+        if (importKey != null && festivalRepository.existsByImportKey(importKey)) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_DUPLICATE_IMPORT_KEY);
+        }
+
+        Host host = findHost(request.hostId());
+
+        Festival festival = festivalRepository.save(Festival.builder()
+                .host(host)
+                .importKey(importKey)
+                .name(name)
+                .startDate(request.startDate())
+                .endDate(request.endDate())
+                .posterUrl(blankToNull(request.posterUrl()))
+                .description(blankToNull(request.description()))
+                .venueName(blankToNull(request.venueName()))
+                .address(blankToNull(request.address()))
+                .latitude(request.latitude())
+                .longitude(request.longitude())
+                .externalVisitor(request.externalVisitor())
+                .verification(request.verification())
+                .ticketType(request.ticketType())
+                .ticketOpenAt(request.ticketOpenAt())
+                .admissionNote(blankToNull(request.admissionNote()))
+                .instagramUrl(blankToNull(request.instagramUrl()))
+                .build());
+
+        return FestivalResponse.of(festival, 0L);
+    }
 
     @Transactional(readOnly = true)
-    public PageResponse<FestivalReviewItem> findAll(
-            Boolean published, Long hostId, Integer year, String q, String discovery,
-            FestivalSortType sort, int page, int size
-    ) {
-        if (page < 0) {
-            throw new FestaException(CommonErrorCode.INVALID_PAGE);
-        }
-        if (size < 1 || size > 50) {
-            throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
-        }
-
-        LocalDate yearStart = null;
-        LocalDate nextYearStart = null;
-        if (year != null) {
-            yearStart = LocalDate.of(year, 1, 1);
-            nextYearStart = LocalDate.of(year + 1, 1, 1);
-        }
-
-        Page<FestivalWithLineupCount> rows = festivalRepository.findReviewRows(
-                published, hostId, yearStart, nextYearStart, q, discovery,
-                PageRequest.of(page, size, sort.toSort())
-        );
-
-        return PageResponse.from(rows.map(row -> {
-            Festival festival = row.getFestival();
-            long lineupCount = row.getLineupCount();
-            List<FestivalPublishBlocker> blockers = FestivalPublishBlocker.evaluate(
-                    row.getHost() != null,
-                    festival.getLatitude(),
-                    festival.getLongitude(),
-                    lineupCount
-            );
-            return FestivalReviewItem.of(festival, row.getHost(), lineupCount, blockers);
-        }));
+    public FestivalResponse findOne(Long id) {
+        Festival festival = festivalRepository.findDetailById(id)
+                .orElseThrow(() -> new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
+        return FestivalResponse.of(festival, lineupRepository.countByFestivalId(id));
     }
 
     @Transactional
-    public FestivalPublishResponse publish(Long id) {
+    public FestivalResponse update(Long id, FestivalUpdateRequest request) {
         Festival festival = festivalRepository.findById(id)
                 .orElseThrow(() -> new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
 
+        String name = blankToNull(request.name());
+        validateName(name);
+        validatePeriod(request.startDate(), request.endDate());
+        validateHostId(request.hostId());
+        validatePeriodCoversLineup(id, request.startDate(), request.endDate());
+        validateCoordinatesKept(festival, request.latitude(), request.longitude());
+
+        String importKey = blankToNull(request.importKey());
+        if (importKey != null && festivalRepository.existsByImportKeyAndIdNot(importKey, id)) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_DUPLICATE_IMPORT_KEY);
+        }
+
+        festival.update(
+                findHost(request.hostId()), request.importKey(), name,
+                request.startDate(), request.endDate(),
+                request.posterUrl(), request.description(),
+                request.venueName(), request.address(),
+                request.latitude(), request.longitude(),
+                request.externalVisitor(), request.verification(),
+                request.ticketType(), request.ticketOpenAt(),
+                request.admissionNote(), request.instagramUrl()
+        );
+
+        return FestivalResponse.of(festival, lineupRepository.countByFestivalId(id));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Festival festival = festivalRepository.findById(id)
+                .orElseThrow(() -> new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
         if (festival.getPublishedAt() != null) {
-            return FestivalPublishResponse.of(festival);
+            throw new FestaException(FestivalErrorCode.FESTIVAL_ALREADY_PUBLISHED);
+        }
+        if (lineupRepository.existsByFestivalId(id)) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_HAS_LINEUPS);
         }
 
-        long lineupCount = festivalRepository.countLineupsByFestivalId(id);
-        List<FestivalPublishBlocker> blockers = FestivalPublishBlocker.evaluate(
-                festival.getHost() != null,
-                festival.getLatitude(),
-                festival.getLongitude(),
-                lineupCount
-        );
-
-        if (!blockers.isEmpty()) {
-            throw new FestaException(blockers.getFirst().toErrorCode());
-        }
-
-        festival.publish(Instant.now(clock));
-        return FestivalPublishResponse.of(festival);
+        festivalRepository.delete(festival);
     }
 
-    @Transactional
-    public FestivalPublishResponse unpublish(Long id) {
-        Festival festival = festivalRepository.findById(id)
-                .orElseThrow(() -> new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
-        festival.unpublish();
-        return FestivalPublishResponse.of(festival);
+    private Host findHost(Long hostId) {
+        return hostRepository.findById(hostId)
+                .orElseThrow(() -> new FestaException(HostErrorCode.HOST_NOT_FOUND));
     }
 
-    @Transactional
-    public FestivalBatchPublishResponse batchPublish(List<Long> ids) {
-        if (ids == null || ids.isEmpty() || ids.size() > MAX_BATCH_SIZE || ids.stream().anyMatch(Objects::isNull)) {
-            throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_IDS);
+    private String blankToNull(String value) {
+        if (value == null) {
+            return null;
         }
-
-        List<Long> requestedIds = ids.stream().distinct().toList();
-        Map<Long, FestivalWithLineupCount> rowsById = festivalRepository.findPublishTargets(requestedIds)
-                .stream()
-                .collect(Collectors.toMap(row -> row.getFestival().getId(), Function.identity()));
-
-        Instant publishedAt = Instant.now(clock);
-        List<Long> publishedIds = new ArrayList<>();
-        List<FestivalPublishFailure> failed = new ArrayList<>();
-
-        for (Long id : requestedIds) {
-            FestivalWithLineupCount row = rowsById.get(id);
-            if (row == null) {
-                failed.add(new FestivalPublishFailure(
-                        id, FestivalPublishFailureReason.NOT_FOUND
-                ));
-                continue;
-            }
-
-            Festival festival = row.getFestival();
-            if (festival.getPublishedAt() != null) {
-                publishedIds.add(id);
-                continue;
-            }
-
-            List<FestivalPublishBlocker> blockers = FestivalPublishBlocker.evaluate(
-                    row.getHost() != null,
-                    festival.getLatitude(),
-                    festival.getLongitude(),
-                    row.getLineupCount()
-            );
-            if (!blockers.isEmpty()) {
-                failed.add(new FestivalPublishFailure(
-                        id, FestivalPublishFailureReason.from(blockers.getFirst())
-                ));
-                continue;
-            }
-
-            festival.publish(publishedAt);
-            publishedIds.add(id);
+        String trimmedValue = value.trim();
+        if (trimmedValue.isBlank()) {
+            return null;
         }
+        return trimmedValue;
+    }
 
-        return new FestivalBatchPublishResponse(publishedIds, failed);
+    private void validateName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_NAME);
+        }
+    }
+
+    private void validatePeriod(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_START_DATE);
+        }
+        if (endDate == null) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_END_DATE);
+        }
+        if (startDate.isAfter(endDate)) {
+            throw new FestaException(CommonErrorCode.INVALID_DATE_RANGE);
+        }
+    }
+
+    private void validateHostId(Long hostId) {
+        if (hostId == null) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_HOST_ID);
+        }
+    }
+
+    private void validateCoordinatesKept(Festival festival, Double latitude, Double longitude) {
+        if (festival.getPublishedAt() == null) {
+            return;
+        }
+        if (latitude == null || longitude == null) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_PUBLISHED_COORDINATES_REQUIRED);
+        }
+    }
+
+    private void validatePeriodCoversLineup(Long festivalId, LocalDate startDate, LocalDate endDate) {
+        Integer maxDay = lineupRepository.findMaxDayByFestivalId(festivalId);
+        if (maxDay == null) {
+            return;
+        }
+        if (!Festival.withinPeriod(startDate, endDate, maxDay)) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_PERIOD_CONFLICTS_LINEUP);
+        }
     }
 }

@@ -51,16 +51,10 @@ public class Artist extends BaseEntity {
         this.needsReview = needsReview;
     }
 
-    public void update(String name, ArtistGenre genre,
-                       String instagramUrl, Boolean needsReview) {
-        if (name != null) {
-            this.name = name;
-        }
+    public void update(String name, ArtistGenre genre, Boolean needsReview) {
+        this.name = name;
         if (genre != null) {
             this.genre = genre;
-        }
-        if (instagramUrl != null) {
-            this.instagramUrl = instagramUrl.isBlank() ? null : instagramUrl;
         }
         if (needsReview != null) {
             this.needsReview = needsReview;
@@ -69,5 +63,9 @@ public class Artist extends BaseEntity {
 
     public void markNeedsReview() {
         this.needsReview = true;
+    }
+
+    public void changeInstagramUrl(String instagramUrl) {
+        this.instagramUrl = instagramUrl;
     }
 }

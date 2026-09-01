@@ -1,7 +1,7 @@
 package com.greedy.festa.artist.dto;
 
-import com.greedy.festa.artist.entity.Lineup;
 import com.greedy.festa.festival.entity.Festival;
+import com.greedy.festa.lineup.entity.Lineup;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
