@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class LineupAdminControllerTest {
 
     @Test
-    void 목록_조회는_LineupResponse_배열을_반환한다() throws Exception {
+    void 목록_조회는_ItemsResponse의_items에_LineupResponse를_반환한다() throws Exception {
         LineupAdminService service = mock(LineupAdminService.class);
         given(service.findAll(1L)).willReturn(List.of(
                 new LineupResponse(2L, 1L, "축제", 3L, "아티스트", 1, 1)));
@@ -30,10 +30,24 @@ class LineupAdminControllerTest {
 
         mockMvc.perform(get("/api/admin/festivals/1/lineups"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].lineupId").value(2))
-                .andExpect(jsonPath("$[0].festivalId").value(1))
-                .andExpect(jsonPath("$[0].day").value(1))
-                .andExpect(jsonPath("$[0].displayOrder").value(1));
+                .andExpect(jsonPath("$.items[0].lineupId").value(2))
+                .andExpect(jsonPath("$.items[0].festivalId").value(1))
+                .andExpect(jsonPath("$.items[0].day").value(1))
+                .andExpect(jsonPath("$.items[0].displayOrder").value(1));
+
+        verify(service).findAll(1L);
+    }
+
+    @Test
+    void 라인업이_없으면_items가_빈_배열이다() throws Exception {
+        LineupAdminService service = mock(LineupAdminService.class);
+        given(service.findAll(1L)).willReturn(List.of());
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new LineupAdminController(service)).build();
+
+        mockMvc.perform(get("/api/admin/festivals/1/lineups"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray())
+                .andExpect(jsonPath("$.items").isEmpty());
 
         verify(service).findAll(1L);
     }
