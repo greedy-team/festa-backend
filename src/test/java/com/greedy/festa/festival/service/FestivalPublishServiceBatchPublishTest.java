@@ -12,6 +12,8 @@ import com.greedy.festa.global.config.JpaConfig;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.lineup.entity.Lineup;
+import ch.qos.logback.classic.Level;
+import com.greedy.festa.support.LogCaptor;
 import com.greedy.festa.support.PostgresTestSupport;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,6 +66,57 @@ class FestivalPublishServiceBatchPublishTest extends PostgresTestSupport {
         );
         주최 = em.merge(Host.builder().name("테스트대학교").region("서울 광진구").build());
         아티스트 = 아티스트를_넣는다();
+    }
+
+    @Test
+    void 일부가_실패해도_200이라_요약은_로그에만_남는다() {
+        // given
+        Festival 온전한_축제 = 발행_가능한_축제("세종연회");
+        Festival 라인업이_없는_축제 = 축제를_넣는다("라인업 없음", 주최, 위도, 경도);
+        반영한다();
+
+        // when
+        FestivalBatchPublishResponse response;
+        List<String> 남은_로그;
+        try (LogCaptor 로그 = LogCaptor.forClass(FestivalPublishService.class)) {
+            response = festivalPublishService.batchPublish(
+                    List.of(온전한_축제.getId(), 라인업이_없는_축제.getId()));
+            남은_로그 = 로그.messagesAt(Level.INFO);
+        }
+
+        // then
+        assertThat(남은_로그).anySatisfy(줄 -> {
+            assertThat(줄).contains("요청 2건");
+            assertThat(줄).contains("발행 1건");
+            assertThat(줄).contains("실패 1건");
+            assertThat(줄).contains(String.valueOf(라인업이_없는_축제.getId()));
+            assertThat(줄).contains(FestivalPublishFailureReason.LINEUP_EMPTY.name());
+        });
+        // 응답 형태는 그대로다
+        assertThat(response.publishedIds()).containsExactly(온전한_축제.getId());
+        assertThat(response.failed()).hasSize(1);
+    }
+
+    @Test
+    void 발행_취소는_되돌릴_수_없어_대상이_로그에_남는다() {
+        // given
+        Festival 축제 = 발행_가능한_축제("세종연회");
+        반영한다();
+        festivalPublishService.publish(축제.getId());
+
+        // when
+        List<String> 남은_로그;
+        try (LogCaptor 로그 = LogCaptor.forClass(FestivalPublishService.class)) {
+            festivalPublishService.unpublish(축제.getId());
+            남은_로그 = 로그.messagesAt(Level.INFO);
+        }
+
+        // then
+        assertThat(남은_로그).anySatisfy(줄 -> {
+            assertThat(줄).contains("발행 취소");
+            assertThat(줄).contains(String.valueOf(축제.getId()));
+        });
+        assertThat(발행시각(축제)).isNull();
     }
 
     @Test

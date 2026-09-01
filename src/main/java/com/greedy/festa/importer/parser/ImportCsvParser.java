@@ -62,7 +62,7 @@ public class ImportCsvParser {
         } catch (FestaException e) {
             throw e;
         } catch (IOException | UncheckedIOException | IllegalArgumentException e) {
-            throw new FestaException(ImportErrorCode.IMPORT_INVALID_CSV);
+            throw new FestaException(ImportErrorCode.IMPORT_INVALID_CSV, "CSV 본문 파싱 실패", e);
         }
     }
 
@@ -76,7 +76,7 @@ public class ImportCsvParser {
         try {
             return file.getBytes();
         } catch (IOException e) {
-            throw new FestaException(ImportErrorCode.IMPORT_INVALID_CSV);
+            throw new FestaException(ImportErrorCode.IMPORT_INVALID_CSV, "업로드 파일 읽기 실패", e);
         }
     }
 
@@ -88,7 +88,8 @@ public class ImportCsvParser {
                     .decode(ByteBuffer.wrap(bytes))
                     .toString();
         } catch (CharacterCodingException e) {
-            throw new FestaException(ImportErrorCode.IMPORT_INVALID_CSV_ENCODING);
+            throw new FestaException(
+                    ImportErrorCode.IMPORT_INVALID_CSV_ENCODING, "UTF-8 디코딩 실패", e);
         }
     }
 

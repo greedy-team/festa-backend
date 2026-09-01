@@ -14,11 +14,13 @@ import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.lineup.exception.LineupErrorCode;
 import com.greedy.festa.lineup.repository.LineupRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LineupAdminService {
@@ -91,6 +93,8 @@ public class LineupAdminService {
         Lineup lineup = lineupRepository.findByIdAndFestivalId(lineupId, festivalId)
                 .orElseThrow(() -> new FestaException(LineupErrorCode.LINEUP_NOT_FOUND));
         lineupRepository.delete(lineup);
+        // Lineup은 BaseEntity가 아니라 삭제 시각이 데이터에 남지 않는다.
+        log.info("라인업 삭제 - festivalId={}, lineupId={}", festivalId, lineupId);
     }
 
     private void validateDay(Integer day, Festival festival) {

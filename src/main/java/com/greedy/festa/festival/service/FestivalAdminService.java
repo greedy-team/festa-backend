@@ -13,11 +13,13 @@ import com.greedy.festa.host.exception.HostErrorCode;
 import com.greedy.festa.host.repository.HostRepository;
 import com.greedy.festa.lineup.repository.LineupRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FestivalAdminService {
@@ -113,6 +115,8 @@ public class FestivalAdminService {
         }
 
         festivalRepository.delete(festival);
+        // 임포트 감사 행은 SET NULL로 링크만 잃고 남아 그쪽으로 되짚을 수 없다.
+        log.info("축제 삭제 - festivalId={}", id);
     }
 
     private Host findHost(Long hostId) {

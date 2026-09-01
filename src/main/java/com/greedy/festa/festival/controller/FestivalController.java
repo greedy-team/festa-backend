@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +33,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.Map;
 
 @Tag(name = "축제", description = "축제 조회. 발행된 축제만 내려간다.")
+@Slf4j
 @RestController
 @RequestMapping("/api/festivals")
 @RequiredArgsConstructor
@@ -121,6 +123,9 @@ public class FestivalController {
             return globalExceptionHandler.handleMethodArgumentTypeMismatchException(e, request);
         }
 
+        // 전역 핸들러로 넘기지 않고 직접 응답하는 분기라, 여기서 안 남기면 기록이 없다.
+        log.warn("{} - {} {} (param={}, value={})", errorCode.name(),
+                request.getMethod(), request.getRequestURI(), e.getName(), e.getValue());
         return ResponseEntity.status(errorCode.getStatus())
                 .body(ErrorResponse.of(errorCode, request.getRequestURI()));
     }
