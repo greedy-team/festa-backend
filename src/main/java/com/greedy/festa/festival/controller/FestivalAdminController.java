@@ -1,5 +1,6 @@
 package com.greedy.festa.festival.controller;
 
+import com.greedy.festa.festival.dto.FestivalAdminSortType;
 import com.greedy.festa.festival.dto.FestivalBatchPublishRequest;
 import com.greedy.festa.festival.dto.FestivalBatchPublishResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageResponse;
@@ -7,7 +8,6 @@ import com.greedy.festa.festival.dto.FestivalCreateRequest;
 import com.greedy.festa.festival.dto.FestivalPublishResponse;
 import com.greedy.festa.festival.dto.FestivalResponse;
 import com.greedy.festa.festival.dto.FestivalReviewItem;
-import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.festival.dto.FestivalUpdateRequest;
 import com.greedy.festa.festival.service.FestivalAdminService;
 import com.greedy.festa.festival.service.FestivalPublishService;
@@ -64,7 +64,7 @@ public class FestivalAdminController {
             @RequestParam(defaultValue = "20") int size) {
         return festivalPublishService.findAll(
                 published, hostId, year, q, discovery,
-                FestivalSortType.from(sort),
+                FestivalAdminSortType.from(sort),
                 page, size
         );
     }

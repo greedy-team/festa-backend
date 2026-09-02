@@ -1,8 +1,8 @@
 package com.greedy.festa.artist.service;
 
+import com.greedy.festa.artist.dto.ArtistAdminSortType;
 import com.greedy.festa.artist.dto.ArtistCreateRequest;
 import com.greedy.festa.artist.dto.ArtistResponse;
-import com.greedy.festa.artist.dto.ArtistSortType;
 import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistAlias;
@@ -66,7 +66,7 @@ public class ArtistAdminService {
     @Transactional(readOnly = true)
     public PageResponse<ArtistResponse> findAll(
             Boolean needsReview, String q, ArtistGenre genre,
-            ArtistSortType sort, int page, int size
+            ArtistAdminSortType sort, int page, int size
     ) {
         if (page < 0) {
             throw new FestaException(CommonErrorCode.INVALID_PAGE);

@@ -1,6 +1,6 @@
 package com.greedy.festa.artist.controller;
 
-import com.greedy.festa.artist.dto.ArtistSortType;
+import com.greedy.festa.artist.dto.ArtistAdminSortType;
 import com.greedy.festa.artist.service.ArtistAdminService;
 import com.greedy.festa.artist.service.ArtistMergeCandidateService;
 import com.greedy.festa.artist.service.ArtistMergeService;
@@ -45,14 +45,14 @@ class ArtistAdminControllerTest {
     @Test
     void 목록의_genre를_생략하면_필터가_없고_sort는_CREATED_DESC다() throws Exception {
         // given - genre는 기본값 없는 필터, sort는 기본값 있는 정렬이다
-        given(artistAdminService.findAll(null, null, null, ArtistSortType.CREATED_DESC, 0, 20))
+        given(artistAdminService.findAll(null, null, null, ArtistAdminSortType.CREATED_DESC, 0, 20))
                 .willReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, false, false));
 
         // when & then
         mockMvc.perform(get("/api/admin/artists"))
                 .andExpect(status().isOk());
 
-        verify(artistAdminService).findAll(null, null, null, ArtistSortType.CREATED_DESC, 0, 20);
+        verify(artistAdminService).findAll(null, null, null, ArtistAdminSortType.CREATED_DESC, 0, 20);
     }
 
     @Test

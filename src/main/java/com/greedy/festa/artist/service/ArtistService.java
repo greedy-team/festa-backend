@@ -3,8 +3,8 @@ package com.greedy.festa.artist.service;
 import com.greedy.festa.artist.dto.ArtistAppearanceResponse;
 import com.greedy.festa.artist.dto.ArtistDetailResponse;
 import com.greedy.festa.artist.dto.ArtistListItemResponse;
-import com.greedy.festa.artist.dto.ArtistPublicSortType;
 import com.greedy.festa.artist.dto.ArtistSectionResponse;
+import com.greedy.festa.artist.dto.ArtistSortType;
 import com.greedy.festa.artist.dto.ArtistUpcomingShowResponse;
 import com.greedy.festa.artist.dto.RecentFestivalResponse;
 import com.greedy.festa.artist.entity.Artist;
@@ -51,12 +51,12 @@ public class ArtistService {
     ) {
         validatePage(page, size);
         ArtistGenre genre = ArtistGenre.from(genreValue);
-        ArtistPublicSortType sort = ArtistPublicSortType.from(sortValue);
+        ArtistSortType sort = ArtistSortType.from(sortValue);
         String normalizedQuery = normalizeQuery(query);
         LocalDate today = today();
 
         PageRequest pageRequest = PageRequest.of(page, size);
-        Page<ArtistWithAppearanceCount> rows = sort == ArtistPublicSortType.NAME
+        Page<ArtistWithAppearanceCount> rows = sort == ArtistSortType.NAME
                 ? artistRepository.findPublicByName(genre, normalizedQuery, today, pageRequest)
                 : artistRepository.findPublicByAppearances(genre, normalizedQuery, today, pageRequest);
 

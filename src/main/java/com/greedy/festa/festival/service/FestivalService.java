@@ -2,8 +2,8 @@ package com.greedy.festa.festival.service;
 
 import com.greedy.festa.festival.dto.FestivalDetailResponse;
 import com.greedy.festa.festival.dto.FestivalListItemResponse;
-import com.greedy.festa.festival.dto.FestivalListSortType;
 import com.greedy.festa.festival.dto.FestivalRecentResponse;
+import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.festival.dto.FestivalStatus;
 import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
 import com.greedy.festa.festival.entity.Festival;
@@ -66,7 +66,7 @@ public class FestivalService {
     @Transactional(readOnly = true)
     public PageResponse<FestivalListItemResponse> getFestivals(
             Long hostId, Integer year, Long artistId, FestivalStatus status, String q,
-            FestivalListSortType sort, int page, int size
+            FestivalSortType sort, int page, int size
     ) {
         if (page < 0) {
             throw new FestaException(CommonErrorCode.INVALID_PAGE);
