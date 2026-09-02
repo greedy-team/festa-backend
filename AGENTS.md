@@ -106,7 +106,7 @@ throw new FestaException(ImportErrorCode.IMPORT_INVALID_CSV, "CSV 본문 파싱 
 
 `JwtAuthenticationFilter`가 토큰의 관리자 이름을 MDC(`admin`)에 담고,
 `logging.pattern.correlation`이 모든 줄에 `[이름]`으로 찍습니다. 토큰이 없는 공개 API
-요청은 `[-]`입니다. 그 앞의 칸은 요청 번호 자리이며 #118이 채웁니다.
+요청은 `[-]`입니다. 그 앞의 칸은 `AccessLogFilter`가 넣는 요청 번호입니다 (#118).
 
 **그러니 로그 문구에 관리자를 손으로 넣지 않습니다.** 줄마다 붙이면 새로 추가되는 로그에서
 빠지고, 무엇보다 서비스의 `INFO` 줄에만 붙어 배포와 함께 사라집니다. MDC에 두면 파일로
@@ -120,7 +120,7 @@ throw new FestaException(ImportErrorCode.IMPORT_INVALID_CSV, "CSV 본문 파싱 
 **레벨**
 
 `INFO`는 화면(stdout)으로만 나가고 컨테이너에 딸려 있어, 배포로 컨테이너가 교체되면 사라집니다.
-파일로 보존되는 것은 `WARN` 이상입니다 (#116 / PR #125가 머지된 뒤부터. 그 전에는 파일 로그 자체가 없습니다).
+파일로 보존되는 것은 `WARN` 이상입니다 (#116).
 
 따라서 **감사 목적의 `INFO` 줄은 다음 배포까지만 남습니다.** 영구 보존이 필요하면 로그가 아니라
 감사 테이블입니다 — 임포트가 그렇게 하고 있습니다(DEC-0077).

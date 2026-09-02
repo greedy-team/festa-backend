@@ -89,8 +89,7 @@ logging:
   # 공유하므로(spring-boot의 logback/defaults.xml — CONSOLE_LOG_PATTERN과 FILE_LOG_PATTERN이
   # 둘 다 LOG_CORRELATION_PATTERN을 품는다), 형식 전체를 덮어쓰지 않고도 양쪽에 한 번에 붙는다.
   #
-  #  - 요청 번호: AccessLogFilter가 MDC에 넣는다 (#118). 그 PR이 머지되기 전까지 이 칸은
-  #    `[        ]`로 비어 있다 — 자리를 미리 잡아 두는 쪽이 나중에 형식이 갈리지 않는다.
+  #  - 요청 번호: AccessLogFilter가 MDC에 넣는다 (#118).
   #  - 관리자: JwtAuthenticationFilter가 MDC에 넣는다 (#117). 토큰이 없는 공개 API 요청은 `-`.
   #
   # 두 칸을 하나로 합쳐 `%correlationId{requestId(8),admin(0)}`으로 쓸 수도 있으나 값이
