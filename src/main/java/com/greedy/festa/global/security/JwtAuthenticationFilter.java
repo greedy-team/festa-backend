@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,6 +20,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     public static final String ERROR_CODE_ATTRIBUTE = "festa.jwt.errorCode";
 
+    /**
+     * 이 요청을 수행한 관리자. 로그 패턴이 여기서 읽어 모든 줄에 붙이므로
+     * (`logging.pattern.correlation`), 로그를 남기는 쪽은 아무것도 하지 않아도 된다.
+     */
+    public static final String ADMIN_MDC_KEY = "admin";
+
     private final JwtTokenProvider jwtTokenProvider;
 
     @Override
@@ -31,12 +38,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(
                         UsernamePasswordAuthenticationToken.authenticated(username, null, List.of())
                 );
+                MDC.put(ADMIN_MDC_KEY, username);
             } catch (FestaException e) {
                 request.setAttribute(ERROR_CODE_ATTRIBUTE, e.getErrorCode());
             }
         }
 
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            // 톰캣이 스레드를 재사용하므로 지우지 않으면 다음 요청의 로그에 이 관리자가 붙는다.
+            MDC.remove(ADMIN_MDC_KEY);
+        }
     }
 
     private String resolveToken(HttpServletRequest request) {

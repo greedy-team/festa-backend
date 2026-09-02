@@ -84,6 +84,16 @@ throw new FestaException(ImportErrorCode.IMPORT_INVALID_CSV, "CSV 본문 파싱 
 `GlobalExceptionHandler.toResponse`는 메시지를 인자로 받지 않습니다. 구조가 규칙을 강제하므로,
 맥락을 붙였다는 이유로 응답이 달라지는 경로가 없습니다.
 
+**누가 했는지는 자동으로 붙습니다**
+
+`JwtAuthenticationFilter`가 토큰의 관리자 이름을 MDC(`admin`)에 담고,
+`logging.pattern.correlation`이 모든 줄에 `[이름]`으로 찍습니다. 토큰이 없는 공개 API
+요청은 `[-]`입니다. 그 앞의 칸은 요청 번호 자리이며 #118이 채웁니다.
+
+**그러니 로그 문구에 관리자를 손으로 넣지 않습니다.** 줄마다 붙이면 새로 추가되는 로그에서
+빠지고, 무엇보다 서비스의 `INFO` 줄에만 붙어 배포와 함께 사라집니다. MDC에 두면 파일로
+보존되는 `WARN` 이상 — 즉 실패한 작업에도 같은 이름이 붙습니다.
+
 **남기지 않는 것**
 
 - 비밀번호·토큰·시크릿은 어떤 형태로도 남기지 않습니다. 로그인 실패에는 시도한 아이디만 남깁니다
