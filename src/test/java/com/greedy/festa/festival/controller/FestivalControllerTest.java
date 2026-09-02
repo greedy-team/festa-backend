@@ -1,8 +1,8 @@
 package com.greedy.festa.festival.controller;
 
 import com.greedy.festa.festival.dto.FestivalListItemResponse;
-import com.greedy.festa.festival.dto.FestivalListSortType;
 import com.greedy.festa.festival.dto.FestivalRecentResponse;
+import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
 import com.greedy.festa.festival.dto.HostSummaryResponse;
 import com.greedy.festa.festival.service.FestivalService;
@@ -133,7 +133,7 @@ class FestivalControllerTest {
     @Test
     void 목록의_status가_빈_값이면_필터를_주지_않은_것과_같다() throws Exception {
         // given - from("")이 던지지 않고 null을 돌려줘야 서비스가 status 없이 불린다
-        given(festivalService.getFestivals(null, null, null, null, null, FestivalListSortType.LATEST, 0, 20))
+        given(festivalService.getFestivals(null, null, null, null, null, FestivalSortType.LATEST, 0, 20))
                 .willReturn(PageResponse.from(new PageImpl<>(List.of(목록_항목()),
                         PageRequest.of(0, 20), 1)));
 
@@ -147,7 +147,7 @@ class FestivalControllerTest {
     void 목록의_sort는_대소문자와_앞뒤_공백을_가리지_않는다() throws Exception {
         // given - 파싱이 EnumParser로 옮겨가며 정규화가 붙었다
         given(festivalService.getFestivals(null, null, null, null, null,
-                FestivalListSortType.UPCOMING, 0, 20))
+                FestivalSortType.UPCOMING, 0, 20))
                 .willReturn(PageResponse.from(new PageImpl<>(List.of(목록_항목()),
                         PageRequest.of(0, 20), 1)));
 
@@ -171,7 +171,7 @@ class FestivalControllerTest {
     void 목록의_q는_컨트롤러가_손대지_않고_서비스로_넘긴다() throws Exception {
         // given - 공백 정리와 LIKE 이스케이프는 서비스의 몫이다
         given(festivalService.getFestivals(null, null, null, null, "  대동  ",
-                FestivalListSortType.LATEST, 0, 20))
+                FestivalSortType.LATEST, 0, 20))
                 .willReturn(PageResponse.from(new PageImpl<>(List.of(목록_항목()),
                         PageRequest.of(0, 20), 1)));
 
@@ -184,7 +184,7 @@ class FestivalControllerTest {
     @Test
     void 목록_응답에는_venueName이_없다() throws Exception {
         // given
-        given(festivalService.getFestivals(null, null, null, null, null, FestivalListSortType.LATEST, 0, 20))
+        given(festivalService.getFestivals(null, null, null, null, null, FestivalSortType.LATEST, 0, 20))
                 .willReturn(PageResponse.from(new PageImpl<>(List.of(목록_항목()),
                         PageRequest.of(0, 20), 1)));
 

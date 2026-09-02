@@ -1,5 +1,6 @@
 package com.greedy.festa.festival.controller;
 
+import com.greedy.festa.festival.dto.FestivalAdminSortType;
 import com.greedy.festa.festival.dto.FestivalCoverageItem;
 import com.greedy.festa.festival.dto.FestivalCoverageResponse;
 import com.greedy.festa.festival.dto.FestivalCoverageStatus;
@@ -8,7 +9,6 @@ import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.service.FestivalPublishService;
 import com.greedy.festa.festival.service.FestivalAdminService;
 import com.greedy.festa.festival.service.FestivalCoverageService;
-import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
@@ -137,7 +137,7 @@ class FestivalAdminControllerTest {
     void 검수_목록의_sort를_생략하면_IMPORTED_DESC로_조회한다() throws Exception {
         // given - 기본값은 EnumParser 호출부가 고른다. 여기가 유일한 지정 지점이다
         given(publishService.findAll(null, null, null, null, null,
-                FestivalSortType.IMPORTED_DESC, 0, 20))
+                FestivalAdminSortType.IMPORTED_DESC, 0, 20))
                 .willReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, false, false));
 
         // when & then
@@ -145,7 +145,7 @@ class FestivalAdminControllerTest {
                 .andExpect(status().isOk());
 
         verify(publishService).findAll(null, null, null, null, null,
-                FestivalSortType.IMPORTED_DESC, 0, 20);
+                FestivalAdminSortType.IMPORTED_DESC, 0, 20);
     }
 
     @Test

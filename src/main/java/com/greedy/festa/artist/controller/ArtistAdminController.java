@@ -1,11 +1,11 @@
 package com.greedy.festa.artist.controller;
 
+import com.greedy.festa.artist.dto.ArtistAdminSortType;
 import com.greedy.festa.artist.dto.ArtistCreateRequest;
 import com.greedy.festa.artist.dto.ArtistMergeCandidateResponse;
 import com.greedy.festa.artist.dto.ArtistMergeRequest;
 import com.greedy.festa.artist.dto.ArtistMergeResponse;
 import com.greedy.festa.artist.dto.ArtistResponse;
-import com.greedy.festa.artist.dto.ArtistSortType;
 import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.service.ArtistAdminService;
@@ -75,7 +75,7 @@ public class ArtistAdminController {
             @RequestParam(defaultValue = "20") int size) {
         return artistAdminService.findAll(needsReview, q,
                 ArtistGenre.from(genre),
-                ArtistSortType.from(sort),
+                ArtistAdminSortType.from(sort),
                 page, size);
     }
 
