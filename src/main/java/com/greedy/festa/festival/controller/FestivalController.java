@@ -55,7 +55,7 @@ public class FestivalController {
     @ApiResponse(responseCode = "200", description = "축제 목록 페이지")
     @ApiResponse(responseCode = "400",
             description = "INVALID_PAGE / INVALID_PAGE_SIZE / FESTIVAL_INVALID_SORT_TYPE "
-                    + "/ FESTIVAL_INVALID_STATUS_TYPE / FESTIVAL_INVALID_FILTER",
+                    + "/ FESTIVAL_INVALID_STATUS_TYPE / FESTIVAL_INVALID_FILTER / FESTIVAL_INVALID_QUERY",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping
     public PageResponse<FestivalListItemResponse> getFestivals(

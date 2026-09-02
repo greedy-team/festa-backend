@@ -14,6 +14,7 @@ import com.greedy.festa.artist.repository.ArtistWithAppearanceCount;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.util.LikePatternUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -72,12 +73,10 @@ public class ArtistAdminService {
         if (size < 1 || size > 50) {
             throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
         }
-        if (q != null && q.trim().length() > 50) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_QUERY);
-        }
+        String normalizedQuery = normalizeQuery(q);
 
         Page<ArtistWithAppearanceCount> rows = artistRepository.findAllWithAppearanceCount(
-                needsReview, genre, q, PageRequest.of(page, size, sort.toSort())
+                needsReview, genre, normalizedQuery, PageRequest.of(page, size, sort.toSort())
         );
 
         Map<Long, List<String>> aliasesByArtistId = loadAlias(rows);
@@ -88,6 +87,17 @@ public class ArtistAdminService {
                         aliasesByArtistId.getOrDefault(row.getArtist().getId(), List.of()),
                         row.getAppearanceCount()
                 )));
+    }
+
+    private String normalizeQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+        String normalized = query.trim();
+        if (normalized.length() > 50) {
+            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_QUERY);
+        }
+        return LikePatternUtils.escape(normalized);
     }
 
     @Transactional(readOnly = true)

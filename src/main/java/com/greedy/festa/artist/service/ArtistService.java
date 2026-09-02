@@ -19,6 +19,7 @@ import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.util.LikePatternUtils;
 import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.lineup.repository.LineupRepository;
 import lombok.RequiredArgsConstructor;
@@ -140,13 +141,7 @@ public class ArtistService {
         if (normalized.length() > 50) {
             throw new FestaException(ArtistErrorCode.ARTIST_INVALID_QUERY);
         }
-        return escapeLikePattern(normalized);
-    }
-
-    private String escapeLikePattern(String value) {
-        return value.replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
+        return LikePatternUtils.escape(normalized);
     }
 
     private LocalDate today() {

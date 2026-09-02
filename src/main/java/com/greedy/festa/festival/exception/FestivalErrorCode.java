@@ -19,6 +19,7 @@ public enum FestivalErrorCode implements ErrorCode {
     FESTIVAL_INVALID_LIMIT("조회 개수가 올바르지 않습니다", HttpStatus.BAD_REQUEST),
     FESTIVAL_INVALID_FILTER("조회 조건의 형식이 올바르지 않습니다", HttpStatus.BAD_REQUEST),
     FESTIVAL_INVALID_STATUS_TYPE("지원하지 않는 진행 상태입니다", HttpStatus.BAD_REQUEST),
+    FESTIVAL_INVALID_QUERY("검색어가 올바르지 않습니다", HttpStatus.BAD_REQUEST),
     FESTIVAL_PERIOD_CONFLICTS_LINEUP("축제 기간 밖으로 벗어나는 라인업이 있습니다", HttpStatus.CONFLICT),
     FESTIVAL_DUPLICATE_IMPORT_KEY("이미 등록된 import_key입니다", HttpStatus.CONFLICT),
     FESTIVAL_HAS_LINEUPS("라인업이 등록된 축제는 삭제할 수 없습니다", HttpStatus.CONFLICT),

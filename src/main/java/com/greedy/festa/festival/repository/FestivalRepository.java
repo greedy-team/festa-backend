@@ -32,7 +32,7 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
               AND (:yearStart IS NULL
                    OR (f.startDate >= :yearStart AND f.startDate < :nextYearStart))
               AND (:q IS NULL
-                   OR LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')))
+                   OR LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
               AND (:discovery IS NULL OR f.discovery = :discovery)
             GROUP BY f, h
             """,
@@ -47,7 +47,7 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
               AND (:yearStart IS NULL
                    OR (f.startDate >= :yearStart AND f.startDate < :nextYearStart))
               AND (:q IS NULL
-                   OR LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')))
+                   OR LOWER(f.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
               AND (:discovery IS NULL OR f.discovery = :discovery)
             """)
     Page<FestivalWithLineupCount> findReviewRows(

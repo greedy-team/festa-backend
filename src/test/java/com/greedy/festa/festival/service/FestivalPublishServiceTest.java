@@ -20,10 +20,15 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.List;
+
+import org.springframework.data.domain.PageImpl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -31,6 +36,46 @@ import static org.mockito.Mockito.verify;
 @SuppressWarnings("NonAsciiCharacters")
 @ExtendWith(MockitoExtension.class)
 class FestivalPublishServiceTest {
+
+    @Test
+    void reviewQueryIsTrimmedAndEscaped() {
+        given(festivalRepository.findReviewRows(
+                eq(null), eq(null), eq(null), eq(null), eq("100\\%\\_\\\\live"),
+                eq(null), any()))
+                .willReturn(new PageImpl<>(List.of()));
+
+        festivalPublishService.findAll(null, null, null, "  100%_\\live  ", null,
+                FestivalAdminSortType.IMPORTED_DESC, 0, 20);
+
+        verify(festivalRepository).findReviewRows(
+                eq(null), eq(null), eq(null), eq(null), eq("100\\%\\_\\\\live"),
+                eq(null), any());
+    }
+
+    @Test
+    void blankReviewQueryMeansNoFilter() {
+        given(festivalRepository.findReviewRows(
+                eq(null), eq(null), eq(null), eq(null), eq(null), eq(null), any()))
+                .willReturn(new PageImpl<>(List.of()));
+
+        festivalPublishService.findAll(null, null, null, "   ", null,
+                FestivalAdminSortType.IMPORTED_DESC, 0, 20);
+
+        verify(festivalRepository).findReviewRows(
+                eq(null), eq(null), eq(null), eq(null), eq(null), eq(null), any());
+    }
+
+    @Test
+    void reviewQueryLongerThanFiftyCharactersIsRejected() {
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class,
+                () -> festivalPublishService.findAll(null, null, null, "가".repeat(51), null,
+                        FestivalAdminSortType.IMPORTED_DESC, 0, 20));
+
+        assertThat(thrown.getErrorCode()).isEqualTo(FestivalErrorCode.FESTIVAL_INVALID_QUERY);
+        verify(festivalRepository, never()).findReviewRows(
+                any(), any(), any(), any(), any(), any(), any());
+    }
 
     private static final Long 축제_id = 1L;
     private static final Instant 지금 = Instant.parse("2026-08-22T09:00:00Z");

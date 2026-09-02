@@ -50,7 +50,8 @@ public class FestivalAdminController {
             description = "q는 축제 이름을 찾고, sort는 IMPORTED_DESC(기본) / START_DATE다. "
                     + "각 항목의 blockers는 지금 발행을 막고 있는 사유다.")
     @ApiResponse(responseCode = "200", description = "검수 항목 페이지")
-    @ApiResponse(responseCode = "400", description = "INVALID_PAGE / INVALID_PAGE_SIZE / FESTIVAL_INVALID_SORT_TYPE",
+    @ApiResponse(responseCode = "400", description = "INVALID_PAGE / INVALID_PAGE_SIZE / FESTIVAL_INVALID_SORT_TYPE "
+            + "/ FESTIVAL_INVALID_QUERY",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping
     public PageResponse<FestivalReviewItem> findAll(

@@ -35,6 +35,33 @@ import static org.assertj.core.api.Assertions.tuple;
 @Import(JpaConfig.class)
 class ArtistRepositoryTest extends PostgresTestSupport {
 
+    @Test
+    void adminLikeWildcardsAndEscapeCharacterAreLiteralInPostgres() {
+        em.persist(Artist.builder().name("Discount 50% Artist").genre(ArtistGenre.DANCE).build());
+        em.persist(Artist.builder().name("sub_artist").genre(ArtistGenre.DANCE).build());
+        em.persist(Artist.builder().name("path\\artist").genre(ArtistGenre.DANCE).build());
+        em.persist(Artist.builder().name("ordinary artist").genre(ArtistGenre.DANCE).build());
+        em.flush();
+        em.clear();
+
+        Page<ArtistWithAppearanceCount> percent = artistRepository.findAllWithAppearanceCount(
+                null, null, "\\%", PageRequest.of(0, 10, ArtistAdminSortType.NAME.toSort()));
+        Page<ArtistWithAppearanceCount> underscore = artistRepository.findAllWithAppearanceCount(
+                null, null, "\\_", PageRequest.of(0, 10, ArtistAdminSortType.NAME.toSort()));
+        Page<ArtistWithAppearanceCount> backslash = artistRepository.findAllWithAppearanceCount(
+                null, null, "\\\\", PageRequest.of(0, 10, ArtistAdminSortType.NAME.toSort()));
+
+        assertThat(percent.getContent()).extracting(row -> row.getArtist().getName())
+                .containsExactly("Discount 50% Artist");
+        assertThat(percent.getTotalElements()).isEqualTo(1);
+        assertThat(underscore.getContent()).extracting(row -> row.getArtist().getName())
+                .containsExactly("sub_artist");
+        assertThat(underscore.getTotalElements()).isEqualTo(1);
+        assertThat(backslash.getContent()).extracting(row -> row.getArtist().getName())
+                .containsExactly("path\\artist");
+        assertThat(backslash.getTotalElements()).isEqualTo(1);
+    }
+
     @Autowired
     private ArtistRepository artistRepository;
 

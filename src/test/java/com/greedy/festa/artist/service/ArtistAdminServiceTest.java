@@ -1,6 +1,7 @@
 package com.greedy.festa.artist.service;
 
 import com.greedy.festa.artist.dto.ArtistCreateRequest;
+import com.greedy.festa.artist.dto.ArtistAdminSortType;
 import com.greedy.festa.artist.dto.ArtistResponse;
 import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.Artist;
@@ -19,6 +20,7 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
 
 import java.util.Arrays;
 import java.util.List;
@@ -28,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -36,6 +39,43 @@ import static org.mockito.Mockito.verify;
 @SuppressWarnings("NonAsciiCharacters")
 @ExtendWith(MockitoExtension.class)
 public class ArtistAdminServiceTest {
+
+    @Test
+    void listQueryIsTrimmedAndEscaped() {
+        given(artistRepository.findAllWithAppearanceCount(
+                eq(null), eq(null), eq("100\\%\\_\\\\live"), any()))
+                .willReturn(new PageImpl<>(List.of()));
+
+        artistService.findAll(
+                null, "  100%_\\live  ", null, ArtistAdminSortType.NAME, 0, 20);
+
+        verify(artistRepository).findAllWithAppearanceCount(
+                eq(null), eq(null), eq("100\\%\\_\\\\live"), any());
+    }
+
+    @Test
+    void blankListQueryMeansNoFilter() {
+        given(artistRepository.findAllWithAppearanceCount(
+                eq(null), eq(null), eq(null), any()))
+                .willReturn(new PageImpl<>(List.of()));
+
+        artistService.findAll(
+                null, "   ", null, ArtistAdminSortType.NAME, 0, 20);
+
+        verify(artistRepository).findAllWithAppearanceCount(
+                eq(null), eq(null), eq(null), any());
+    }
+
+    @Test
+    void listQueryLongerThanFiftyCharactersIsRejected() {
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class,
+                () -> artistService.findAll(null, "가".repeat(51), null,
+                        ArtistAdminSortType.NAME, 0, 20));
+
+        assertThat(thrown.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_INVALID_QUERY);
+        verify(artistRepository, never()).findAllWithAppearanceCount(any(), any(), any(), any());
+    }
 
     @Mock
     ArtistRepository artistRepository;

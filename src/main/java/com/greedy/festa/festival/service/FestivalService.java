@@ -13,6 +13,7 @@ import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.util.LikePatternUtils;
 import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.lineup.repository.LineupRepository;
 import lombok.RequiredArgsConstructor;
@@ -117,12 +118,10 @@ public class FestivalService {
         if (query == null || query.isBlank()) {
             return null;
         }
-        return escapeLikePattern(query.trim());
-    }
-
-    private String escapeLikePattern(String value) {
-        return value.replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
+        String normalized = query.trim();
+        if (normalized.length() > 50) {
+            throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_QUERY);
+        }
+        return LikePatternUtils.escape(normalized);
     }
 }

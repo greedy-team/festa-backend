@@ -3,6 +3,7 @@ package com.greedy.festa.festival.service;
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.festival.dto.FestivalDetailResponse;
+import com.greedy.festa.festival.dto.FestivalAdminSortType;
 import com.greedy.festa.festival.dto.FestivalDetailResponse.LineupArtistResponse;
 import com.greedy.festa.festival.dto.FestivalDetailResponse.LineupDayResponse;
 import com.greedy.festa.festival.dto.FestivalListItemResponse;
@@ -54,8 +55,60 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 @TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
-@Import({JpaConfig.class, FestivalService.class, FestivalServiceTest.FixedClockConfig.class})
+@Import({JpaConfig.class, FestivalService.class, FestivalPublishService.class,
+        FestivalServiceTest.FixedClockConfig.class})
 class FestivalServiceTest extends PostgresTestSupport {
+
+    @Test
+    void publicQueryLongerThanFiftyCharactersIsRejected() {
+        FestaException exception = catchThrowableOfType(
+                () -> festivalService.getFestivals(
+                        null, null, null, null, "가".repeat(51), FestivalSortType.LATEST, 0, 20),
+                FestaException.class);
+
+        assertThat(exception.getErrorCode()).isEqualTo(FestivalErrorCode.FESTIVAL_INVALID_QUERY);
+    }
+
+    @Test
+    void adminLikeWildcardsAndEscapeCharacterAreLiteralInPostgres() {
+        Host host = Host.builder()
+                .name("Wildcard University")
+                .region("Seoul")
+                .build();
+        em.persist(host);
+        persistFestival(host, "Discount 50% Festival");
+        persistFestival(host, "sub_festival");
+        persistFestival(host, "path\\festival");
+        persistFestival(host, "ordinary festival");
+        em.flush();
+        em.clear();
+
+        var percent = festivalPublishService.findAll(
+                null, null, null, "%", null, FestivalAdminSortType.START_DATE, 0, 20);
+        var underscore = festivalPublishService.findAll(
+                null, null, null, "_", null, FestivalAdminSortType.START_DATE, 0, 20);
+        var backslash = festivalPublishService.findAll(
+                null, null, null, "\\", null, FestivalAdminSortType.START_DATE, 0, 20);
+
+        assertThat(percent.items()).extracting(item -> item.name())
+                .containsExactly("Discount 50% Festival");
+        assertThat(percent.totalElements()).isEqualTo(1);
+        assertThat(underscore.items()).extracting(item -> item.name())
+                .containsExactly("sub_festival");
+        assertThat(underscore.totalElements()).isEqualTo(1);
+        assertThat(backslash.items()).extracting(item -> item.name())
+                .containsExactly("path\\festival");
+        assertThat(backslash.totalElements()).isEqualTo(1);
+    }
+
+    private void persistFestival(Host host, String name) {
+        em.persist(Festival.builder()
+                .host(host)
+                .name(name)
+                .startDate(LocalDate.of(2026, 5, 22))
+                .endDate(LocalDate.of(2026, 5, 24))
+                .build());
+    }
 
     /**
      * UTC로는 2026-05-20, KST로는 2026-05-21인 순간에 시계를 고정한다.
@@ -73,6 +126,9 @@ class FestivalServiceTest extends PostgresTestSupport {
 
     @Autowired
     private FestivalService festivalService;
+
+    @Autowired
+    private FestivalPublishService festivalPublishService;
 
     @Autowired
     private EntityManager em;
