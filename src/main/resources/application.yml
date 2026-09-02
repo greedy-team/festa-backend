@@ -85,6 +85,10 @@ logging:
       max-file-size: 10MB
       max-history: 90
       total-size-cap: 200MB
+  # AccessLogFilter가 MDC에 넣는 요청 번호를 로그에 드러낸다. 이 자리는 콘솔·파일 형식이
+  # 공유하므로, 형식 전체를 덮어쓰지 않고도 양쪽에 한 번에 붙는다.
+  pattern:
+    correlation: "%correlationId{requestId(8)}"
 
 management:
   endpoints:
