@@ -1,6 +1,6 @@
 package com.greedy.festa.artist.repository;
 
-import com.greedy.festa.artist.dto.ArtistSortType;
+import com.greedy.festa.artist.dto.ArtistAdminSortType;
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistAlias;
 import com.greedy.festa.artist.entity.ArtistGenre;
@@ -64,7 +64,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP, false);
         반영한다();
 
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, null, ArtistSortType.NAME);
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, null, ArtistAdminSortType.NAME);
 
         assertThat(결과.getContent())
                 .extracting(row -> row.getArtist().getName())
@@ -78,7 +78,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         반영한다();
 
         Page<ArtistWithAppearanceCount> 결과 =
-                조회한다(null, ArtistGenre.BAND, null, ArtistSortType.NAME);
+                조회한다(null, ArtistGenre.BAND, null, ArtistAdminSortType.NAME);
 
         assertThat(결과.getContent())
                 .extracting(row -> row.getArtist().getName())
@@ -92,7 +92,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         아티스트를_넣는다("아이유", ArtistGenre.DANCE, false);
         반영한다();
 
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, null, ArtistSortType.NAME);
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, null, ArtistAdminSortType.NAME);
 
         assertThat(결과.getContent())
                 .extracting(row -> row.getArtist().getName(), ArtistWithAppearanceCount::getAppearanceCount)
@@ -113,7 +113,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         반영한다();
 
         Page<ArtistWithAppearanceCount> 결과 =
-                조회한다(null, null, null, ArtistSortType.APPEARANCES);
+                조회한다(null, null, null, ArtistAdminSortType.APPEARANCES);
 
         assertThat(결과.getContent())
                 .extracting(row -> row.getArtist().getName())
@@ -127,7 +127,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
         반영한다();
 
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다("다듀", null, null, ArtistSortType.NAME);
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다("다듀", null, null, ArtistAdminSortType.NAME);
 
         assertThat(결과.getContent())
                 .extracting(row -> row.getArtist().getName())
@@ -141,7 +141,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         별칭을_넣는다(다듀, "다듀 형님들");
         반영한다();
 
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다("다듀", null, null, ArtistSortType.NAME);
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다("다듀", null, null, ArtistAdminSortType.NAME);
 
         assertThat(결과.getContent()).hasSize(1);
     }
@@ -152,7 +152,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
         반영한다();
 
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, true, ArtistSortType.NAME);
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, true, ArtistAdminSortType.NAME);
 
         assertThat(결과.getContent())
                 .extracting(row -> row.getArtist().getName())
@@ -168,7 +168,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         반영한다();
 
         Page<ArtistWithAppearanceCount> 결과 =
-                조회한다(null, ArtistGenre.BAND, null, ArtistSortType.NAME);
+                조회한다(null, ArtistGenre.BAND, null, ArtistAdminSortType.NAME);
 
         assertThat(결과.getTotalElements()).isEqualTo(1);
     }
@@ -193,7 +193,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         반영한다();
 
         // when
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, null, ArtistSortType.NAME);
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, null, ArtistAdminSortType.NAME);
 
         // then
         assertThat(결과.getContent())
@@ -376,7 +376,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
     }
 
     private Page<ArtistWithAppearanceCount> 조회한다(
-            String q, ArtistGenre genre, Boolean needsReview, ArtistSortType sort
+            String q, ArtistGenre genre, Boolean needsReview, ArtistAdminSortType sort
     ) {
         return artistRepository.findAllWithAppearanceCount(
                 needsReview, genre, q, PageRequest.of(0, 10, sort.toSort()));

@@ -1,7 +1,7 @@
 package com.greedy.festa.festival.service;
 
+import com.greedy.festa.festival.dto.FestivalAdminSortType;
 import com.greedy.festa.festival.dto.FestivalPublishResponse;
-import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.repository.FestivalRepository;
@@ -173,7 +173,7 @@ class FestivalPublishServiceTest {
 
     private void 검수_목록을_조회한다(int page, int size) {
         festivalPublishService.findAll(
-                null, null, null, null, null, FestivalSortType.IMPORTED_DESC, page, size
+                null, null, null, null, null, FestivalAdminSortType.IMPORTED_DESC, page, size
         );
     }
 

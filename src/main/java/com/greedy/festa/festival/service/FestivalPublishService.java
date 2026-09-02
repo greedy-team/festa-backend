@@ -1,11 +1,11 @@
 package com.greedy.festa.festival.service;
 
+import com.greedy.festa.festival.dto.FestivalAdminSortType;
 import com.greedy.festa.festival.dto.FestivalBatchPublishResponse;
 import com.greedy.festa.festival.dto.FestivalPublishFailure;
 import com.greedy.festa.festival.dto.FestivalPublishFailureReason;
 import com.greedy.festa.festival.dto.FestivalPublishResponse;
 import com.greedy.festa.festival.dto.FestivalReviewItem;
-import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.entity.FestivalPublishBlocker;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
@@ -42,7 +42,7 @@ public class FestivalPublishService {
     @Transactional(readOnly = true)
     public PageResponse<FestivalReviewItem> findAll(
             Boolean published, Long hostId, Integer year, String q, String discovery,
-            FestivalSortType sort, int page, int size
+            FestivalAdminSortType sort, int page, int size
     ) {
         if (page < 0) {
             throw new FestaException(CommonErrorCode.INVALID_PAGE);
