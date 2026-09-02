@@ -33,26 +33,53 @@ public class AccessLogFilter extends OncePerRequestFilter {
 
         long startedAt = System.nanoTime();
         MDC.put(REQUEST_ID, newRequestId());
+        Throwable thrown = null;
         try {
             filterChain.doFilter(request, response);
+        } catch (Throwable e) {
+            thrown = e;
+            throw e;
         } finally {
-            writeAccessLog(request, response, startedAt);
+            writeAccessLog(request, response, startedAt, thrown);
             // 스레드가 재사용되므로, 비우지 않으면 다음 요청이 이 번호를 물려받는다.
             MDC.remove(REQUEST_ID);
         }
     }
 
-    private void writeAccessLog(HttpServletRequest request, HttpServletResponse response, long startedAt) {
+    private void writeAccessLog(
+            HttpServletRequest request, HttpServletResponse response, long startedAt, Throwable thrown
+    ) {
         if (request.getRequestURI().startsWith(HEALTH_PATH)) {
             return;
         }
 
-        log.info("{} {} {} {}ms{}",
+        log.info("{} {} {} {}ms{}{}",
                 request.getMethod(),
                 request.getRequestURI(),
-                response.getStatus(),
+                status(response, thrown),
                 (System.nanoTime() - startedAt) / 1_000_000,
-                authenticatedAdmin());
+                authenticatedAdmin(),
+                thrownMark(thrown));
+    }
+
+    /**
+     * 예외가 체인 밖으로 빠져나가면 응답은 아직 나가지 않았고, 톰캣이 ERROR 디스패치에서 500을 쓴다.
+     * 그 시점의 response.getStatus()는 아직 기본값 200이라, 그대로 적으면 터진 요청이 200으로 남는다.
+     * 반대로 이미 나간 응답은 상태를 되돌릴 수 없으므로 실제로 나간 값을 적는다.
+     */
+    private int status(HttpServletResponse response, Throwable thrown) {
+        if (thrown != null && !response.isCommitted()) {
+            return HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+        }
+        return response.getStatus();
+    }
+
+    // 상태 코드 한 칸으로는 "터졌다"를 표현할 수 없다. 조사할 때 예외 종류가 첫 단서다.
+    private String thrownMark(Throwable thrown) {
+        if (thrown == null) {
+            return "";
+        }
+        return " ex=" + thrown.getClass().getSimpleName();
     }
 
     private String authenticatedAdmin() {
