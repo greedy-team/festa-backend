@@ -14,7 +14,9 @@ import com.greedy.festa.artist.repository.ArtistWithAppearanceCount;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.logging.AfterCommitLogger;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ArtistAdminService {
@@ -147,6 +150,7 @@ public class ArtistAdminService {
         artistAliasRepository.deleteByArtistId(id);
         artistAliasRepository.flush();
         artistRepository.deleteById(id);
+        AfterCommitLogger.info(log, "아티스트 삭제 - artistId={}", id);
     }
 
     private void validateName(String name) {

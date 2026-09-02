@@ -27,39 +27,42 @@ public class GlobalExceptionHandler {
             FestaException e, HttpServletRequest request
     ) {
 
-        log.warn("{} - {}", e.getErrorCode().name(), e.getMessage());
-        return toResponse(e.getErrorCode(), e.getMessage(), request);
+        if (e.getCause() == null) {
+            log.warn("{} - {} {}{}", e.getErrorCode().name(),
+                    request.getMethod(), request.getRequestURI(), logContext(e.getLogMessage()));
+        } else {
+            log.warn("{} - {} {}{}", e.getErrorCode().name(),
+                    request.getMethod(), request.getRequestURI(), logContext(e.getLogMessage()),
+                    e.getCause());
+        }
+        return toResponse(e.getErrorCode(), request);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(
             Exception e, HttpServletRequest request) {
 
-        log.error("예상하지 못한 예외", e);
-        return toResponse(
-                CommonErrorCode.INTERNAL_SERVER_ERROR,
-                CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
-                request);
+        log.error("{} - {} {}", CommonErrorCode.INTERNAL_SERVER_ERROR.name(),
+                request.getMethod(), request.getRequestURI(), e);
+        return toResponse(CommonErrorCode.INTERNAL_SERVER_ERROR, request);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(
             MaxUploadSizeExceededException e, HttpServletRequest request) {
 
-        return toResponse(
-                CommonErrorCode.PAYLOAD_TOO_LARGE,
-                CommonErrorCode.PAYLOAD_TOO_LARGE.getMessage(),
-                request);
+        log.warn("{} - {} {} (한도={}바이트)", CommonErrorCode.PAYLOAD_TOO_LARGE.name(),
+                request.getMethod(), request.getRequestURI(), e.getMaxUploadSize());
+        return toResponse(CommonErrorCode.PAYLOAD_TOO_LARGE, request);
     }
 
     @ExceptionHandler(MissingServletRequestPartException.class)
     public ResponseEntity<ErrorResponse> handleMissingServletRequestPartException(
             MissingServletRequestPartException e, HttpServletRequest request) {
 
-        return toResponse(
-                CommonErrorCode.INVALID_REQUEST_BODY,
-                CommonErrorCode.INVALID_REQUEST_BODY.getMessage(),
-                request);
+        log.warn("{} - {} {} (누락 파트={})", CommonErrorCode.INVALID_REQUEST_BODY.name(),
+                request.getMethod(), request.getRequestURI(), e.getRequestPartName());
+        return toResponse(CommonErrorCode.INVALID_REQUEST_BODY, request);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
@@ -83,10 +86,7 @@ public class GlobalExceptionHandler {
         log.error("{} - {} {} (param={}, value={})",
                 CommonErrorCode.INTERNAL_SERVER_ERROR.name(),
                 request.getMethod(), request.getRequestURI(), e.getName(), e.getValue(), e);
-        return toResponse(
-                CommonErrorCode.INTERNAL_SERVER_ERROR,
-                CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
-                request);
+        return toResponse(CommonErrorCode.INTERNAL_SERVER_ERROR, request);
     }
 
     private ResponseEntity<ErrorResponse> toTypeMismatchResponse(
@@ -95,18 +95,21 @@ public class GlobalExceptionHandler {
         log.warn("{} - {} {} (param={}, value={})",
                 errorCode.name(),
                 request.getMethod(), request.getRequestURI(), e.getName(), e.getValue());
-        return toResponse(errorCode, errorCode.getMessage(), request);
+        return toResponse(errorCode, request);
     }
 
+    // 메시지를 인자로 받지 않는다. 도메인 맥락이 응답으로 흘러갈 경로를 없애기 위해서다.
     private ResponseEntity<ErrorResponse> toResponse(
-            ErrorCode errorCode, String message, HttpServletRequest request) {
+            ErrorCode errorCode, HttpServletRequest request) {
 
-        ErrorResponse body = new ErrorResponse(
-                errorCode.name(),
-                message,
-                errorCode.getStatus().value(),
-                request.getRequestURI());
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ErrorResponse.of(errorCode, request.getRequestURI()));
+    }
 
-        return ResponseEntity.status(errorCode.getStatus()).body(body);
+    private String logContext(String logMessage) {
+        if (logMessage == null) {
+            return "";
+        }
+        return " - " + logMessage;
     }
 }

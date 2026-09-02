@@ -8,12 +8,15 @@ import com.greedy.festa.host.dto.HostResponse;
 import com.greedy.festa.host.dto.HostUpdateRequest;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
+import com.greedy.festa.global.logging.AfterCommitLogger;
 import com.greedy.festa.host.repository.HostRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class HostAdminService {
@@ -99,6 +102,7 @@ public class HostAdminService {
         }
 
         hostRepository.delete(host);
+        AfterCommitLogger.info(log, "주최 삭제 - hostId={}", id);
     }
 
     private void validateName(String name) {

@@ -85,10 +85,21 @@ logging:
       max-file-size: 10MB
       max-history: 90
       total-size-cap: 200MB
-  # AccessLogFilter가 MDC에 넣는 요청 번호를 로그에 드러낸다. 이 자리는 콘솔·파일 형식이
-  # 공유하므로, 형식 전체를 덮어쓰지 않고도 양쪽에 한 번에 붙는다.
+  # 로그 한 줄이 "어느 요청을, 누가" 했는지 갖게 하는 자리다. 콘솔·파일 형식이 이 자리를
+  # 공유하므로(spring-boot의 logback/defaults.xml — CONSOLE_LOG_PATTERN과 FILE_LOG_PATTERN이
+  # 둘 다 LOG_CORRELATION_PATTERN을 품는다), 형식 전체를 덮어쓰지 않고도 양쪽에 한 번에 붙는다.
+  #
+  #  - 요청 번호: AccessLogFilter가 MDC에 넣는다 (#118).
+  #  - 관리자: JwtAuthenticationFilter가 MDC에 넣는다 (#117). 토큰이 없는 공개 API 요청은 `-`.
+  #
+  # 두 칸을 하나로 합쳐 `%correlationId{requestId(8),admin(0)}`으로 쓸 수도 있으나 값이
+  # `[a1b2c3d4-festa-admin]`처럼 대시로 붙고 한쪽이 비면 `[        -festa-admin]`이 되어
+  # 읽기 나쁘다. 칸을 나눠 둔다.
+  #
+  # 로그를 남기는 쪽은 아무것도 하지 않는다. 줄마다 손으로 붙이면 새 로그에서 빠뜨리고,
+  # 무엇보다 위 file: WARN 때문에 파일에는 실패한 줄만 남으므로 그쪽에 자동으로 붙어야 한다.
   pattern:
-    correlation: "%correlationId{requestId(8)}"
+    correlation: "%correlationId{requestId(8)}[%X{admin:--}] "
 
 management:
   endpoints:
