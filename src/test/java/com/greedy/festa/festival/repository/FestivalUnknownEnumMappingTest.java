@@ -5,10 +5,11 @@ import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.entity.TicketType;
 import com.greedy.festa.festival.entity.VerificationMethod;
 import com.greedy.festa.support.PostgresTestSupport;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -23,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SuppressWarnings("NonAsciiCharacters")
 @DataJpaTest
@@ -36,6 +36,12 @@ class FestivalUnknownEnumMappingTest extends PostgresTestSupport {
     @Autowired FestivalRepository festivalRepository;
     @Autowired JdbcTemplate jdbcTemplate;
     @Autowired PlatformTransactionManager transactionManager;
+
+    @BeforeEach
+    @AfterEach
+    void cleanDatabase() {
+        festivalRepository.deleteAll();
+    }
 
     @Test
     void SQL로_수정한_미지_문자열을_UNKNOWN으로_흡수하고_WARN을_남긴다(CapturedOutput output) {
@@ -55,20 +61,24 @@ class FestivalUnknownEnumMappingTest extends PostgresTestSupport {
     }
 
     @Test
-    void 미지값을_읽은_엔티티의_변경은_거부되어_원본_문자열을_보존한다() {
+    void 미지값을_읽은_엔티티의_다른_필드_변경은_원본_문자열을_보존한다() {
         Long festivalId = insertFestival("OUTSIDER_NEW", "FACE_SCAN", "EARLY_BIRD");
 
-        assertThatThrownBy(() -> inTransaction(() -> {
+        inTransaction(() -> {
             Festival festival = festivalRepository.findById(festivalId).orElseThrow();
-            festival.publish(Instant.parse("2026-09-01T00:00:00Z"));
+            festival.update(
+                    null, null, "수정된 축제", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 2),
+                    null, null, null, null, null, null,
+                    null, null, null, null, null, null
+            );
             return null;
-        })).hasRootCauseInstanceOf(IllegalStateException.class)
-                .hasStackTraceContaining("UNKNOWN 입장 정책은 저장할 수 없습니다.");
+        });
 
         assertThat(jdbcTemplate.queryForMap("""
-                SELECT external_visitor, verification, ticket_type
+                SELECT name, external_visitor, verification, ticket_type
                 FROM festival WHERE id = ?
-                """, festivalId)).containsEntry("external_visitor", "OUTSIDER_NEW")
+                """, festivalId)).containsEntry("name", "수정된 축제")
+                .containsEntry("external_visitor", "OUTSIDER_NEW")
                 .containsEntry("verification", "FACE_SCAN")
                 .containsEntry("ticket_type", "EARLY_BIRD");
     }

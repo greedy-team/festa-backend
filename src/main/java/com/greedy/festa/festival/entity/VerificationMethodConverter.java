@@ -7,6 +7,6 @@ public class VerificationMethodConverter
         extends UnknownSafeEnumConverter<VerificationMethod> {
 
     public VerificationMethodConverter() {
-        super(VerificationMethod.class, VerificationMethod.UNKNOWN);
+        super(VerificationMethod.class);
     }
 }

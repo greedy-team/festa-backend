@@ -7,6 +7,6 @@ public class ExternalVisitorPolicyConverter
         extends UnknownSafeEnumConverter<ExternalVisitorPolicy> {
 
     public ExternalVisitorPolicyConverter() {
-        super(ExternalVisitorPolicy.class, ExternalVisitorPolicy.UNKNOWN);
+        super(ExternalVisitorPolicy.class);
     }
 }

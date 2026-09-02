@@ -6,6 +6,6 @@ import jakarta.persistence.Converter;
 public class TicketTypeConverter extends UnknownSafeEnumConverter<TicketType> {
 
     public TicketTypeConverter() {
-        super(TicketType.class, TicketType.UNKNOWN);
+        super(TicketType.class);
     }
 }

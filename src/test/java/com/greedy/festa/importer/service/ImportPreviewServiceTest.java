@@ -5,6 +5,9 @@ import com.greedy.festa.artist.entity.ArtistAlias;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.festival.entity.Festival;
+import com.greedy.festa.festival.entity.ExternalVisitorPolicy;
+import com.greedy.festa.festival.entity.TicketType;
+import com.greedy.festa.festival.entity.VerificationMethod;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.repository.HostRepository;
@@ -301,6 +304,38 @@ class ImportPreviewServiceTest {
                 .containsEntry("ticketOpenAt", "2026-05-07T05:00:00Z");
         assertThat(response.rows().getFirst().values().get("startDate")).isInstanceOf(String.class);
         assertThat(response.rows().getFirst().values().get("ticketOpenAt")).isInstanceOf(String.class);
+    }
+
+    @Test
+    void UPDATE의_빈_입장_정책은_기존_UNKNOWN을_normalized에_노출하지_않는다() {
+        Host host = host(1L, "연세대학교", "연세대");
+        Festival existing = Festival.builder()
+                .host(host).importKey("연세대학교-신촌캠퍼스-2026").name("기존 축제")
+                .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2))
+                .externalVisitor(ExternalVisitorPolicy.UNKNOWN)
+                .verification(VerificationMethod.UNKNOWN)
+                .ticketType(TicketType.UNKNOWN)
+                .build();
+        ReflectionTestUtils.setField(existing, "id", 5L);
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
+        String[] values = festivalRow("연세대학교", "", "", "").split(",", -1);
+        values[ImportSection.FESTIVALS.headers().indexOf("external_visitor_policy")] = "";
+        values[ImportSection.FESTIVALS.headers().indexOf("verification_method")] = "";
+        values[ImportSection.FESTIVALS.headers().indexOf("ticket_type")] = "";
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.FESTIVALS, csv("file", "festivals.csv",
+                        String.join(",", ImportSection.FESTIVALS.headers())
+                                + "\n" + String.join(",", values) + "\n"),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.UPDATE);
+        assertThat(response.rows().getFirst().errors()).isEmpty();
+        assertThat(response.rows().getFirst().values())
+                .containsEntry("externalVisitorPolicy", null)
+                .containsEntry("verificationMethod", null)
+                .containsEntry("ticketType", null);
     }
 
     @Test

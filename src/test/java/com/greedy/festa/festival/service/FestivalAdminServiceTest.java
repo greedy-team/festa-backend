@@ -137,6 +137,29 @@ class FestivalAdminServiceTest extends PostgresTestSupport {
         }
 
         @Test
+        void 조회된_UNKNOWN을_그대로_보내면_다른_필드만_수정하고_레거시_문자열을_보존한다() {
+            Long id = 축제를_만든다();
+            em.createNativeQuery("""
+                    UPDATE festival
+                    SET external_visitor = 'OUTSIDER_NEW',
+                        verification = 'FACE_SCAN', ticket_type = 'EARLY_BIRD'
+                    WHERE id = :id
+                    """).setParameter("id", id).executeUpdate();
+            반영한다();
+
+            festivalAdminService.update(id, unknownUpdateRequest("externalVisitor"));
+            반영한다();
+
+            Object[] row = (Object[]) em.createNativeQuery("""
+                    SELECT name, external_visitor, verification, ticket_type
+                    FROM festival WHERE id = :id
+                    """).setParameter("id", id).getSingleResult();
+            assertThat(row).containsExactly(
+                    "UNKNOWN 축제", "OUTSIDER_NEW", "FACE_SCAN", "EARLY_BIRD"
+            );
+        }
+
+        @Test
         void 이름이_공백뿐이면_거부한다() {
             FestivalCreateRequest 요청 = 등록요청(주최.getId(), 임포트_키, "   ", 시작일, 종료일);
 

@@ -20,11 +20,12 @@ public record FestivalUpdateRequest(
         String address,
         Double latitude,
         Double longitude,
-        @Schema(allowableValues = {"ALLOWED", "CONDITIONAL", "DENIED"})
+        @Schema(implementation = String.class, allowableValues = {"ALLOWED", "CONDITIONAL", "DENIED"})
         ExternalVisitorPolicy externalVisitor,
-        @Schema(allowableValues = {"NONE", "STUDENT_ID", "PRE_BOOKING", "INVITATION", "OTHER"})
+        @Schema(implementation = String.class,
+                allowableValues = {"NONE", "STUDENT_ID", "PRE_BOOKING", "INVITATION", "OTHER"})
         VerificationMethod verification,
-        @Schema(allowableValues = {"FREE", "PAID"}) TicketType ticketType,
+        @Schema(implementation = String.class, allowableValues = {"FREE", "PAID"}) TicketType ticketType,
         Instant ticketOpenAt,
         String admissionNote,
         String instagramUrl

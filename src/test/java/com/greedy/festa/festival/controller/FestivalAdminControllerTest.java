@@ -15,8 +15,6 @@ import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.global.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -66,32 +64,6 @@ class FestivalAdminControllerTest {
         mockMvc.perform(get("/api/admin/festivals/1"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("FESTIVAL_NOT_FOUND"));
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"externalVisitor", "verification", "ticketType"})
-    void 등록의_UNKNOWN_입력은_400_INVALID_REQUEST_BODY다(String field) throws Exception {
-        given(adminService.create(any()))
-                .willThrow(new FestaException(CommonErrorCode.INVALID_REQUEST_BODY));
-
-        mockMvc.perform(post("/api/admin/festivals")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"" + field + "\":\"UNKNOWN\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("INVALID_REQUEST_BODY"));
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"externalVisitor", "verification", "ticketType"})
-    void 수정의_UNKNOWN_입력은_400_INVALID_REQUEST_BODY다(String field) throws Exception {
-        given(adminService.update(any(), any()))
-                .willThrow(new FestaException(CommonErrorCode.INVALID_REQUEST_BODY));
-
-        mockMvc.perform(patch("/api/admin/festivals/1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"" + field + "\":\"UNKNOWN\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("INVALID_REQUEST_BODY"));
     }
 
     @Test

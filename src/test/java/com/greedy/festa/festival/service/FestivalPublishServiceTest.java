@@ -3,6 +3,7 @@ package com.greedy.festa.festival.service;
 import com.greedy.festa.festival.dto.FestivalPublishResponse;
 import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.festival.entity.Festival;
+import com.greedy.festa.festival.entity.ExternalVisitorPolicy;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.exception.CommonErrorCode;
@@ -169,6 +170,25 @@ class FestivalPublishServiceTest {
 
         // then
         assertThat(thrown.getErrorCode()).isEqualTo(FestivalErrorCode.FESTIVAL_NOT_FOUND);
+    }
+
+    @Test
+    void 레거시_입장_정책은_도메인_400으로_발행을_거부한다() {
+        Festival festival = Festival.builder()
+                .host(주최()).name("레거시 축제")
+                .latitude(37.5509).longitude(127.0743)
+                .externalVisitor(ExternalVisitorPolicy.UNKNOWN)
+                .build();
+        given(festivalRepository.findById(축제_id)).willReturn(Optional.of(festival));
+        given(festivalRepository.countLineupsByFestivalId(축제_id)).willReturn(3L);
+
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class, () -> festivalPublishService.publish(축제_id)
+        );
+
+        assertThat(thrown.getErrorCode())
+                .isEqualTo(FestivalErrorCode.FESTIVAL_PUBLISH_ADMISSION_UNKNOWN);
+        assertThat(festival.getPublishedAt()).isNull();
     }
 
     private void 검수_목록을_조회한다(int page, int size) {

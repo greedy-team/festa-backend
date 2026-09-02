@@ -10,6 +10,7 @@ import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.entity.FestivalHashtag;
 import com.greedy.festa.festival.entity.TicketType;
 import com.greedy.festa.festival.entity.VerificationMethod;
+import com.greedy.festa.festival.entity.UnknownSafeEnum;
 import com.greedy.festa.festival.repository.FestivalHashtagRepository;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.exception.FestaException;
@@ -666,14 +667,15 @@ public class ImportCommitService {
         if (value.isBlank()) {
             return null;
         }
-        E parsed = Enum.valueOf(type, value);
-        if (parsed.name().equals("UNKNOWN")
-                && (type == ExternalVisitorPolicy.class
-                || type == VerificationMethod.class
-                || type == TicketType.class)) {
+        try {
+            E parsed = Enum.valueOf(type, value);
+            if (parsed instanceof UnknownSafeEnum unknownSafeEnum && unknownSafeEnum.isUnknown()) {
+                throw error(ImportErrorCode.IMPORT_INVALID_PREVIEW);
+            }
+            return parsed;
+        } catch (IllegalArgumentException exception) {
             throw error(ImportErrorCode.IMPORT_INVALID_PREVIEW);
         }
-        return parsed;
     }
 
     private List<String> strings(Object value) {

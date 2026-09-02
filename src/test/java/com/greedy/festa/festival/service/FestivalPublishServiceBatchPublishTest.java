@@ -284,6 +284,33 @@ class FestivalPublishServiceBatchPublishTest extends PostgresTestSupport {
         assertThat(thrown.getErrorCode()).isEqualTo(FestivalErrorCode.FESTIVAL_INVALID_IDS);
     }
 
+    @Test
+    void 레거시_입장_정책은_항목별_ADMISSION_UNKNOWN으로_실패하고_다른_축제는_발행한다() {
+        Festival 정상_축제 = 발행_가능한_축제("정상 축제");
+        Festival 레거시_축제 = 발행_가능한_축제("레거시 축제");
+        반영한다();
+        em.createNativeQuery("""
+                UPDATE festival SET external_visitor = 'OUTSIDER_NEW' WHERE id = :id
+                """).setParameter("id", 레거시_축제.getId()).executeUpdate();
+        반영한다();
+
+        FestivalBatchPublishResponse response = festivalPublishService.batchPublish(
+                List.of(정상_축제.getId(), 레거시_축제.getId())
+        );
+        반영한다();
+
+        assertThat(response.publishedIds()).containsExactly(정상_축제.getId());
+        assertThat(response.failed())
+                .extracting(FestivalPublishFailure::festivalId, FestivalPublishFailure::reason)
+                .containsExactly(tuple(
+                        레거시_축제.getId(), FestivalPublishFailureReason.ADMISSION_UNKNOWN
+                ));
+        assertThat(festivalRepository.findById(정상_축제.getId()).orElseThrow().getPublishedAt())
+                .isEqualTo(지금);
+        assertThat(festivalRepository.findById(레거시_축제.getId()).orElseThrow().getPublishedAt())
+                .isNull();
+    }
+
     private Festival 발행_가능한_축제(String 이름) {
         Festival festival = 축제를_넣는다(이름, 주최, 위도, 경도);
         라인업에_올린다(festival);

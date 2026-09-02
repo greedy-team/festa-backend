@@ -62,7 +62,8 @@ public record FestivalResponse(
                         festival.getHost() != null,
                         festival.getLatitude(),
                         festival.getLongitude(),
-                        lineupCount
+                        lineupCount,
+                        festival.hasUnknownAdmissionValue()
                 )
         );
     }

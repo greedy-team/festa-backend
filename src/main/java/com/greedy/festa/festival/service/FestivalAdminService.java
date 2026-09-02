@@ -7,6 +7,7 @@ import com.greedy.festa.festival.entity.ExternalVisitorPolicy;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.entity.TicketType;
 import com.greedy.festa.festival.entity.VerificationMethod;
+import com.greedy.festa.festival.entity.UnknownSafeEnum;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.exception.CommonErrorCode;
@@ -79,7 +80,7 @@ public class FestivalAdminService {
         Festival festival = festivalRepository.findById(id)
                 .orElseThrow(() -> new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
 
-        validateAdmissionValues(request.externalVisitor(), request.verification(), request.ticketType());
+        validateAdmissionValuesForUpdate(festival, request);
         String name = blankToNull(request.name());
         validateName(name);
         validatePeriod(request.startDate(), request.endDate());
@@ -165,11 +166,25 @@ public class FestivalAdminService {
             VerificationMethod verification,
             TicketType ticketType
     ) {
-        if (externalVisitor == ExternalVisitorPolicy.UNKNOWN
-                || verification == VerificationMethod.UNKNOWN
-                || ticketType == TicketType.UNKNOWN) {
+        if (isUnknown(externalVisitor) || isUnknown(verification) || isUnknown(ticketType)) {
             throw new FestaException(CommonErrorCode.INVALID_REQUEST_BODY);
         }
+    }
+
+    private void validateAdmissionValuesForUpdate(Festival festival, FestivalUpdateRequest request) {
+        if (injectsUnknown(festival.getExternalVisitor(), request.externalVisitor())
+                || injectsUnknown(festival.getVerification(), request.verification())
+                || injectsUnknown(festival.getTicketType(), request.ticketType())) {
+            throw new FestaException(CommonErrorCode.INVALID_REQUEST_BODY);
+        }
+    }
+
+    private boolean injectsUnknown(UnknownSafeEnum current, UnknownSafeEnum requested) {
+        return isUnknown(requested) && !isUnknown(current);
+    }
+
+    private boolean isUnknown(UnknownSafeEnum value) {
+        return value != null && value.isUnknown();
     }
 
     private void validateCoordinatesKept(Festival festival, Double latitude, Double longitude) {
