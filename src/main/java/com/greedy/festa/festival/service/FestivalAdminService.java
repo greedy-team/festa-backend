@@ -8,6 +8,7 @@ import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.logging.AfterCommitLogger;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
 import com.greedy.festa.host.repository.HostRepository;
@@ -116,7 +117,7 @@ public class FestivalAdminService {
 
         festivalRepository.delete(festival);
         // 임포트 감사 행은 SET NULL로 링크만 잃고 남아 그쪽으로 되짚을 수 없다.
-        log.info("축제 삭제 - festivalId={}", id);
+        AfterCommitLogger.info(log, "축제 삭제 - festivalId={}", id);
     }
 
     private Host findHost(Long hostId) {

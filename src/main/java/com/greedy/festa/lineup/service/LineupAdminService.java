@@ -7,6 +7,7 @@ import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.logging.AfterCommitLogger;
 import com.greedy.festa.lineup.dto.LineupCreateRequest;
 import com.greedy.festa.lineup.dto.LineupResponse;
 import com.greedy.festa.lineup.dto.LineupUpdateRequest;
@@ -94,7 +95,7 @@ public class LineupAdminService {
                 .orElseThrow(() -> new FestaException(LineupErrorCode.LINEUP_NOT_FOUND));
         lineupRepository.delete(lineup);
         // Lineup은 BaseEntity가 아니라 삭제 시각이 데이터에 남지 않는다.
-        log.info("라인업 삭제 - festivalId={}, lineupId={}", festivalId, lineupId);
+        AfterCommitLogger.info(log, "라인업 삭제 - festivalId={}, lineupId={}", festivalId, lineupId);
     }
 
     private void validateDay(Integer day, Festival festival) {

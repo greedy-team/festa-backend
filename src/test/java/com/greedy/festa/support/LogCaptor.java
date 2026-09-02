@@ -38,6 +38,13 @@ public final class LogCaptor implements AutoCloseable {
                 .toList();
     }
 
+    /** 남은 로그 줄들이 달고 있던 MDC 값. afterCommit 콜백이 요청 스레드를 벗어나면 비어 나온다. */
+    public List<String> mdcValues(String key) {
+        return appender.list.stream()
+                .map(event -> event.getMDCPropertyMap().get(key))
+                .toList();
+    }
+
     public List<Throwable> thrown() {
         return appender.list.stream()
                 .map(ILoggingEvent::getThrowableProxy)
