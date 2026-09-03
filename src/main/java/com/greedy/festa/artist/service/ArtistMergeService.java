@@ -8,14 +8,17 @@ import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.logging.AfterCommitLogger;
 import com.greedy.festa.lineup.repository.LineupRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ArtistMergeService {
@@ -51,6 +54,9 @@ public class ArtistMergeService {
                 .orElseThrow();
         addAliases(mergedArtist, absorbedNames);
         mergedArtist.markNeedsReview();
+
+        AfterCommitLogger.info(log, "아티스트 병합 - targetId={}, sourceIds={}, 옮긴 출연={}건, 제거한 중복={}건",
+                request.targetId(), sourceIds, movedAppearances, removedDuplicates);
 
         return ArtistMergeResponse.of(
                 mergedArtist, sourceIds.size(), movedAppearances, removedDuplicates,

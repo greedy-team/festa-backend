@@ -14,6 +14,11 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   app:
     image: ${APP_IMAGE:?APP_IMAGE is required}
@@ -36,10 +41,23 @@ services:
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:?ADMIN_JWT_SECRET is required}
       ADMIN_INITIAL_USERNAME: ${ADMIN_INITIAL_USERNAME:-}
       ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+      # 파일 로그를 켜는 스위치이자 그 경로다. 아래 app-logs 볼륨이 붙는 자리와 같아야 한다.
+      # 비밀이 아니라 배포 구조라서 app.env를 거치지 않고 리터럴로 둔다.
+      # 이 값이 없으면 앱은 화면으로만 로그를 내보낸다 — 로컬과 CI가 그 상태다.
+      LOGGING_FILE_NAME: /app/logs/festa.log
     # 루프백에만 묶는다. 앞단 caddy는 compose 네트워크로 app:8080에 닿고,
     # 서버 자신의 헬스 체크와 롤백도 localhost로 닿는다. 인터넷에서만 못 닿는다.
     ports:
       - "127.0.0.1:8080:8080"
+    volumes:
+      - app-logs:/app/logs
+    # 화면(stdout)으로 나가는 몫이다. 접속 기록까지 전부 담기지만 컨테이너에 딸려 있어
+    # 배포로 컨테이너가 교체되면 사라진다. 오래 남겨야 하는 것은 app-logs 볼륨이 맡는다.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # TLS 종단. Cloudflare가 DNS 전용(회색 구름)이라 앞단에서 대신 끊어주지 않는다.
   caddy:
@@ -54,6 +72,11 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres-data:
@@ -61,3 +84,8 @@ volumes:
   # develop 푸시마다 배포되므로 며칠 만에 Let's Encrypt 발급 한도에 걸린다.
   caddy-data:
   caddy-config:
+  # 앱이 남기는 파일 로그(WARN 이상)가 여기 쌓인다. 도커 로그와 달리 컨테이너 교체를
+  # 넘어 살아남으므로, 배포 전에 무슨 일이 있었는지를 이 볼륨만 볼 수 있다.
+  # 이름 있는 볼륨이라 첫 생성 때 이미지의 /app/logs 소유권을 물려받는다 — 호스트
+  # 디렉터리를 직접 붙이면 root 소유가 되어 비root로 도는 앱이 기동에 실패한다.
+  app-logs:

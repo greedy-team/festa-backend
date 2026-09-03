@@ -25,13 +25,17 @@ public class AdminAuthService {
         validateCredentials(request);
 
         AdminUser adminUser = adminUserRepository.findByUsername(request.username())
-                .orElseThrow(() -> new FestaException(AdminErrorCode.ADMIN_INVALID_CREDENTIALS));
+                .orElseThrow(() -> new FestaException(
+                        AdminErrorCode.ADMIN_INVALID_CREDENTIALS,
+                        "로그인 실패(계정 없음) - username=" + request.username()));
 
         if (!passwordEncoder.matches(
                 request.password(),
                 adminUser.getPasswordHash()
         )) {
-            throw new FestaException(AdminErrorCode.ADMIN_INVALID_CREDENTIALS);
+            throw new FestaException(
+                    AdminErrorCode.ADMIN_INVALID_CREDENTIALS,
+                    "로그인 실패(비밀번호 불일치) - username=" + request.username());
         }
 
         String accessToken = jwtTokenProvider.issue(adminUser.getUsername());
@@ -42,7 +46,17 @@ public class AdminAuthService {
     private void validateCredentials(AdminLoginRequest request) {
         if (request.username() == null || request.username().isBlank()
                 || request.password() == null || request.password().isBlank()) {
-            throw new FestaException(AdminErrorCode.ADMIN_INVALID_CREDENTIALS);
+            throw new FestaException(
+                    AdminErrorCode.ADMIN_INVALID_CREDENTIALS,
+                    "로그인 실패(입력 누락) - username 있음=" + hasText(request.username())
+                            + ", password 있음=" + hasText(request.password()));
         }
+    }
+
+    private boolean hasText(String value) {
+        if (value == null) {
+            return false;
+        }
+        return !value.isBlank();
     }
 }

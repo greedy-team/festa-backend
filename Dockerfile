@@ -18,6 +18,10 @@ WORKDIR /app
 
 COPY --from=builder --chown=festa:festa /workspace/build/libs/*.jar app.jar
 
+# 파일 로그가 나가는 자리. 여기에 붙는 이름 있는 볼륨이 첫 생성 때 이 디렉터리의
+# 소유권을 물려받으므로, 비root(festa)로 도는 앱이 권한 조정 없이 쓸 수 있다.
+RUN mkdir -p /app/logs && chown festa:festa /app/logs
+
 USER festa
 
 EXPOSE 8080

@@ -14,8 +14,10 @@ import com.greedy.festa.festival.repository.FestivalWithLineupCount;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.global.logging.AfterCommitLogger;
 import com.greedy.festa.global.util.LikePatternUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FestivalPublishService {
@@ -118,6 +121,8 @@ public class FestivalPublishService {
         Festival festival = festivalRepository.findById(id)
                 .orElseThrow(() -> new FestaException(FestivalErrorCode.FESTIVAL_NOT_FOUND));
         festival.unpublish();
+        // publishedAt이 null로 덮여 발행됐던 흔적이 데이터에서 사라진다.
+        AfterCommitLogger.info(log, "축제 발행 취소 - festivalId={}", festival.getId());
         return FestivalPublishResponse.of(festival);
     }
 
@@ -168,6 +173,19 @@ public class FestivalPublishService {
             publishedIds.add(id);
         }
 
+        // 요약은 로그에만 남긴다. 응답은 publishedIds와 failed 둘로 고정돼 건수를 담지 않는다.
+        AfterCommitLogger.info(log, "축제 일괄 발행 - 요청 {}건, 발행 {}건, 실패 {}건{}",
+                requestedIds.size(), publishedIds.size(), failed.size(), failureSummary(failed));
+
         return new FestivalBatchPublishResponse(publishedIds, failed);
+    }
+
+    private String failureSummary(List<FestivalPublishFailure> failed) {
+        if (failed.isEmpty()) {
+            return "";
+        }
+        return " (실패=" + failed.stream()
+                .map(failure -> failure.festivalId() + ":" + failure.reason())
+                .collect(Collectors.joining(", ")) + ")";
     }
 }
