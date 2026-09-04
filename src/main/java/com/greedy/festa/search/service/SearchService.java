@@ -3,7 +3,6 @@ package com.greedy.festa.search.service;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.config.ClockConfig;
-import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.global.util.LikePatternUtils;
 import com.greedy.festa.host.repository.HostRepository;
 import com.greedy.festa.search.dto.SearchArtistResponse;
@@ -32,7 +31,8 @@ public class SearchService {
 
     @Transactional(readOnly = true)
     public SearchResponse search(String query, String typeValue) {
-        String normalizedQuery = normalizeQuery(query);
+        String normalizedQuery = LikePatternUtils.normalizeRequiredQuery(
+                query, 50, SearchErrorCode.SEARCH_INVALID_QUERY);
         String likeQuery = LikePatternUtils.escape(normalizedQuery);
         SearchType type = SearchType.from(typeValue);
         LocalDate today = LocalDate.now(clock.withZone(ClockConfig.KST));
@@ -77,17 +77,6 @@ public class SearchService {
         return festivalRepository.findPublishedSearchRows(query).stream()
                 .map(SearchFestivalResponse::from)
                 .toList();
-    }
-
-    private String normalizeQuery(String query) {
-        if (query == null || query.trim().isEmpty()) {
-            throw new FestaException(SearchErrorCode.SEARCH_INVALID_QUERY);
-        }
-        String normalized = query.trim();
-        if (normalized.length() > 50) {
-            throw new FestaException(SearchErrorCode.SEARCH_INVALID_QUERY);
-        }
-        return normalized;
     }
 
     private boolean includes(SearchType selected, SearchType target) {

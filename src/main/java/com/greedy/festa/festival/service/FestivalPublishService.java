@@ -63,7 +63,8 @@ public class FestivalPublishService {
         }
 
         Page<FestivalWithLineupCount> rows = festivalRepository.findReviewRows(
-                published, hostId, yearStart, nextYearStart, normalizeQuery(q), discovery,
+                published, hostId, yearStart, nextYearStart,
+                LikePatternUtils.normalizeOptionalPattern(q, 50, FestivalErrorCode.FESTIVAL_INVALID_QUERY), discovery,
                 PageRequest.of(page, size, sort.toSort())
         );
 
@@ -78,17 +79,6 @@ public class FestivalPublishService {
             );
             return FestivalReviewItem.of(festival, row.getHost(), lineupCount, blockers);
         }));
-    }
-
-    private String normalizeQuery(String query) {
-        if (query == null || query.isBlank()) {
-            return null;
-        }
-        String normalized = query.trim();
-        if (normalized.length() > 50) {
-            throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_QUERY);
-        }
-        return LikePatternUtils.escape(normalized);
     }
 
     @Transactional

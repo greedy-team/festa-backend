@@ -90,7 +90,8 @@ public class FestivalService {
 
         Page<Festival> festivals = festivalRepository.findPublishedRows(
                 hostId, yearStart, nextYearStart, artistId,
-                FestivalStatus.nameOrNull(status), today, normalizeQuery(q),
+                FestivalStatus.nameOrNull(status), today,
+                LikePatternUtils.normalizeOptionalPattern(q, 50, FestivalErrorCode.FESTIVAL_INVALID_QUERY),
                 PageRequest.of(page, size, sort.toSort())
         );
 
@@ -114,14 +115,4 @@ public class FestivalService {
         }
     }
 
-    private String normalizeQuery(String query) {
-        if (query == null || query.isBlank()) {
-            return null;
-        }
-        String normalized = query.trim();
-        if (normalized.length() > 50) {
-            throw new FestaException(FestivalErrorCode.FESTIVAL_INVALID_QUERY);
-        }
-        return LikePatternUtils.escape(normalized);
-    }
 }

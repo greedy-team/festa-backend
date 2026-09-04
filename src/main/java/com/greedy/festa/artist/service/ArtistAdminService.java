@@ -76,7 +76,8 @@ public class ArtistAdminService {
         if (size < 1 || size > 50) {
             throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
         }
-        String normalizedQuery = normalizeQuery(q);
+        String normalizedQuery = LikePatternUtils.normalizeOptionalPattern(
+                q, 50, ArtistErrorCode.ARTIST_INVALID_QUERY);
 
         Page<ArtistWithAppearanceCount> rows = artistRepository.findAllWithAppearanceCount(
                 needsReview, genre, normalizedQuery, PageRequest.of(page, size, sort.toSort())
@@ -90,17 +91,6 @@ public class ArtistAdminService {
                         aliasesByArtistId.getOrDefault(row.getArtist().getId(), List.of()),
                         row.getAppearanceCount()
                 )));
-    }
-
-    private String normalizeQuery(String query) {
-        if (query == null || query.isBlank()) {
-            return null;
-        }
-        String normalized = query.trim();
-        if (normalized.length() > 50) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_QUERY);
-        }
-        return LikePatternUtils.escape(normalized);
     }
 
     @Transactional(readOnly = true)

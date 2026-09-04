@@ -53,7 +53,8 @@ public class ArtistService {
         validatePage(page, size);
         ArtistGenre genre = ArtistGenre.from(genreValue);
         ArtistSortType sort = ArtistSortType.from(sortValue);
-        String normalizedQuery = normalizeQuery(query);
+        String normalizedQuery = LikePatternUtils.normalizeOptionalPattern(
+                query, 50, ArtistErrorCode.ARTIST_INVALID_QUERY);
         LocalDate today = today();
 
         PageRequest pageRequest = PageRequest.of(page, size);
@@ -131,17 +132,6 @@ public class ArtistService {
         if (size < 1 || size > 50) {
             throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
         }
-    }
-
-    private String normalizeQuery(String query) {
-        if (query == null || query.isBlank()) {
-            return null;
-        }
-        String normalized = query.trim();
-        if (normalized.length() > 50) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_QUERY);
-        }
-        return LikePatternUtils.escape(normalized);
     }
 
     private LocalDate today() {
