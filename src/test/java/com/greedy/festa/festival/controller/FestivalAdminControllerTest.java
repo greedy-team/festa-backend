@@ -30,6 +30,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class FestivalAdminControllerTest {
 
+    @Test
+    void reviewQueryLongerThanFiftyCharactersReturnsFestivalInvalidQuery() throws Exception {
+        String query = "가".repeat(51);
+        given(publishService.findAll(null, null, null, query, null,
+                FestivalAdminSortType.IMPORTED_DESC, 0, 20))
+                .willThrow(new FestaException(FestivalErrorCode.FESTIVAL_INVALID_QUERY));
+
+        mockMvc.perform(get("/api/admin/festivals").param("q", query))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("FESTIVAL_INVALID_QUERY"))
+                .andExpect(jsonPath("$.instance").value("/api/admin/festivals"));
+    }
+
     private FestivalAdminService adminService;
     private FestivalPublishService publishService;
     private FestivalCoverageService service;

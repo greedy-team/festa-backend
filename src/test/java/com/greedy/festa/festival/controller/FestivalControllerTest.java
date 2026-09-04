@@ -5,9 +5,11 @@ import com.greedy.festa.festival.dto.FestivalRecentResponse;
 import com.greedy.festa.festival.dto.FestivalSortType;
 import com.greedy.festa.festival.dto.FestivalUpcomingResponse;
 import com.greedy.festa.festival.dto.HostSummaryResponse;
+import com.greedy.festa.festival.exception.FestivalErrorCode;
 import com.greedy.festa.festival.service.FestivalService;
 import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.ErrorResponse;
+import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.global.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SuppressWarnings("NonAsciiCharacters")
 class FestivalControllerTest {
+
+    @Test
+    void listQueryLongerThanFiftyCharactersReturnsFestivalInvalidQuery() throws Exception {
+        String query = "가".repeat(51);
+        given(festivalService.getFestivals(null, null, null, null, query,
+                FestivalSortType.LATEST, 0, 20))
+                .willThrow(new FestaException(FestivalErrorCode.FESTIVAL_INVALID_QUERY));
+
+        mockMvc.perform(get("/api/festivals").param("q", query))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("FESTIVAL_INVALID_QUERY"))
+                .andExpect(jsonPath("$.instance").value("/api/festivals"));
+    }
 
     private FestivalService festivalService;
     private MockMvc mockMvc;

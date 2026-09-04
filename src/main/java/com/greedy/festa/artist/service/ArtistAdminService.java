@@ -15,6 +15,7 @@ import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.global.logging.AfterCommitLogger;
+import com.greedy.festa.global.util.LikePatternUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -75,12 +76,11 @@ public class ArtistAdminService {
         if (size < 1 || size > 50) {
             throw new FestaException(CommonErrorCode.INVALID_PAGE_SIZE);
         }
-        if (q != null && q.trim().length() > 50) {
-            throw new FestaException(ArtistErrorCode.ARTIST_INVALID_QUERY);
-        }
+        String normalizedQuery = LikePatternUtils.normalizeOptionalPattern(
+                q, 50, ArtistErrorCode.ARTIST_INVALID_QUERY);
 
         Page<ArtistWithAppearanceCount> rows = artistRepository.findAllWithAppearanceCount(
-                needsReview, genre, q, PageRequest.of(page, size, sort.toSort())
+                needsReview, genre, normalizedQuery, PageRequest.of(page, size, sort.toSort())
         );
 
         Map<Long, List<String>> aliasesByArtistId = loadAlias(rows);

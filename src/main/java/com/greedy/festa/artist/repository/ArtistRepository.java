@@ -37,10 +37,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             WHERE (:needsReview IS NULL OR a.needsReview = :needsReview)
               AND (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
-                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))
+                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
                               WHERE al.artist = a
-                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))))
+                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
             GROUP BY a
             """,
             countQuery = """
@@ -49,10 +49,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             WHERE (:needsReview IS NULL OR a.needsReview = :needsReview)
               AND (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
-                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))
+                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
                               WHERE al.artist = a
-                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))))
+                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
             """)
     Page<ArtistWithAppearanceCount> findAllWithAppearanceCount(
             @Param("needsReview") Boolean needsReview,

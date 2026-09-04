@@ -15,6 +15,7 @@ import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.global.logging.AfterCommitLogger;
+import com.greedy.festa.global.util.LikePatternUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -62,7 +63,8 @@ public class FestivalPublishService {
         }
 
         Page<FestivalWithLineupCount> rows = festivalRepository.findReviewRows(
-                published, hostId, yearStart, nextYearStart, q, discovery,
+                published, hostId, yearStart, nextYearStart,
+                LikePatternUtils.normalizeOptionalPattern(q, 50, FestivalErrorCode.FESTIVAL_INVALID_QUERY), discovery,
                 PageRequest.of(page, size, sort.toSort())
         );
 
