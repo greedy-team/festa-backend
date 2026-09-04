@@ -18,6 +18,10 @@ import com.greedy.festa.importer.model.ImportPreviewAction;
 import com.greedy.festa.importer.model.ImportSection;
 import com.greedy.festa.importer.parser.ImportCsvParser;
 import com.greedy.festa.importer.repository.ImportBatchRepository;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.Fixtures;
+import com.greedy.festa.support.fixture.HostFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,13 +30,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.util.ReflectionTestUtils;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Collection;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,8 +69,7 @@ class ImportPreviewServiceTest {
                 festivalRepository, importBatchRepository, codec);
         lenient().when(importBatchRepository.save(any(ImportBatch.class))).thenAnswer(invocation -> {
             ImportBatch batch = invocation.getArgument(0);
-            ReflectionTestUtils.setField(batch, "id", 99L);
-            return batch;
+            return Fixtures.withId(batch, 99L);
         });
     }
 
@@ -124,12 +125,10 @@ class ImportPreviewServiceTest {
 
     @Test
     void 같은_importKey_day_order의_Lineup은_모두_INVALID다() {
-        Festival existing = Festival.builder()
+        Festival existing = Fixtures.withId(FestivalFixture.festival("대동제")
                 .host(host(1L, "연세대학교", "연세대"))
-                .importKey("연세대학교-신촌캠퍼스-2026").name("대동제")
-                .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2))
-                .build();
-        ReflectionTestUtils.setField(existing, "id", 3L);
+                .importKey("연세대학교-신촌캠퍼스-2026")
+                .build(), 3L);
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
         String header = String.join(",", ImportSection.LINEUPS.headers());
         String row = "연세대학교-신촌캠퍼스-2026,1,1,,,false";
@@ -149,12 +148,11 @@ class ImportPreviewServiceTest {
 
     @Test
     void 기존_Festival_기간을_벗어난_Lineup_day는_INVALID다() {
-        Festival existing = Festival.builder()
+        Festival existing = Fixtures.withId(FestivalFixture.festival("대동제")
                 .host(host(1L, "연세대학교", "연세대"))
-                .importKey("연세대학교-신촌캠퍼스-2026").name("대동제")
+                .importKey("연세대학교-신촌캠퍼스-2026")
                 .startDate(LocalDate.of(2026, 5, 30)).endDate(LocalDate.of(2026, 6, 1))
-                .build();
-        ReflectionTestUtils.setField(existing, "id", 3L);
+                .build(), 3L);
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
         String header = String.join(",", ImportSection.LINEUPS.headers());
 
@@ -254,8 +252,8 @@ class ImportPreviewServiceTest {
         Artist direct = artist(10L, "10CM");
         Artist aliasTarget = artist(20L, "권정열");
         Artist conflict = artist(30L, "충돌 이름");
-        ArtistAlias fallback = alias(aliasTarget, "십센치");
-        ArtistAlias conflictingAlias = alias(conflict, "10CM");
+        ArtistAlias fallback = ArtistFixture.alias(aliasTarget, "십센치").build();
+        ArtistAlias conflictingAlias = ArtistFixture.alias(conflict, "10CM").build();
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(direct));
         given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection()))
                 .willReturn(List.of(fallback, conflictingAlias));
@@ -279,11 +277,9 @@ class ImportPreviewServiceTest {
     @Test
     void UPDATE의_빈_poster_url은_기존값을_유지하고_offset없는_시간은_서울로_해석한다() {
         Host host = host(1L, "연세대학교", "연세대");
-        Festival existing = Festival.builder()
-                .host(host).importKey("연세대학교-신촌캠퍼스-2026").name("기존 축제")
-                .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2))
-                .posterUrl("https://example.com/old.jpg").build();
-        ReflectionTestUtils.setField(existing, "id", 5L);
+        Festival existing = Fixtures.withId(FestivalFixture.festival("기존 축제")
+                .host(host).importKey("연세대학교-신촌캠퍼스-2026")
+                .posterUrl("https://example.com/old.jpg").build(), 5L);
         given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
 
@@ -305,11 +301,9 @@ class ImportPreviewServiceTest {
     @Test
     void 기존_importKey는_onConflict에_따라_UPDATE와_SKIP으로_판정한다() {
         Host host = host(1L, "연세대학교", "연세대");
-        Festival existing = Festival.builder()
-                .host(host).importKey("연세대학교-신촌캠퍼스-2026").name("기존 축제")
-                .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2))
-                .build();
-        ReflectionTestUtils.setField(existing, "id", 5L);
+        Festival existing = Fixtures.withId(FestivalFixture.festival("기존 축제")
+                .host(host).importKey("연세대학교-신촌캠퍼스-2026")
+                .build(), 5L);
         given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
 
@@ -328,12 +322,10 @@ class ImportPreviewServiceTest {
     @Test
     void 발행된_Festival과_그_Lineup은_모두_INVALID다() {
         Host host = host(1L, "연세대학교", "연세대");
-        Festival published = Festival.builder()
-                .host(host).importKey("연세대학교-신촌캠퍼스-2026").name("기존 축제")
-                .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2))
-                .build();
-        ReflectionTestUtils.setField(published, "id", 5L);
-        ReflectionTestUtils.setField(published, "publishedAt", Instant.parse("2026-05-01T00:00:00Z"));
+        Festival published = Fixtures.withId(FestivalFixture.festival("기존 축제")
+                .host(host).importKey("연세대학교-신촌캠퍼스-2026")
+                .build(), 5L);
+        published.publish(Instant.parse("2026-05-01T00:00:00Z"));
         given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
         given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(published));
 
@@ -385,7 +377,7 @@ class ImportPreviewServiceTest {
         Artist existing = artist(10L, "Existing");
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
         given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection()))
-                .willReturn(List.of(alias(existing, "Taken Alias")));
+                .willReturn(List.of(ArtistFixture.alias(existing, "Taken Alias").build()));
         String csv = String.join(",", ImportSection.ARTISTS.headers())
                 + "\nNew Artist,Taken Alias,BAND,,false\n";
 
@@ -403,7 +395,7 @@ class ImportPreviewServiceTest {
         Artist existing = artist(10L, "다이나믹 듀오");
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
         given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection()))
-                .willReturn(List.of(alias(existing, "다듀")));
+                .willReturn(List.of(ArtistFixture.alias(existing, "다듀").build()));
         given(artistAliasRepository.findAllByArtistIdIn(anyCollection())).willReturn(List.of());
         String csv = String.join(",", ImportSection.ARTISTS.headers())
                 + "\n다듀,,HIPHOP,,false\n";
@@ -638,18 +630,10 @@ class ImportPreviewServiceTest {
     }
 
     private Host host(Long id, String name, String shortName) {
-        Host host = Host.builder().name(name).shortName(shortName).region("서울").build();
-        ReflectionTestUtils.setField(host, "id", id);
-        return host;
+        return Fixtures.withId(HostFixture.host(name).shortName(shortName).build(), id);
     }
 
     private Artist artist(Long id, String name) {
-        Artist artist = Artist.builder().name(name).needsReview(false).build();
-        ReflectionTestUtils.setField(artist, "id", id);
-        return artist;
-    }
-
-    private ArtistAlias alias(Artist artist, String name) {
-        return ArtistAlias.builder().artist(artist).name(name).build();
+        return Fixtures.withId(ArtistFixture.artist(name).needsReview(false).build(), id);
     }
 }

@@ -3,8 +3,6 @@ package com.greedy.festa.artist.service;
 import com.greedy.festa.artist.dto.ArtistMergeRequest;
 import com.greedy.festa.artist.dto.ArtistMergeResponse;
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.ArtistAlias;
-import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
@@ -15,6 +13,10 @@ import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.lineup.repository.LineupRepository;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.HostFixture;
+import com.greedy.festa.support.fixture.LineupFixture;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,7 +62,7 @@ class ArtistMergeServiceTest extends PostgresTestSupport {
 
     @BeforeEach
     void setUp() {
-        Host 주최 = em.merge(Host.builder().name("테스트대학교").region("서울 광진구").build());
+        Host 주최 = em.merge(HostFixture.host("테스트대학교").region("서울 광진구").build());
         대동제 = 축제를_넣는다(주최, "대동제");
         해변가요제 = 축제를_넣는다(주최, "해변가요제");
     }
@@ -321,9 +323,8 @@ class ArtistMergeServiceTest extends PostgresTestSupport {
     }
 
     private Festival 축제를_넣는다(Host 주최, String 이름) {
-        Festival 축제 = Festival.builder()
+        Festival 축제 = FestivalFixture.festival(이름)
                 .host(주최)
-                .name(이름)
                 .startDate(LocalDate.of(2026, 9, 1))
                 .endDate(LocalDate.of(2026, 9, 3))
                 .build();
@@ -332,9 +333,7 @@ class ArtistMergeServiceTest extends PostgresTestSupport {
     }
 
     private Artist 아티스트를_넣는다(String 이름) {
-        Artist 아티스트 = Artist.builder()
-                .name(이름)
-                .genre(ArtistGenre.BAND)
+        Artist 아티스트 = ArtistFixture.artist(이름)
                 .needsReview(false)
                 .build();
         em.persist(아티스트);
@@ -342,13 +341,11 @@ class ArtistMergeServiceTest extends PostgresTestSupport {
     }
 
     private void 별칭을_넣는다(Artist 아티스트, String 이름) {
-        em.persist(ArtistAlias.builder().artist(아티스트).name(이름).build());
+        em.persist(ArtistFixture.alias(아티스트, 이름).build());
     }
 
     private void 라인업에_올린다(Festival 축제, Artist 아티스트, int 일차, int 순서) {
-        em.persist(Lineup.builder()
-                .festival(축제)
-                .artist(아티스트)
+        em.persist(LineupFixture.lineup(축제, 아티스트)
                 .day(일차)
                 .displayOrder(순서)
                 .build());

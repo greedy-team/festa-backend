@@ -10,8 +10,11 @@ import com.greedy.festa.host.dto.HostDetailResponse.UpcomingFestival;
 import com.greedy.festa.host.dto.HostDetailResponse;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
-import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.HostFixture;
+import com.greedy.festa.support.fixture.LineupFixture;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,8 +68,7 @@ class HostServiceTest extends PostgresTestSupport {
 
     @BeforeEach
     void setUp() {
-        주최 = em.merge(Host.builder()
-                .name("테스트대학교")
+        주최 = em.merge(HostFixture.host("테스트대학교")
                 .shortName("테스트대")
                 .region("서울 광진구")
                 .homepageUrl("https://test.ac.kr")
@@ -154,9 +156,8 @@ class HostServiceTest extends PostgresTestSupport {
     }
 
     private Festival 축제를_넣는다(String name, String 시작, String 종료, boolean 발행) {
-        Festival festival = Festival.builder()
+        Festival festival = FestivalFixture.festival(name)
                 .host(주최)
-                .name(name)
                 .startDate(LocalDate.parse(시작))
                 .endDate(LocalDate.parse(종료))
                 .build();
@@ -167,14 +168,11 @@ class HostServiceTest extends PostgresTestSupport {
     }
 
     private Artist 아티스트를_넣는다(String name) {
-        return em.merge(Artist.builder().name(name).build());
+        return em.merge(ArtistFixture.artist(name).build());
     }
 
     private void 라인업에_올린다(Festival festival, Artist artist, int displayOrder) {
-        em.merge(Lineup.builder()
-                .festival(festival)
-                .artist(artist)
-                .day(1)
+        em.merge(LineupFixture.lineup(festival, artist)
                 .displayOrder(displayOrder)
                 .build());
     }

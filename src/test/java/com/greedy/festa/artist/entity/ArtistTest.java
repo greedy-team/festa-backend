@@ -1,5 +1,6 @@
 package com.greedy.festa.artist.entity;
 
+import com.greedy.festa.support.fixture.ArtistFixture;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -128,8 +129,7 @@ class ArtistTest {
     }
 
     private Artist artist() {
-        return Artist.builder()
-                .name("아티스트")
+        return ArtistFixture.artist("아티스트")
                 .genre(ArtistGenre.BAND)
                 .imageUrl("https://image.example.com/original.jpg")
                 .instagramUrl("https://instagram.com/original")

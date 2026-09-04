@@ -1,8 +1,8 @@
 package com.greedy.festa.host.repository;
 
 import com.greedy.festa.global.config.JpaConfig;
-import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.HostFixture;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,6 +65,6 @@ class HostRepositoryFindAllOrderTest extends PostgresTestSupport {
     }
 
     private void host(String name) {
-        em.persist(Host.builder().name(name).region("서울").build());
+        em.persist(HostFixture.host(name).build());
     }
 }

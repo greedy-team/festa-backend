@@ -1,13 +1,15 @@
 package com.greedy.festa.search.service;
 
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.ArtistAlias;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.global.config.JpaConfig;
 import com.greedy.festa.host.entity.Host;
-import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.search.dto.SearchResponse;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.HostFixture;
+import com.greedy.festa.support.fixture.LineupFixture;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,14 +45,12 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
 
     @Test
     void 이름_별칭_약칭_주최명은_대소문자_구분없이_부분_일치한다() {
-        Host host = persist(Host.builder()
-                .name("Spring University")
+        Host host = persist(HostFixture.host("Spring University")
                 .shortName("봄대")
-                .region("서울")
                 .logoUrl("https://example.com/logo.png")
                 .build());
-        Artist artist = persist(Artist.builder().name("Season Band").build());
-        persist(ArtistAlias.builder().artist(artist).name("SPRING CREW").build());
+        Artist artist = persist(ArtistFixture.artist("Season Band").build());
+        persist(ArtistFixture.alias(artist, "SPRING CREW").build());
         Festival festival = festival(host, "Campus Day", TODAY.plusDays(10), true);
         flushAndClear();
 
@@ -76,12 +76,10 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
 
     @Test
     void 미공개_축제는_검색과_공개_집계에_노출하지_않는다() {
-        Host host = persist(Host.builder()
-                .name("한국대학교")
+        Host host = persist(HostFixture.host("한국대학교")
                 .shortName("한국대")
-                .region("서울")
                 .build());
-        Artist artist = persist(Artist.builder().name("검색밴드").build());
+        Artist artist = persist(ArtistFixture.artist("검색밴드").build());
         Festival publishedPast = festival(
                 host, "공개 검색축제", TODAY.minusDays(20), true);
         Festival publishedRecent = festival(
@@ -112,19 +110,17 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
 
     @Test
     void LIKE_와일드카드와_escape_문자는_세_검색_대상에서_리터럴로_동작한다() {
-        Host baseHost = persist(Host.builder()
-                .name("기준대학교")
+        Host baseHost = persist(HostFixture.host("기준대학교")
                 .shortName("기준대")
-                .region("서울")
                 .build());
-        persist(Host.builder().name("Host%Name").region("서울").build());
-        persist(Host.builder().name("Host_Name").region("서울").build());
-        persist(Host.builder().name("Host\\Name").region("서울").build());
-        persist(Host.builder().name("HostXName").region("서울").build());
-        persist(Artist.builder().name("Artist%Name").build());
-        persist(Artist.builder().name("Artist_Name").build());
-        persist(Artist.builder().name("Artist\\Name").build());
-        persist(Artist.builder().name("ArtistXName").build());
+        persist(HostFixture.host("Host%Name").build());
+        persist(HostFixture.host("Host_Name").build());
+        persist(HostFixture.host("Host\\Name").build());
+        persist(HostFixture.host("HostXName").build());
+        persist(ArtistFixture.artist("Artist%Name").build());
+        persist(ArtistFixture.artist("Artist_Name").build());
+        persist(ArtistFixture.artist("Artist\\Name").build());
+        persist(ArtistFixture.artist("ArtistXName").build());
         festival(baseHost, "Festival%Name", TODAY.plusDays(1), true);
         festival(baseHost, "Festival_Name", TODAY.plusDays(2), true);
         festival(baseHost, "Festival\\Name", TODAY.plusDays(3), true);
@@ -138,14 +134,12 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
 
     @Test
     void 여러_alias와_lineup_join이_있어도_결과와_집계는_중복되지_않는다() {
-        Host host = persist(Host.builder()
-                .name("봄 검색대학교")
+        Host host = persist(HostFixture.host("봄 검색대학교")
                 .shortName("봄검색대")
-                .region("서울")
                 .build());
-        Artist artist = persist(Artist.builder().name("봄 검색밴드").build());
-        persist(ArtistAlias.builder().artist(artist).name("봄 크루").build());
-        persist(ArtistAlias.builder().artist(artist).name("봄 아티스트").build());
+        Artist artist = persist(ArtistFixture.artist("봄 검색밴드").build());
+        persist(ArtistFixture.alias(artist, "봄 크루").build());
+        persist(ArtistFixture.alias(artist, "봄 아티스트").build());
         Festival first = festival(host, "봄 검색축제", TODAY.minusDays(10), true);
         festival(host, "두 번째 공개축제", TODAY.plusDays(10), true);
         festival(host, "미공개축제", TODAY.plusDays(20), false);
@@ -170,12 +164,10 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
 
     @Test
     void Artist_출연_집계는_KST_오늘보다_종료일이_앞선_축제만_포함한다() {
-        Host host = persist(Host.builder()
-                .name("날짜대학교")
+        Host host = persist(HostFixture.host("날짜대학교")
                 .shortName("날짜대")
-                .region("서울")
                 .build());
-        Artist artist = persist(Artist.builder().name("날짜경계밴드").build());
+        Artist artist = persist(ArtistFixture.artist("날짜경계밴드").build());
         Festival endedYesterday = festivalEndingOn(host, "어제 종료", TODAY.minusDays(1));
         Festival endsToday = festivalEndingOn(host, "오늘 종료", TODAY);
         lineup(artist, endedYesterday);
@@ -204,9 +196,8 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
     }
 
     private Festival festivalEndingOn(Host host, String name, LocalDate endDate) {
-        Festival festival = Festival.builder()
+        Festival festival = FestivalFixture.festival(name)
                 .host(host)
-                .name(name)
                 .startDate(endDate.minusDays(1))
                 .endDate(endDate)
                 .build();
@@ -215,9 +206,8 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
     }
 
     private Festival festival(Host host, String name, LocalDate startDate, boolean published) {
-        Festival festival = Festival.builder()
+        Festival festival = FestivalFixture.festival(name)
                 .host(host)
-                .name(name)
                 .startDate(startDate)
                 .endDate(startDate.plusDays(2))
                 .build();
@@ -232,9 +222,7 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
     }
 
     private void lineup(Artist artist, Festival festival, int day, int displayOrder) {
-        persist(Lineup.builder()
-                .artist(artist)
-                .festival(festival)
+        persist(LineupFixture.lineup(festival, artist)
                 .day(day)
                 .displayOrder(displayOrder)
                 .build());

@@ -3,7 +3,6 @@ package com.greedy.festa.global.logging;
 import ch.qos.logback.classic.Level;
 import com.greedy.festa.artist.dto.ArtistMergeRequest;
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.artist.service.ArtistAdminService;
 import com.greedy.festa.artist.service.ArtistMergeService;
@@ -21,6 +20,10 @@ import com.greedy.festa.lineup.repository.LineupRepository;
 import com.greedy.festa.lineup.service.LineupAdminService;
 import com.greedy.festa.support.LogCaptor;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.HostFixture;
+import com.greedy.festa.support.fixture.LineupFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -302,35 +305,23 @@ class AfterCommitLogTest extends PostgresTestSupport {
     }
 
     private Host 주최를_둔다(String 이름) {
-        return hostRepository.save(Host.builder().name(접두어 + 이름).region("서울 광진구").build());
+        return hostRepository.save(HostFixture.host(접두어 + 이름).region("서울 광진구").build());
     }
 
     private Artist 아티스트를_둔다(String 이름) {
-        return artistRepository.save(Artist.builder()
-                .name(접두어 + 이름)
-                .genre(ArtistGenre.BAND)
-                .needsReview(false)
-                .build());
+        return artistRepository.save(ArtistFixture.artist(접두어 + 이름).build());
     }
 
     private Festival 축제를_둔다(String 이름) {
-        return festivalRepository.save(Festival.builder()
-                .host(주최)
-                .name(접두어 + 이름)
+        return festivalRepository.save(FestivalFixture.publishable(접두어 + 이름, 주최)
                 .startDate(LocalDate.of(2026, 9, 10))
                 .endDate(LocalDate.of(2026, 9, 12))
-                .latitude(37.5509)
                 .longitude(127.0743)
                 .build());
     }
 
     private Lineup 라인업을_올린다(Festival 축제, Artist 아티스트) {
-        return lineupRepository.save(Lineup.builder()
-                .festival(축제)
-                .artist(아티스트)
-                .day(1)
-                .displayOrder(1)
-                .build());
+        return lineupRepository.save(LineupFixture.lineup(축제, 아티스트).build());
     }
 
     private Festival 발행_가능한_축제(String 이름) {

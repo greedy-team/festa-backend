@@ -5,12 +5,13 @@ import com.greedy.festa.artist.dto.ArtistMergeCandidateResponse;
 import com.greedy.festa.artist.dto.ArtistMergeCandidateResponse.ArtistCandidate;
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistAlias;
-import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistAppearanceCount;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.Fixtures;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,7 +19,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -296,17 +296,12 @@ public class ArtistMergeCandidateServiceTest {
     }
 
     private Artist 아티스트(Long id, String name) {
-        Artist artist = Artist.builder()
-                .name(name)
-                .genre(ArtistGenre.BAND)
-                .needsReview(false)
-                .build();
-        ReflectionTestUtils.setField(artist, "id", id);
-        return artist;
+        return Fixtures.withId(
+                ArtistFixture.artist(name).needsReview(false).build(), id);
     }
 
     private ArtistAlias 별칭(Artist artist, String name) {
-        return ArtistAlias.builder().artist(artist).name(name).build();
+        return ArtistFixture.alias(artist, name).build();
     }
 
     private ArtistAppearanceCount 출연(Long artistId, Long appearanceCount) {

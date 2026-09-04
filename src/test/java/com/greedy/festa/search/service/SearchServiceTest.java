@@ -12,12 +12,14 @@ import com.greedy.festa.search.dto.SearchResponse;
 import com.greedy.festa.search.dto.SearchCounts;
 import com.greedy.festa.search.dto.SearchType;
 import com.greedy.festa.search.exception.SearchErrorCode;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.Fixtures;
+import com.greedy.festa.support.fixture.HostFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -117,14 +119,13 @@ class SearchServiceTest {
 
     @Test
     void 유형을_선택하면_count는_전체_대상이고_해당_그룹만_채운다() {
-        Artist artist = Artist.builder().name("봄날").build();
-        ReflectionTestUtils.setField(artist, "id", 1L);
+        Artist artist = Fixtures.withId(ArtistFixture.artist("봄날").build(), 1L);
         ArtistSearchRow artistRow = mock(ArtistSearchRow.class);
         given(artistRow.getArtist()).willReturn(artist);
         given(artistRow.getAppearanceCount()).willReturn(2L);
         given(artistRow.getLatestAppearanceDate()).willReturn(LocalDate.of(2026, 5, 10));
         HostSearchRow hostRow = mock(HostSearchRow.class);
-        given(hostRow.getHost()).willReturn(Host.builder().name("봄대학교").region("서울").build());
+        given(hostRow.getHost()).willReturn(HostFixture.host("봄대학교").build());
         given(hostRow.getFestivalCount()).willReturn(1L);
         given(artistRepository.findSearchRows("봄", LocalDate.of(2026, 8, 27)))
                 .willReturn(List.of(artistRow));
@@ -152,8 +153,7 @@ class SearchServiceTest {
 
     @Test
     void HOST_선택은_Host_목록과_나머지_count만_조회한다() {
-        Host host = Host.builder().name("봄대학교").region("서울").build();
-        ReflectionTestUtils.setField(host, "id", 1L);
+        Host host = Fixtures.withId(HostFixture.host("봄대학교").build(), 1L);
         HostSearchRow hostRow = mock(HostSearchRow.class);
         given(hostRow.getHost()).willReturn(host);
         given(hostRow.getLatestFestivalDate()).willReturn(LocalDate.of(2026, 8, 31));

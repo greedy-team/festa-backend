@@ -2,13 +2,15 @@ package com.greedy.festa.artist.service;
 
 import com.greedy.festa.artist.dto.ArtistDetailResponse;
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.ArtistAlias;
 import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.global.config.JpaConfig;
 import com.greedy.festa.host.entity.Host;
-import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.HostFixture;
+import com.greedy.festa.support.fixture.LineupFixture;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,17 +46,14 @@ class ArtistServicePostgresIntegrationTest extends PostgresTestSupport {
 
     @Test
     void 실제_PostgreSQL에서_KST_분류와_발행_필터_5건_limit_total을_함께_검증한다() {
-        Host host = persist(Host.builder()
-                .name("한국대학교")
+        Host host = persist(HostFixture.host("한국대학교")
                 .shortName("한국대")
-                .region("서울")
                 .build());
-        Artist artist = persist(Artist.builder()
-                .name("BTS")
+        Artist artist = persist(ArtistFixture.artist("BTS")
                 .genre(ArtistGenre.DANCE)
                 .imageUrl("https://example.com/portrait.jpg")
                 .build());
-        persist(ArtistAlias.builder().artist(artist).name("방탄소년단").build());
+        persist(ArtistFixture.alias(artist, "방탄소년단").build());
 
         for (int index = 0; index < 6; index++) {
             Festival festival = festival(host, "예정 축제 " + index,
@@ -95,9 +94,8 @@ class ArtistServicePostgresIntegrationTest extends PostgresTestSupport {
     private Festival festival(
             Host host, String name, LocalDate startDate, LocalDate endDate, boolean published
     ) {
-        Festival festival = Festival.builder()
+        Festival festival = FestivalFixture.festival(name)
                 .host(host)
-                .name(name)
                 .startDate(startDate)
                 .endDate(endDate)
                 .build();
@@ -108,11 +106,8 @@ class ArtistServicePostgresIntegrationTest extends PostgresTestSupport {
     }
 
     private void lineup(Artist artist, Festival festival, int day) {
-        persist(Lineup.builder()
-                .artist(artist)
-                .festival(festival)
+        persist(LineupFixture.lineup(festival, artist)
                 .day(day)
-                .displayOrder(1)
                 .build());
     }
 

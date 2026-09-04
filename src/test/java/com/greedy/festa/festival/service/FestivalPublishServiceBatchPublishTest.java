@@ -1,7 +1,6 @@
 package com.greedy.festa.festival.service;
 
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.festival.dto.FestivalBatchPublishResponse;
 import com.greedy.festa.festival.dto.FestivalPublishFailure;
 import com.greedy.festa.festival.dto.FestivalPublishFailureReason;
@@ -11,8 +10,11 @@ import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.config.JpaConfig;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
-import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.HostFixture;
+import com.greedy.festa.support.fixture.LineupFixture;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,7 +64,7 @@ class FestivalPublishServiceBatchPublishTest extends PostgresTestSupport {
         festivalPublishService = new FestivalPublishService(
                 festivalRepository, Clock.fixed(지금, ZoneOffset.UTC)
         );
-        주최 = em.merge(Host.builder().name("테스트대학교").region("서울 광진구").build());
+        주최 = em.merge(HostFixture.host("테스트대학교").region("서울 광진구").build());
         아티스트 = 아티스트를_넣는다();
     }
 
@@ -291,9 +293,8 @@ class FestivalPublishServiceBatchPublishTest extends PostgresTestSupport {
     }
 
     private Festival 축제를_넣는다(String 이름, Host host, Double latitude, Double longitude) {
-        Festival festival = Festival.builder()
+        Festival festival = FestivalFixture.festival(이름)
                 .host(host)
-                .name(이름)
                 .startDate(LocalDate.of(2026, 9, 10))
                 .endDate(LocalDate.of(2026, 9, 12))
                 .latitude(latitude)
@@ -305,20 +306,13 @@ class FestivalPublishServiceBatchPublishTest extends PostgresTestSupport {
     }
 
     private void 라인업에_올린다(Festival festival) {
-        em.persist(Lineup.builder()
-                .festival(festival)
-                .artist(아티스트)
-                .day(1)
+        em.persist(LineupFixture.lineup(festival, 아티스트)
                 .displayOrder(다음_출연_순서++)
                 .build());
     }
 
     private Artist 아티스트를_넣는다() {
-        Artist artist = Artist.builder()
-                .name("잔나비")
-                .genre(ArtistGenre.BAND)
-                .needsReview(false)
-                .build();
+        Artist artist = ArtistFixture.artist("잔나비").build();
         em.persist(artist);
         return artist;
     }

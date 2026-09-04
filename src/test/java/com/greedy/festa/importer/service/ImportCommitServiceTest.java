@@ -27,13 +27,16 @@ import com.greedy.festa.importer.repository.ImportBatchRepository;
 import com.greedy.festa.importer.repository.ImportCommitRowRepository;
 import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.lineup.repository.LineupRepository;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.Fixtures;
+import com.greedy.festa.support.fixture.HostFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Clock;
@@ -94,7 +97,7 @@ class ImportCommitServiceTest {
     @Test
     void 이미_commit된_batch는_거부한다() {
         ImportBatch batch = batch("{}", NOW.minusSeconds(60));
-        ReflectionTestUtils.setField(batch, "committedAt", NOW.minusSeconds(1));
+        batch.commit(NOW.minusSeconds(1));
         given(batchRepository.findByIdForUpdate(39L)).willReturn(Optional.of(batch));
 
         assertError(() -> service.commit(39L, null), ImportErrorCode.IMPORT_ALREADY_COMMITTED);
@@ -233,13 +236,11 @@ class ImportCommitServiceTest {
         given(hostRepository.findAllById(anyCollection())).willReturn(List.of(host));
         given(artistRepository.save(any(Artist.class))).willAnswer(invocation -> {
             Artist saved = invocation.getArgument(0);
-            ReflectionTestUtils.setField(saved, "id", 20L);
-            return saved;
+            return Fixtures.withId(saved, 20L);
         });
         given(festivalRepository.save(any(Festival.class))).willAnswer(invocation -> {
             Festival saved = invocation.getArgument(0);
-            ReflectionTestUtils.setField(saved, "id", 30L);
-            return saved;
+            return Fixtures.withId(saved, 30L);
         });
 
         var response = service.commit(39L, null);
@@ -331,7 +332,7 @@ class ImportCommitServiceTest {
     void 추가_Alias가_다른_Artist_소유이면_stale로_거부한다() {
         Artist target = artist(10L, "target");
         Artist other = artist(20L, "other");
-        ArtistAlias owned = ArtistAlias.builder().artist(other).name("taken").build();
+        ArtistAlias owned = ArtistFixture.alias(other, "taken").build();
         StoredPreviewRow update = row(ImportSection.ARTISTS, 1, "target",
                 ImportPreviewAction.UPDATE,
                 Map.of("name", "target", "otherNames", List.of("taken"), "needsReview", false),
@@ -362,7 +363,7 @@ class ImportCommitServiceTest {
     @Test
     void 신규_Artist의_대표명이_preview_이후_기존_alias와_충돌하면_stale이다() {
         Artist owner = artist(20L, "owner");
-        ArtistAlias alias = ArtistAlias.builder().artist(owner).name("new artist").build();
+        ArtistAlias alias = ArtistFixture.alias(owner, "new artist").build();
         prepare(preview(artistRow(1, ImportPreviewAction.CREATE, null)));
         given(aliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of(alias));
         given(artistRepository.findAllById(anyCollection())).willReturn(List.of(owner));
@@ -384,7 +385,7 @@ class ImportCommitServiceTest {
     @Test
     void 신규_Artist의_alias가_preview_이후_기존_alias와_충돌하면_stale이다() {
         Artist owner = artist(20L, "owner");
-        ArtistAlias alias = ArtistAlias.builder().artist(owner).name("new alias").build();
+        ArtistAlias alias = ArtistFixture.alias(owner, "new alias").build();
         prepare(preview(artistRow(1, ImportPreviewAction.CREATE, null)));
         given(aliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of(alias));
         given(artistRepository.findAllById(anyCollection())).willReturn(List.of(owner));
@@ -551,8 +552,7 @@ class ImportCommitServiceTest {
         ImportBatch batch = ImportBatch.builder().type(ImportBatchType.BUNDLE)
                 .fileNames(List.of("test.csv")).onConflict(ImportConflictPolicy.UPDATE)
                 .preview(preview).uploadedAt(uploadedAt).build();
-        ReflectionTestUtils.setField(batch, "id", 39L);
-        return batch;
+        return Fixtures.withId(batch, 39L);
     }
 
     private StoredPreviewRow artistRow(int line, ImportPreviewAction action, Long matchedId) {
@@ -628,24 +628,22 @@ class ImportCommitServiceTest {
     }
 
     private Host host(Long id, String name) {
-        Host host = Host.builder().name(name).region("서울").build();
-        ReflectionTestUtils.setField(host, "id", id);
-        return host;
+        return Fixtures.withId(HostFixture.host(name).build(), id);
     }
 
     private Artist artist(Long id, String name) {
-        Artist artist = Artist.builder().name(name).needsReview(false).build();
-        ReflectionTestUtils.setField(artist, "id", id);
-        return artist;
+        return Fixtures.withId(ArtistFixture.artist(name).needsReview(false).build(), id);
     }
 
     private Festival festivalEntity(Long id, Host host, boolean published) {
-        Festival festival = Festival.builder().host(host).importKey("university-main-campus-2026")
-                .name("festival").startDate(LocalDate.of(2026, 5, 1))
-                .endDate(LocalDate.of(2026, 5, 2)).build();
-        ReflectionTestUtils.setField(festival, "id", id);
+        Festival festival = Fixtures.withId(FestivalFixture.festival("festival")
+                .host(host)
+                .importKey("university-main-campus-2026")
+                .startDate(LocalDate.of(2026, 5, 1))
+                .endDate(LocalDate.of(2026, 5, 2))
+                .build(), id);
         if (published) {
-            ReflectionTestUtils.setField(festival, "publishedAt", NOW.minusSeconds(1));
+            festival.publish(NOW.minusSeconds(1));
         }
         return festival;
     }
