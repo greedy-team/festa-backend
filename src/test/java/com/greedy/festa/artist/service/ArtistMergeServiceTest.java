@@ -313,6 +313,17 @@ class ArtistMergeServiceTest extends PostgresTestSupport {
         assertThat(예외.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_NOT_FOUND);
     }
 
+    @Test
+    void 남길_아티스트를_주지_않으면_실패한다() {
+        Artist IU = 아티스트를_넣는다("IU");
+        반영한다();
+
+        FestaException 예외 = catchThrowableOfType(FestaException.class,
+                () -> artistMergeService.merge(new ArtistMergeRequest(null, List.of(IU.getId()), true)));
+
+        assertThat(예외.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_INVALID_TARGET_ID);
+    }
+
     private ArtistMergeResponse 병합한다(Artist 남길_아티스트, boolean 별칭_보존, Artist... 흡수될_아티스트) {
         List<Long> sourceIds = Arrays.stream(흡수될_아티스트)
                 .map(Artist::getId)
