@@ -25,6 +25,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
@@ -123,6 +125,38 @@ class FestivalAdminServiceTest extends PostgresTestSupport {
                     festivalAdminService.create(등록요청(주최.getId(), 임포트_키, "세종연회", 시작일, 종료일));
 
             assertThat(response.blockers()).containsExactly(FestivalPublishBlocker.LINEUP_EMPTY);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"externalVisitor", "verification", "ticketType"})
+        void UNKNOWN_입장_정책은_INVALID_REQUEST_BODY로_거부한다(String field) {
+            FestivalCreateRequest request = unknownCreateRequest(field);
+
+            assertThat(에러코드(() -> festivalAdminService.create(request)))
+                    .isEqualTo(CommonErrorCode.INVALID_REQUEST_BODY);
+        }
+
+        @Test
+        void 조회된_UNKNOWN을_그대로_보내면_다른_필드만_수정하고_레거시_문자열을_보존한다() {
+            Long id = 축제를_만든다();
+            em.createNativeQuery("""
+                    UPDATE festival
+                    SET external_visitor = 'OUTSIDER_NEW',
+                        verification = 'FACE_SCAN', ticket_type = 'EARLY_BIRD'
+                    WHERE id = :id
+                    """).setParameter("id", id).executeUpdate();
+            반영한다();
+
+            festivalAdminService.update(id, unknownUpdateRequest("externalVisitor"));
+            반영한다();
+
+            Object[] row = (Object[]) em.createNativeQuery("""
+                    SELECT name, external_visitor, verification, ticket_type
+                    FROM festival WHERE id = :id
+                    """).setParameter("id", id).getSingleResult();
+            assertThat(row).containsExactly(
+                    "UNKNOWN 축제", "OUTSIDER_NEW", "FACE_SCAN", "EARLY_BIRD"
+            );
         }
 
         @Test
@@ -253,6 +287,15 @@ class FestivalAdminServiceTest extends PostgresTestSupport {
             assertThat(saved.getLatitude()).isEqualTo(37.1);
             assertThat(saved.getLongitude()).isEqualTo(127.2);
             assertThat(saved.getExternalVisitor()).isEqualTo(ExternalVisitorPolicy.ALLOWED);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"externalVisitor", "verification", "ticketType"})
+        void UNKNOWN_입장_정책은_INVALID_REQUEST_BODY로_거부한다(String field) {
+            Long id = 축제를_만든다();
+
+            assertThat(에러코드(() -> festivalAdminService.update(id, unknownUpdateRequest(field))))
+                    .isEqualTo(CommonErrorCode.INVALID_REQUEST_BODY);
         }
 
         @Test
@@ -439,6 +482,26 @@ class FestivalAdminServiceTest extends PostgresTestSupport {
                 주최.getId(), null, "세종연회", startDate, endDate,
                 null, null, null, null, null, null,
                 null, null, null, null, null, null);
+    }
+
+    private FestivalCreateRequest unknownCreateRequest(String field) {
+        return new FestivalCreateRequest(
+                주최.getId(), null, "UNKNOWN 축제", 시작일, 종료일,
+                null, null, null, null, null, null,
+                field.equals("externalVisitor") ? ExternalVisitorPolicy.UNKNOWN : null,
+                field.equals("verification") ? VerificationMethod.UNKNOWN : null,
+                field.equals("ticketType") ? TicketType.UNKNOWN : null,
+                null, null, null);
+    }
+
+    private FestivalUpdateRequest unknownUpdateRequest(String field) {
+        return new FestivalUpdateRequest(
+                주최.getId(), null, "UNKNOWN 축제", 시작일, 종료일,
+                null, null, null, null, null, null,
+                field.equals("externalVisitor") ? ExternalVisitorPolicy.UNKNOWN : null,
+                field.equals("verification") ? VerificationMethod.UNKNOWN : null,
+                field.equals("ticketType") ? TicketType.UNKNOWN : null,
+                null, null, null);
     }
 
     private Long 축제를_만든다() {

@@ -5,6 +5,9 @@ import com.greedy.festa.artist.entity.ArtistAlias;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.festival.entity.Festival;
+import com.greedy.festa.festival.entity.ExternalVisitorPolicy;
+import com.greedy.festa.festival.entity.TicketType;
+import com.greedy.festa.festival.entity.VerificationMethod;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.repository.HostRepository;
@@ -22,6 +25,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -303,6 +307,38 @@ class ImportPreviewServiceTest {
     }
 
     @Test
+    void UPDATE의_빈_입장_정책은_기존_UNKNOWN을_normalized에_노출하지_않는다() {
+        Host host = host(1L, "연세대학교", "연세대");
+        Festival existing = Festival.builder()
+                .host(host).importKey("연세대학교-신촌캠퍼스-2026").name("기존 축제")
+                .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2))
+                .externalVisitor(ExternalVisitorPolicy.UNKNOWN)
+                .verification(VerificationMethod.UNKNOWN)
+                .ticketType(TicketType.UNKNOWN)
+                .build();
+        ReflectionTestUtils.setField(existing, "id", 5L);
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(existing));
+        String[] values = festivalRow("연세대학교", "", "", "").split(",", -1);
+        values[ImportSection.FESTIVALS.headers().indexOf("external_visitor_policy")] = "";
+        values[ImportSection.FESTIVALS.headers().indexOf("verification_method")] = "";
+        values[ImportSection.FESTIVALS.headers().indexOf("ticket_type")] = "";
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.FESTIVALS, csv("file", "festivals.csv",
+                        String.join(",", ImportSection.FESTIVALS.headers())
+                                + "\n" + String.join(",", values) + "\n"),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.UPDATE);
+        assertThat(response.rows().getFirst().errors()).isEmpty();
+        assertThat(response.rows().getFirst().values())
+                .containsEntry("externalVisitorPolicy", null)
+                .containsEntry("verificationMethod", null)
+                .containsEntry("ticketType", null);
+    }
+
+    @Test
     void 기존_importKey는_onConflict에_따라_UPDATE와_SKIP으로_판정한다() {
         Host host = host(1L, "연세대학교", "연세대");
         Festival existing = Festival.builder()
@@ -500,6 +536,33 @@ class ImportPreviewServiceTest {
                 ImportConflictPolicy.UPDATE, Instant.EPOCH);
 
         assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "external_visitor_policy, UNKNOWN",
+            "verification_method, UNKNOWN",
+            "ticket_type, UNKNOWN",
+            "external_visitor_policy, NOT_A_VALUE",
+            "verification_method, NOT_A_VALUE",
+            "ticket_type, NOT_A_VALUE"
+    })
+    void 입장_정책의_UNKNOWN과_기존_미지값은_INVALID_ENUM이다(String field, String value) {
+        Host host = host(1L, "연세대학교", "연세대");
+        given(hostRepository.findAllByNameIn(anyCollection())).willReturn(List.of(host));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of());
+        String[] values = festivalRow("연세대학교", "", "", "").split(",", -1);
+        values[ImportSection.FESTIVALS.headers().indexOf(field)] = value;
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.FESTIVALS, csv("file", "festivals.csv",
+                        String.join(",", ImportSection.FESTIVALS.headers())
+                                + "\n" + String.join(",", values) + "\n"),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
+        assertThat(response.rows().getFirst().errors()).extracting("code")
+                .containsExactly("INVALID_ENUM");
     }
 
     @Test

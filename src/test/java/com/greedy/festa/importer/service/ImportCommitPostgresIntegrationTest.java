@@ -33,12 +33,14 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -67,6 +69,7 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
     @Autowired FestivalRepository festivalRepository;
     @Autowired FestivalHashtagRepository hashtagRepository;
     @Autowired LineupRepository lineupRepository;
+    @Autowired JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void cleanDatabase() {
@@ -171,6 +174,45 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
         Festival updated = festivalRepository.findById(festival.getId()).orElseThrow();
         assertThat(updated.getLatitude()).isEqualTo(35.1796);
         assertThat(updated.getLongitude()).isEqualTo(129.0756);
+    }
+
+    @Test
+    void 레거시_입장_정책의_빈_normalized를_commit하면_원본_문자열을_보존한다() {
+        Host host = hostRepository.save(Host.builder().name("university").region("SEOUL").build());
+        Long festivalId = jdbcTemplate.queryForObject("""
+                INSERT INTO festival
+                    (host_id, import_key, name, start_date, end_date,
+                     external_visitor, verification, ticket_type, created_at, updated_at)
+                VALUES (?, 'university-main-campus-2026', 'legacy festival',
+                        DATE '2026-05-01', DATE '2026-05-02',
+                        'OUTSIDER_NEW', 'FACE_SCAN', 'EARLY_BIRD', NOW(), NOW())
+                RETURNING id
+                """, Long.class, host.getId());
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        normalized.put("hostName", "university");
+        normalized.put("name", "updated festival");
+        normalized.put("startDate", LocalDate.of(2026, 5, 1));
+        normalized.put("endDate", LocalDate.of(2026, 5, 2));
+        normalized.put("externalVisitorPolicy", null);
+        normalized.put("verificationMethod", null);
+        normalized.put("ticketType", null);
+        normalized.put("hashtags", List.of());
+        normalized.put("flag", "OK");
+        ImportBatch batch = saveBatch(preview(row(
+                ImportSection.FESTIVALS, 1, "university-main-campus-2026",
+                ImportPreviewAction.UPDATE, normalized,
+                host.getId(), null, festivalId, null, false)));
+
+        service.commit(batch.getId(), null);
+
+        assertThat(jdbcTemplate.queryForMap("""
+                SELECT name, external_visitor, verification, ticket_type
+                FROM festival WHERE id = ?
+                """, festivalId))
+                .containsEntry("name", "updated festival")
+                .containsEntry("external_visitor", "OUTSIDER_NEW")
+                .containsEntry("verification", "FACE_SCAN")
+                .containsEntry("ticket_type", "EARLY_BIRD");
     }
 
     private String commitResult(Long batchId, CountDownLatch start) throws InterruptedException {

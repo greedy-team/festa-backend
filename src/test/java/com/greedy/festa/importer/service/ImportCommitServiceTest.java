@@ -268,6 +268,42 @@ class ImportCommitServiceTest {
     }
 
     @Test
+    void 조작된_preview의_UNKNOWN_입장_정책은_INVALID_PREVIEW로_거부한다() {
+        StoredPreviewRow source = festival(1, ImportPreviewAction.CREATE, null, 1L);
+        Map<String, Object> normalized = new LinkedHashMap<>(source.normalized());
+        normalized.put("externalVisitorPolicy", "UNKNOWN");
+        StoredPreviewRow manipulated = row(
+                source.section(), source.line(), source.importKey(), source.action(),
+                normalized, source.matchedHostId(), source.matchedArtistId(),
+                source.matchedFestivalId(), source.artistMatchStatus(), source.errors(),
+                source.revealed());
+        prepare(preview(manipulated));
+        given(hostRepository.findAllById(anyCollection()))
+                .willReturn(List.of(host(1L, "university")));
+
+        assertError(() -> service.commit(39L, null), ImportErrorCode.IMPORT_INVALID_PREVIEW);
+        verify(festivalRepository, never()).save(any());
+    }
+
+    @Test
+    void 조작된_preview의_미지_입장_정책도_INVALID_PREVIEW로_거부한다() {
+        StoredPreviewRow source = festival(1, ImportPreviewAction.CREATE, null, 1L);
+        Map<String, Object> normalized = new LinkedHashMap<>(source.normalized());
+        normalized.put("externalVisitorPolicy", "NOT_A_VALUE");
+        StoredPreviewRow manipulated = row(
+                source.section(), source.line(), source.importKey(), source.action(),
+                normalized, source.matchedHostId(), source.matchedArtistId(),
+                source.matchedFestivalId(), source.artistMatchStatus(), source.errors(),
+                source.revealed());
+        prepare(preview(manipulated));
+        given(hostRepository.findAllById(anyCollection()))
+                .willReturn(List.of(host(1L, "university")));
+
+        assertError(() -> service.commit(39L, null), ImportErrorCode.IMPORT_INVALID_PREVIEW);
+        verify(festivalRepository, never()).save(any());
+    }
+
+    @Test
     void preview_이후_발행된_Festival과_Lineup은_stale로_거부한다() {
         Host host = host(1L, "university");
         Festival existing = festivalEntity(30L, host, true);

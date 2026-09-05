@@ -75,7 +75,8 @@ public class FestivalPublishService {
                     row.getHost() != null,
                     festival.getLatitude(),
                     festival.getLongitude(),
-                    lineupCount
+                    lineupCount,
+                    festival.hasUnknownAdmissionValue()
             );
             return FestivalReviewItem.of(festival, row.getHost(), lineupCount, blockers);
         }));
@@ -95,7 +96,8 @@ public class FestivalPublishService {
                 festival.getHost() != null,
                 festival.getLatitude(),
                 festival.getLongitude(),
-                lineupCount
+                lineupCount,
+                festival.hasUnknownAdmissionValue()
         );
 
         if (!blockers.isEmpty()) {
@@ -150,7 +152,8 @@ public class FestivalPublishService {
                     row.getHost() != null,
                     festival.getLatitude(),
                     festival.getLongitude(),
-                    row.getLineupCount()
+                    row.getLineupCount(),
+                    festival.hasUnknownAdmissionValue()
             );
             if (!blockers.isEmpty()) {
                 failed.add(new FestivalPublishFailure(
