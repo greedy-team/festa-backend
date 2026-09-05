@@ -8,8 +8,8 @@ import com.greedy.festa.importer.model.ImportPreviewAction;
 import com.greedy.festa.importer.model.ImportSection;
 import com.greedy.festa.importer.model.PreviewProblem;
 import com.greedy.festa.importer.model.StoredPreviewRow;
+import com.greedy.festa.support.fixture.Fixtures;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -25,11 +25,10 @@ class ImportPreviewResponseTest {
     @Test
     void API_JSON은_확정된_summary와_row_필드명을_사용한다() throws Exception {
         Instant uploadedAt = Instant.parse("2026-08-19T00:00:00Z");
-        ImportBatch batch = ImportBatch.builder()
+        ImportBatch batch = Fixtures.withId(ImportBatch.builder()
                 .type(ImportBatchType.ARTISTS).fileNames(List.of("artists.csv"))
                 .onConflict(ImportConflictPolicy.UPDATE).preview("{}")
-                .uploadedAt(uploadedAt).build();
-        ReflectionTestUtils.setField(batch, "id", 1L);
+                .uploadedAt(uploadedAt).build(), 1L);
         StoredPreviewRow row = new StoredPreviewRow(
                 ImportSection.ARTISTS, 1, "새 아티스트", ImportPreviewAction.CREATE,
                 ImportConflictPolicy.UPDATE,
@@ -55,11 +54,10 @@ class ImportPreviewResponseTest {
 
     @Test
     void blocker_JSON은_type이_아닌_code를_사용하고_ARTIST_UNRESOLVED는_raw값을_보여준다() throws Exception {
-        ImportBatch batch = ImportBatch.builder()
+        ImportBatch batch = Fixtures.withId(ImportBatch.builder()
                 .type(ImportBatchType.LINEUPS).fileNames(List.of("lineups.csv"))
                 .onConflict(ImportConflictPolicy.UPDATE).preview("{}")
-                .uploadedAt(Instant.EPOCH).build();
-        ReflectionTestUtils.setField(batch, "id", 2L);
+                .uploadedAt(Instant.EPOCH).build(), 2L);
         StoredPreviewRow row = new StoredPreviewRow(
                 ImportSection.LINEUPS, 1, "festival-key", ImportPreviewAction.INVALID,
                 ImportConflictPolicy.UPDATE,

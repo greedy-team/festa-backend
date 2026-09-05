@@ -14,6 +14,11 @@ import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.lineup.repository.LineupRepository;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.Fixtures;
+import com.greedy.festa.support.fixture.HostFixture;
+import com.greedy.festa.support.fixture.LineupFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -22,7 +27,6 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -135,12 +139,10 @@ class ArtistPublicServiceTest {
 
     @Test
     void 공개_목록과_상세의_imageUrl은_DB값과_무관하게_null이다() {
-        Artist artist = Artist.builder()
-                .name("BTS")
+        Artist artist = Fixtures.withId(ArtistFixture.artist("BTS")
                 .genre(ArtistGenre.DANCE)
                 .imageUrl("https://example.com/portrait.jpg")
-                .build();
-        ReflectionTestUtils.setField(artist, "id", 1L);
+                .build(), 1L);
         ArtistWithAppearanceCount row = appearanceRow(artist, 0L);
         given(artistRepository.findPublicByAppearances(
                 eq(null), eq(null), any(LocalDate.class), any(Pageable.class)))
@@ -171,8 +173,8 @@ class ArtistPublicServiceTest {
         given(artistRepository.findById(1L)).willReturn(Optional.of(artist));
         given(artistAliasRepository.findByArtistId(1L)).willReturn(List.of());
         given(lineupRepository.findPublishedByArtistId(1L)).willReturn(List.of(
-                Lineup.builder().artist(artist).festival(todayFestival).day(1).displayOrder(1).build(),
-                Lineup.builder().artist(artist).festival(pastFestival).day(1).displayOrder(1).build()));
+                LineupFixture.lineup(todayFestival, artist).day(1).build(),
+                LineupFixture.lineup(pastFestival, artist).build()));
 
         ArtistDetailResponse response = artistService.findById(1L);
 
@@ -194,8 +196,7 @@ class ArtistPublicServiceTest {
         given(artistRepository.findById(1L)).willReturn(Optional.of(artist));
         given(artistAliasRepository.findByArtistId(1L)).willReturn(List.of());
         given(lineupRepository.findPublishedByArtistId(1L)).willReturn(List.of(
-                Lineup.builder().artist(artist).festival(endedFestival)
-                        .day(10).displayOrder(1).build()));
+                LineupFixture.lineup(endedFestival, artist).day(10).build()));
 
         ArtistDetailResponse response = artistService.findById(1L);
 
@@ -211,10 +212,10 @@ class ArtistPublicServiceTest {
         Artist artist = artist(1L, "BTS");
         Host host = host(1L, "한국대학교");
         List<Lineup> lineups = java.util.stream.IntStream.rangeClosed(1, 6)
-                .mapToObj(day -> Lineup.builder()
-                        .artist(artist)
-                        .festival(festival((long) day, host, "축제 " + day,
-                                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 10)))
+                .mapToObj(day -> LineupFixture.lineup(
+                                festival((long) day, host, "축제 " + day,
+                                        LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 10)),
+                                artist)
                         .day(day)
                         .displayOrder(day)
                         .build())
@@ -240,9 +241,8 @@ class ArtistPublicServiceTest {
     }
 
     private Artist artist(Long id, String name) {
-        Artist artist = Artist.builder().name(name).genre(ArtistGenre.DANCE).build();
-        ReflectionTestUtils.setField(artist, "id", id);
-        return artist;
+        return Fixtures.withId(
+                ArtistFixture.artist(name).genre(ArtistGenre.DANCE).build(), id);
     }
 
     private ArtistWithAppearanceCount appearanceRow(Artist artist, long count) {
@@ -253,20 +253,16 @@ class ArtistPublicServiceTest {
     }
 
     private Host host(Long id, String name) {
-        Host host = Host.builder().name(name).shortName(name).region("서울").build();
-        ReflectionTestUtils.setField(host, "id", id);
-        return host;
+        return Fixtures.withId(HostFixture.host(name).shortName(name).build(), id);
     }
 
     private Festival festival(Long id, Host host, String name, LocalDate start, LocalDate end) {
-        Festival festival = Festival.builder()
+        Festival festival = FestivalFixture.festival(name)
                 .host(host)
-                .name(name)
                 .startDate(start)
                 .endDate(end)
                 .build();
         festival.publish(Instant.parse("2026-08-01T00:00:00Z"));
-        ReflectionTestUtils.setField(festival, "id", id);
-        return festival;
+        return Fixtures.withId(festival, id);
     }
 }

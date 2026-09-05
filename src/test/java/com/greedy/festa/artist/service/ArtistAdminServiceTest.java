@@ -11,6 +11,7 @@ import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.support.fixture.ArtistFixture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -457,7 +458,7 @@ public class ArtistAdminServiceTest {
     void 출연_이력이_있는_아티스트는_삭제할_수_없다() {
         // given
         given(artistRepository.findById(아티스트_id))
-                .willReturn(Optional.of(Artist.builder().name(아티스트_이름).build()));
+                .willReturn(Optional.of(ArtistFixture.artist(아티스트_이름).build()));
         given(artistRepository.countLineupsByArtistId(아티스트_id)).willReturn(1L);
 
         // when
@@ -475,7 +476,7 @@ public class ArtistAdminServiceTest {
         // given
         // 별칭이 아티스트를 FK로 참조하므로 순서가 뒤집히면 제약 위반이 난다.
         given(artistRepository.findById(아티스트_id))
-                .willReturn(Optional.of(Artist.builder().name(아티스트_이름).build()));
+                .willReturn(Optional.of(ArtistFixture.artist(아티스트_이름).build()));
 
         // when
         artistService.delete(아티스트_id);
@@ -502,8 +503,7 @@ public class ArtistAdminServiceTest {
     }
 
     private Artist 수정할_아티스트가_있다() {
-        Artist artist = Artist.builder()
-                .name(아티스트_이름)
+        Artist artist = ArtistFixture.artist(아티스트_이름)
                 .genre(ArtistGenre.DANCE)
                 .instagramUrl(아티스트_인스타)
                 .needsReview(false)
@@ -513,7 +513,7 @@ public class ArtistAdminServiceTest {
     }
 
     private ArtistAlias 별칭이_있다(Artist artist, String name) {
-        ArtistAlias alias = ArtistAlias.builder().artist(artist).name(name).build();
+        ArtistAlias alias = ArtistFixture.alias(artist, name).build();
         given(artistAliasRepository.findByArtistId(any())).willReturn(List.of(alias));
         return alias;
     }

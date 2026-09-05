@@ -5,6 +5,7 @@ import com.greedy.festa.host.dto.HostResponse;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
 import com.greedy.festa.host.repository.HostRepository;
+import com.greedy.festa.support.fixture.HostFixture;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -19,7 +20,7 @@ class HostAdminSingleLookupServiceTest {
     @Test
     void returnsCurrentHostManagementValues() {
         HostRepository repository = mock(HostRepository.class);
-        Host host = Host.builder().name("한국대학교").shortName("한대").region("서울")
+        Host host = HostFixture.host("한국대학교").shortName("한대")
                 .homepageUrl("homepage").build();
         given(repository.findById(1L)).willReturn(Optional.of(host));
         given(repository.countFestivalsByHostId(1L)).willReturn(4L);

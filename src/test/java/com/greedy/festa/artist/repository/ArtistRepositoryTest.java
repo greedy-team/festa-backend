@@ -10,6 +10,10 @@ import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.lineup.repository.LineupRepository;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.HostFixture;
+import com.greedy.festa.support.fixture.LineupFixture;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,10 +41,10 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void adminLikeWildcardsAndEscapeCharacterAreLiteralInPostgres() {
-        em.persist(Artist.builder().name("Discount 50% Artist").genre(ArtistGenre.DANCE).build());
-        em.persist(Artist.builder().name("sub_artist").genre(ArtistGenre.DANCE).build());
-        em.persist(Artist.builder().name("path\\artist").genre(ArtistGenre.DANCE).build());
-        em.persist(Artist.builder().name("ordinary artist").genre(ArtistGenre.DANCE).build());
+        em.persist(ArtistFixture.artist("Discount 50% Artist").genre(ArtistGenre.DANCE).build());
+        em.persist(ArtistFixture.artist("sub_artist").genre(ArtistGenre.DANCE).build());
+        em.persist(ArtistFixture.artist("path\\artist").genre(ArtistGenre.DANCE).build());
+        em.persist(ArtistFixture.artist("ordinary artist").genre(ArtistGenre.DANCE).build());
         em.flush();
         em.clear();
 
@@ -80,7 +84,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @BeforeEach
     void setUp() {
-        주최 = em.merge(Host.builder().name("테스트대학교").region("서울 광진구").build());
+        주최 = em.merge(HostFixture.host("테스트대학교").region("서울 광진구").build());
         // 출연 횟수는 발행되고 이미 끝난 축제만 센다 (DEC-0053).
         축제 = 축제를_넣는다("대동제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3), true);
     }
@@ -410,8 +414,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
     }
 
     private Artist 아티스트를_넣는다(String 이름, ArtistGenre 장르, boolean 검토대기) {
-        Artist 아티스트 = Artist.builder()
-                .name(이름)
+        Artist 아티스트 = ArtistFixture.artist(이름)
                 .genre(장르)
                 .needsReview(검토대기)
                 .build();
@@ -420,14 +423,13 @@ class ArtistRepositoryTest extends PostgresTestSupport {
     }
 
     private void 별칭을_넣는다(Artist 아티스트, String 이름) {
-        em.persist(ArtistAlias.builder().artist(아티스트).name(이름).build());
+        em.persist(ArtistFixture.alias(아티스트, 이름).build());
     }
 
     // publishedAt은 빌더에 없어 네이티브 쿼리로 넣는다.
     private Festival 축제를_넣는다(String 이름, LocalDate 시작, LocalDate 종료, boolean 발행됨) {
-        Festival festival = Festival.builder()
+        Festival festival = FestivalFixture.festival(이름)
                 .host(주최)
-                .name(이름)
                 .startDate(시작)
                 .endDate(종료)
                 .build();
@@ -451,9 +453,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
     }
 
     private void 라인업에_올린다(Artist 아티스트, Festival 대상축제, int 일차) {
-        em.persist(Lineup.builder()
-                .festival(대상축제)
-                .artist(아티스트)
+        em.persist(LineupFixture.lineup(대상축제, 아티스트)
                 .day(일차)
                 .displayOrder(다음_출연_순서++)
                 .build());

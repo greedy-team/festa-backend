@@ -6,6 +6,7 @@ import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.support.fixture.ArtistFixture;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -22,7 +23,7 @@ class AdminSingleLookupServiceTest {
     void artistReturnsCurrentAdminValues() {
         ArtistRepository repository = mock(ArtistRepository.class);
         ArtistAliasRepository aliasRepository = mock(ArtistAliasRepository.class);
-        Artist artist = Artist.builder().name("아이유").instagramUrl("instagram").build();
+        Artist artist = ArtistFixture.artist("아이유").instagramUrl("instagram").build();
         given(repository.findById(1L)).willReturn(Optional.of(artist));
         given(repository.countAppearancesByArtistId(1L)).willReturn(3L);
         given(aliasRepository.findByArtistId(1L)).willReturn(List.of());

@@ -17,9 +17,10 @@ import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
 import com.greedy.festa.host.repository.HostRepository;
-import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.lineup.repository.LineupRepository;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.HostFixture;
+import com.greedy.festa.support.fixture.LineupFixture;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -68,7 +69,7 @@ class FestivalAdminServiceTest extends PostgresTestSupport {
     @BeforeEach
     void setUp() {
         festivalAdminService = new FestivalAdminService(festivalRepository, lineupRepository, hostRepository);
-        주최 = em.merge(Host.builder().name("테스트대학교").region("서울 광진구").build());
+        주최 = em.merge(HostFixture.host("테스트대학교").region("서울 광진구").build());
         반영한다();
     }
 
@@ -456,8 +457,7 @@ class FestivalAdminServiceTest extends PostgresTestSupport {
 
     private void 라인업을_넣는다(Long festivalId, int day) {
         Festival festival = festivalRepository.findById(festivalId).orElseThrow();
-        lineupRepository.save(Lineup.builder().festival(festival).artist(null)
-                .day(day).displayOrder(1).build());
+        lineupRepository.save(LineupFixture.lineup(festival, null).day(day).build());
         반영한다();
     }
 

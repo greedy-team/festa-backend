@@ -1,7 +1,6 @@
 package com.greedy.festa.lineup.service;
 
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.festival.entity.Festival;
@@ -17,6 +16,9 @@ import com.greedy.festa.lineup.dto.LineupUpdateRequest;
 import com.greedy.festa.lineup.exception.LineupErrorCode;
 import com.greedy.festa.lineup.repository.LineupRepository;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.HostFixture;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -62,11 +64,10 @@ class LineupAdminServiceTest extends PostgresTestSupport {
     @BeforeEach
     void setUp() {
         lineupAdminService = new LineupAdminService(festivalRepository, artistRepository, lineupRepository);
-        Host 주최 = em.merge(Host.builder().name("테스트대학교").region("서울 광진구").build());
-        축제 = em.merge(Festival.builder()
-                .host(주최).name("세종연회").startDate(시작일).endDate(종료일).build());
-        아티스트 = em.merge(Artist.builder()
-                .name("테스트밴드").genre(ArtistGenre.BAND).needsReview(false).build());
+        Host 주최 = em.merge(HostFixture.host("테스트대학교").region("서울 광진구").build());
+        축제 = em.merge(FestivalFixture.festival("세종연회")
+                .host(주최).startDate(시작일).endDate(종료일).build());
+        아티스트 = em.merge(ArtistFixture.artist("테스트밴드").needsReview(false).build());
         반영한다();
     }
 
@@ -345,8 +346,8 @@ class LineupAdminServiceTest extends PostgresTestSupport {
     }
 
     private Long 다른_축제를_만든다() {
-        Festival 다른 = festivalRepository.save(Festival.builder()
-                .host(축제.getHost()).name("다른 축제").startDate(시작일).endDate(종료일).build());
+        Festival 다른 = festivalRepository.save(FestivalFixture.festival("다른 축제")
+                .host(축제.getHost()).build());
         반영한다();
         return 다른.getId();
     }

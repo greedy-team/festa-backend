@@ -1,7 +1,6 @@
 package com.greedy.festa.festival.service;
 
 import com.greedy.festa.artist.entity.Artist;
-import com.greedy.festa.artist.entity.ArtistGenre;
 import com.greedy.festa.festival.dto.FestivalDetailResponse;
 import com.greedy.festa.festival.dto.FestivalAdminSortType;
 import com.greedy.festa.festival.dto.FestivalDetailResponse.LineupArtistResponse;
@@ -22,8 +21,11 @@ import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
-import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.HostFixture;
+import com.greedy.festa.support.fixture.LineupFixture;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import java.time.Clock;
@@ -71,8 +73,7 @@ class FestivalServiceTest extends PostgresTestSupport {
 
     @Test
     void adminLikeWildcardsAndEscapeCharacterAreLiteralInPostgres() {
-        Host host = Host.builder()
-                .name("Wildcard University")
+        Host host = HostFixture.host("Wildcard University")
                 .region("Seoul")
                 .build();
         em.persist(host);
@@ -102,9 +103,8 @@ class FestivalServiceTest extends PostgresTestSupport {
     }
 
     private void persistFestival(Host host, String name) {
-        em.persist(Festival.builder()
+        em.persist(FestivalFixture.festival(name)
                 .host(host)
-                .name(name)
                 .startDate(LocalDate.of(2026, 5, 22))
                 .endDate(LocalDate.of(2026, 5, 24))
                 .build());
@@ -185,15 +185,13 @@ class FestivalServiceTest extends PostgresTestSupport {
     @Test
     void 카드는_축제와_주최_정보를_담는다() {
         // given
-        Host 주최 = Host.builder()
-                .name("테스트_성균관대학교")
+        Host 주최 = HostFixture.host("테스트_성균관대학교")
                 .region("Seoul")
                 .logoUrl("https://cdn.example.com/logo.png")
                 .build();
         em.persist(주최);
-        Festival 축제 = Festival.builder()
+        Festival 축제 = FestivalFixture.festival("대동제")
                 .host(주최)
-                .name("대동제")
                 .startDate(날짜("2026-05-30"))
                 .endDate(날짜("2026-06-01"))
                 .posterUrl("https://cdn.example.com/poster.jpg")
@@ -475,8 +473,7 @@ class FestivalServiceTest extends PostgresTestSupport {
     @Test
     void 응답에_주최_요약이_함께_담긴다() {
         // given
-        Host 주최 = Host.builder()
-                .name("테스트_숙명여자대학교")
+        Host 주최 = HostFixture.host("테스트_숙명여자대학교")
                 .region("Seoul")
                 .logoUrl("https://cdn.example.com/logo.png")
                 .build();
@@ -695,17 +692,15 @@ class FestivalServiceTest extends PostgresTestSupport {
     @Test
     void 상세는_히어로와_입장_정보와_좌표를_한_응답에_담는다() {
         // given
-        Host 주최 = Host.builder()
-                .name("테스트_성균관대학교")
+        Host 주최 = HostFixture.host("테스트_성균관대학교")
                 .region("Seoul")
                 .logoUrl("https://cdn.example.com/logo.png")
                 .instagramUrl("https://instagram.com/skku")
                 .homepageUrl("https://skku.edu")
                 .build();
         em.persist(주최);
-        Festival 축제 = Festival.builder()
+        Festival 축제 = FestivalFixture.festival("인문사회과학 캠퍼스 대동제")
                 .host(주최)
-                .name("인문사회과학 캠퍼스 대동제")
                 .startDate(날짜("2026-05-30"))
                 .endDate(날짜("2026-06-01"))
                 .posterUrl("https://cdn.example.com/poster.jpg")
@@ -833,9 +828,8 @@ class FestivalServiceTest extends PostgresTestSupport {
     @Test
     void 발행되지_않은_축제는_상세에서도_404다() {
         // given - 검수 중인 데이터가 공개 응답으로 새면 안 된다
-        Festival 축제 = Festival.builder()
+        Festival 축제 = FestivalFixture.festival("미발행")
                 .host(주최("테스트_중앙대학교"))
-                .name("미발행")
                 .startDate(날짜("2026-06-01"))
                 .endDate(날짜("2026-06-03"))
                 .build();
@@ -855,8 +849,7 @@ class FestivalServiceTest extends PostgresTestSupport {
     void 주최가_연결되지_않은_축제는_상세에서도_404다() {
         // given - 발행 조건이 주최 연결을 요구하므로 이런 행은 원래 없어야 한다.
         // 걸러내지 않으면 host 매핑에서 NPE가 나 404가 아니라 500으로 터진다
-        Festival 축제 = Festival.builder()
-                .name("주최 없음")
+        Festival 축제 = FestivalFixture.festival("주최 없음")
                 .startDate(날짜("2026-06-01"))
                 .endDate(날짜("2026-06-03"))
                 .build();
@@ -916,7 +909,7 @@ class FestivalServiceTest extends PostgresTestSupport {
     }
 
     private Host 주최(String name) {
-        Host host = Host.builder().name(name).region("Seoul").build();
+        Host host = HostFixture.host(name).region("Seoul").build();
         em.persist(host);
         return host;
     }
@@ -935,9 +928,8 @@ class FestivalServiceTest extends PostgresTestSupport {
     }
 
     private Festival 축제(String 이름, String 시작일, String 종료일) {
-        return Festival.builder()
+        return FestivalFixture.festival(이름)
                 .host(주최("테스트_" + 이름))
-                .name(이름)
                 .startDate(날짜(시작일))
                 .endDate(날짜(종료일))
                 .build();
@@ -965,7 +957,7 @@ class FestivalServiceTest extends PostgresTestSupport {
     }
 
     private Artist 아티스트(String name) {
-        Artist artist = Artist.builder().name(name).genre(ArtistGenre.BAND).build();
+        Artist artist = ArtistFixture.artist(name).build();
         em.persist(artist);
         return artist;
     }
@@ -973,9 +965,8 @@ class FestivalServiceTest extends PostgresTestSupport {
     private Festival 축제(
             Host host, String name, LocalDate startDate, LocalDate endDate, Instant publishedAt
     ) {
-        Festival festival = Festival.builder()
+        Festival festival = FestivalFixture.festival(name)
                 .host(host)
-                .name(name)
                 .startDate(startDate)
                 .endDate(endDate)
                 .build();
@@ -987,18 +978,15 @@ class FestivalServiceTest extends PostgresTestSupport {
     }
 
     private void 라인업(Festival festival, Artist artist, int day, int displayOrder) {
-        em.persist(Lineup.builder()
-                .festival(festival)
-                .artist(artist)
+        em.persist(LineupFixture.lineup(festival, artist)
                 .day(day)
                 .displayOrder(displayOrder)
                 .build());
     }
 
     private Festival 주최명으로_발행된_축제(String 주최명, String 시작일, String 종료일) {
-        Festival festival = Festival.builder()
+        Festival festival = FestivalFixture.festival(주최명 + " 축제")
                 .host(주최(주최명))
-                .name(주최명 + " 축제")
                 .startDate(날짜(시작일))
                 .endDate(날짜(종료일))
                 .build();

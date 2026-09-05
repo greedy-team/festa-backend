@@ -8,6 +8,8 @@ import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.HostFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -223,17 +225,15 @@ class FestivalPublishServiceTest {
     }
 
     private Festival 축제(Host host, Double latitude, Double longitude) {
-        return Festival.builder()
+        return FestivalFixture.festival("세종대 세종연회")
                 .host(host)
-                .name("세종대 세종연회")
                 .latitude(latitude)
                 .longitude(longitude)
                 .build();
     }
 
     private Host 주최() {
-        return Host.builder()
-                .name("세종대학교")
+        return HostFixture.host("세종대학교")
                 .region("서울 광진구")
                 .build();
     }

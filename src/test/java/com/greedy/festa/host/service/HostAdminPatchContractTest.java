@@ -7,6 +7,7 @@ import com.greedy.festa.host.dto.HostUpdateRequest;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
 import com.greedy.festa.host.repository.HostRepository;
+import com.greedy.festa.support.fixture.HostFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,7 +30,7 @@ class HostAdminPatchContractTest {
     void setUp() {
         HostRepository repository = mock(HostRepository.class);
         service = new HostAdminService(repository);
-        host = Host.builder().name("기존 학교").shortName("기존대").region("서울")
+        host = HostFixture.host("기존 학교").shortName("기존대")
                 .logoUrl("old-logo").bannerUrl("old-banner").homepageUrl("old-homepage")
                 .instagramUrl("https://old.example").build();
         given(repository.findById(1L)).willReturn(Optional.of(host));

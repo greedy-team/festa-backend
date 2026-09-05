@@ -9,6 +9,7 @@ import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.support.fixture.ArtistFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -34,7 +35,7 @@ class ArtistAdminPatchContractTest {
         artistRepository = mock(ArtistRepository.class);
         ArtistAliasRepository aliasRepository = mock(ArtistAliasRepository.class);
         service = new ArtistAdminService(artistRepository, aliasRepository);
-        artist = Artist.builder().name("기존 이름").genre(ArtistGenre.DANCE)
+        artist = ArtistFixture.artist("기존 이름").genre(ArtistGenre.DANCE)
                 .instagramUrl("https://old.example").build();
         given(artistRepository.findById(1L)).willReturn(Optional.of(artist));
         given(aliasRepository.findByArtistId(1L)).willReturn(List.of());

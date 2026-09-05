@@ -23,6 +23,10 @@ import com.greedy.festa.importer.repository.ImportCommitRowRepository;
 import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.lineup.repository.LineupRepository;
 import com.greedy.festa.support.PostgresTestSupport;
+import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
+import com.greedy.festa.support.fixture.HostFixture;
+import com.greedy.festa.support.fixture.LineupFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,12 +86,11 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
 
     @Test
     void 미발행_Festival의_기존_Lineup을_삭제하고_새_Lineup으로_전체_교체한다() {
-        Host host = hostRepository.save(Host.builder().name("university").region("SEOUL").build());
-        Artist oldArtist = artistRepository.save(Artist.builder().name("old").needsReview(false).build());
-        Artist newArtist = artistRepository.save(Artist.builder().name("new").needsReview(false).build());
+        Host host = hostRepository.save(HostFixture.host("university").region("SEOUL").build());
+        Artist oldArtist = artistRepository.save(ArtistFixture.artist("old").build());
+        Artist newArtist = artistRepository.save(ArtistFixture.artist("new").build());
         Festival festival = festivalRepository.save(festival(host));
-        lineupRepository.save(Lineup.builder().festival(festival).artist(oldArtist)
-                .day(1).displayOrder(1).build());
+        lineupRepository.save(LineupFixture.lineup(festival, oldArtist).build());
         ImportBatch batch = saveBatch(preview(
                 lineup(1, festival.getId(), newArtist.getId(), 1),
                 lineup(2, festival.getId(), newArtist.getId(), 2)));
@@ -105,7 +108,7 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
 
     @Test
     void 감사_저장_실패는_Artist_Festival_Lineup과_committedAt을_모두_rollback한다() {
-        Host host = hostRepository.save(Host.builder().name("university").region("SEOUL").build());
+        Host host = hostRepository.save(HostFixture.host("university").region("SEOUL").build());
         ImportBatch batch = saveBatch(preview(
                 newArtist(1), newFestival(1, host.getId()), newLineup(1)));
         doThrow(new RuntimeException("audit failed")).when(auditRepository).saveAll(any());
@@ -122,7 +125,7 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
 
     @Test
     void 동일_ImportBatch의_동시_commit은_한_요청만_성공한다() throws Exception {
-        Artist artist = artistRepository.save(Artist.builder().name("existing").needsReview(false).build());
+        Artist artist = artistRepository.save(ArtistFixture.artist("existing").build());
         ImportBatch batch = saveBatch(preview(skipArtist(1, artist.getId())));
         CountDownLatch start = new CountDownLatch(1);
 
@@ -141,7 +144,7 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
 
     @Test
     void CREATE_Festival의_좌표를_PostgreSQL에_저장한다() {
-        Host host = hostRepository.save(Host.builder().name("university").region("SEOUL").build());
+        Host host = hostRepository.save(HostFixture.host("university").region("SEOUL").build());
         ImportBatch batch = saveBatch(preview(newFestival(1, host.getId())));
 
         service.commit(batch.getId(), null);
@@ -154,7 +157,7 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
 
     @Test
     void UPDATE_Festival의_좌표를_PostgreSQL에_반영한다() {
-        Host host = hostRepository.save(Host.builder().name("university").region("SEOUL").build());
+        Host host = hostRepository.save(HostFixture.host("university").region("SEOUL").build());
         Festival festival = festivalRepository.save(festival(host));
         ImportBatch batch = saveBatch(preview(row(
                 ImportSection.FESTIVALS, 1, "university-main-campus-2026",
@@ -245,7 +248,8 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
     }
 
     private Festival festival(Host host) {
-        return Festival.builder().host(host).importKey("university-main-campus-2026").name("festival")
+        return FestivalFixture.festival("festival")
+                .host(host).importKey("university-main-campus-2026")
                 .startDate(LocalDate.of(2026, 5, 1)).endDate(LocalDate.of(2026, 5, 2)).build();
     }
 

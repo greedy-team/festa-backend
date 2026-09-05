@@ -8,6 +8,7 @@ import com.greedy.festa.host.dto.HostUpdateRequest;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
 import com.greedy.festa.host.repository.HostRepository;
+import com.greedy.festa.support.fixture.HostFixture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -256,8 +257,7 @@ class HostAdminServiceTest {
     }
 
     private Host host() {
-        return Host.builder()
-                .name("연세대학교")
+        return HostFixture.host("연세대학교")
                 .shortName("연세대")
                 .region("서울 서대문구")
                 .bannerUrl("https://cdn.festa.kr/hosts/3/banner.jpg")
