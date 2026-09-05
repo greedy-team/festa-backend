@@ -1,17 +1,18 @@
 package com.greedy.festa.host.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.dto.HostResponse;
 import com.greedy.festa.host.dto.HostUpdateRequest;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.host.exception.HostErrorCode;
 import com.greedy.festa.host.repository.HostRepository;
+import com.greedy.festa.support.AppJsonMapper;
 import com.greedy.festa.support.fixture.HostFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.Optional;
 
@@ -22,7 +23,7 @@ import static org.mockito.Mockito.mock;
 
 class HostAdminPatchContractTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = AppJsonMapper.create();
     private HostAdminService service;
     private Host host;
 

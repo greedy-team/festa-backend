@@ -1,6 +1,5 @@
 package com.greedy.festa.artist.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.greedy.festa.artist.dto.ArtistResponse;
 import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.Artist;
@@ -9,11 +8,13 @@ import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.global.exception.FestaException;
+import com.greedy.festa.support.AppJsonMapper;
 import com.greedy.festa.support.fixture.ArtistFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,7 +26,7 @@ import static org.mockito.Mockito.mock;
 
 class ArtistAdminPatchContractTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = AppJsonMapper.create();
     private ArtistRepository artistRepository;
     private ArtistAdminService service;
     private Artist artist;
@@ -118,6 +119,15 @@ class ArtistAdminPatchContractTest {
         ArtistUpdateRequest request = objectMapper.readValue(
                 "{\"name\":\"기존 이름\",\"genre\":null}", ArtistUpdateRequest.class);
 
+        assertThat(service.update(1L, request).genre()).isEqualTo(ArtistGenre.DANCE);
+    }
+
+    @Test
+    void blankGenreIsCoercedToNullAndKeepsExistingValue() throws Exception {
+        ArtistUpdateRequest request = objectMapper.readValue(
+                "{\"name\":\"기존 이름\",\"genre\":\"\"}", ArtistUpdateRequest.class);
+
+        assertThat(request.genre()).isNull();
         assertThat(service.update(1L, request).genre()).isEqualTo(ArtistGenre.DANCE);
     }
 

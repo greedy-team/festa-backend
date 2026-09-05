@@ -12,6 +12,7 @@ import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.Fixtures;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -441,6 +442,89 @@ public class ArtistAdminServiceTest {
     }
 
     @Test
+    void 다른_아티스트가_쓰는_이름으로_수정하면_실패한다() {
+        // given
+        Artist artist = 수정할_아티스트가_있다();
+        given(artistRepository.existsByNameAndIdNot("아이유", 아티스트_id)).willReturn(true);
+
+        // when
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class,
+                () -> artistService.update(아티스트_id, 수정_요청("아이유", null, null, null, null))
+        );
+
+        // then
+        assertSoftly(softly -> {
+            softly.assertThat(thrown.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_DUPLICATE_NAME);
+            softly.assertThat(artist.getName()).isEqualTo(아티스트_이름);
+        });
+    }
+
+    @Test
+    void 다른_아티스트의_별칭인_이름으로_수정하면_실패한다() {
+        // given
+        Artist artist = 수정할_아티스트가_있다();
+        given(artistRepository.existsByNameAndIdNot("아이유", 아티스트_id)).willReturn(false);
+        given(artistAliasRepository.existsByNameAndArtistIdNot("아이유", 아티스트_id)).willReturn(true);
+
+        // when
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class,
+                () -> artistService.update(아티스트_id, 수정_요청("아이유", null, null, null, null))
+        );
+
+        // then
+        assertSoftly(softly -> {
+            softly.assertThat(thrown.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_DUPLICATE_NAME);
+            softly.assertThat(artist.getName()).isEqualTo(아티스트_이름);
+        });
+    }
+
+    @Test
+    void 다른_아티스트가_쓰는_이름을_별칭으로_추가하면_실패한다() {
+        // given
+        id가_있는_수정할_아티스트가_있다();
+        given(artistRepository.existsByNameAndIdNot(아티스트_이름, 아티스트_id)).willReturn(false);
+        given(artistRepository.existsByNameAndIdNot("아이유", 아티스트_id)).willReturn(true);
+
+        // when
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class,
+                () -> artistService.update(아티스트_id, 수정_요청(null, List.of("아이유"), null, null, null))
+        );
+
+        // then
+        assertSoftly(softly -> {
+            softly.assertThat(thrown.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_DUPLICATE_ALIAS);
+            verify(artistAliasRepository, never()).saveAll(any());
+            verify(artistAliasRepository, never()).deleteAll(any());
+        });
+    }
+
+    @Test
+    void 다른_아티스트의_별칭을_별칭으로_추가하면_실패한다() {
+        // given
+        id가_있는_수정할_아티스트가_있다();
+        given(artistRepository.existsByNameAndIdNot(아티스트_이름, 아티스트_id)).willReturn(false);
+        given(artistAliasRepository.existsByNameAndArtistIdNot(아티스트_이름, 아티스트_id)).willReturn(false);
+        given(artistRepository.existsByNameAndIdNot("아이유", 아티스트_id)).willReturn(false);
+        given(artistAliasRepository.existsByNameAndArtistIdNot("아이유", 아티스트_id)).willReturn(true);
+
+        // when
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class,
+                () -> artistService.update(아티스트_id, 수정_요청(null, List.of("아이유"), null, null, null))
+        );
+
+        // then
+        assertSoftly(softly -> {
+            softly.assertThat(thrown.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_DUPLICATE_ALIAS);
+            verify(artistAliasRepository, never()).saveAll(any());
+            verify(artistAliasRepository, never()).deleteAll(any());
+        });
+    }
+
+    @Test
     void 없는_아티스트는_삭제할_수_없다() {
         // given
         given(artistRepository.findById(아티스트_id)).willReturn(Optional.empty());
@@ -508,6 +592,16 @@ public class ArtistAdminServiceTest {
                 .instagramUrl(아티스트_인스타)
                 .needsReview(false)
                 .build();
+        given(artistRepository.findById(아티스트_id)).willReturn(Optional.of(artist));
+        return artist;
+    }
+
+    private Artist id가_있는_수정할_아티스트가_있다() {
+        Artist artist = Fixtures.withId(ArtistFixture.artist(아티스트_이름)
+                .genre(ArtistGenre.DANCE)
+                .instagramUrl(아티스트_인스타)
+                .needsReview(false)
+                .build(), 아티스트_id);
         given(artistRepository.findById(아티스트_id)).willReturn(Optional.of(artist));
         return artist;
     }

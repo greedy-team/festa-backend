@@ -184,6 +184,48 @@ class HostAdminServiceTest {
     }
 
     @Test
+    void 다른_주최가_이미_쓰는_이름으로_수정하면_실패한다() {
+        // given
+        Host host = host();
+        given(hostRepository.findById(1L)).willReturn(Optional.of(host));
+        given(hostRepository.existsByNameAndIdNot("고려대학교", 1L)).willReturn(true);
+        HostUpdateRequest request = new HostUpdateRequest(
+                "고려대학교", null, "서울 서대문구", null, null, null, null);
+
+        // when
+        FestaException thrown = catchThrowableOfType(
+                FestaException.class, () -> hostAdminService.update(1L, request));
+
+        // then
+        assertSoftly(softly -> {
+            softly.assertThat(thrown.getErrorCode()).isEqualTo(HostErrorCode.HOST_DUPLICATE_NAME);
+            softly.assertThat(host.getName()).isEqualTo("연세대학교");
+        });
+    }
+
+    @Test
+    void 이름을_그대로_두고_다른_필드만_수정하면_성공한다() {
+        // given
+        Host host = host();
+        given(hostRepository.findById(1L)).willReturn(Optional.of(host));
+        given(hostRepository.existsByNameAndIdNot("연세대학교", 1L)).willReturn(false);
+        given(hostRepository.countFestivalsByHostId(1L)).willReturn(1L);
+        HostUpdateRequest request = new HostUpdateRequest(
+                "연세대학교", "연대", "서울 신촌동", null, null, null, "https://yonsei.ac.kr");
+
+        // when
+        HostResponse response = hostAdminService.update(1L, request);
+
+        // then
+        assertSoftly(softly -> {
+            softly.assertThat(response.name()).isEqualTo("연세대학교");
+            softly.assertThat(response.shortName()).isEqualTo("연대");
+            softly.assertThat(response.region()).isEqualTo("서울 신촌동");
+            softly.assertThat(response.homepageUrl()).isEqualTo("https://yonsei.ac.kr");
+        });
+    }
+
+    @Test
     void 축제가_남아_있으면_삭제에_실패한다() {
         // given
         given(hostRepository.findById(1L)).willReturn(Optional.of(host()));
