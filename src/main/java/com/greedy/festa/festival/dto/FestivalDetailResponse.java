@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 
 public record FestivalDetailResponse(
-        Long id, String name, FestivalHostResponse host,
+        Long id, String name, String instagramUrl, FestivalHostResponse host,
         LocalDate startDate, LocalDate endDate,
         int dday,
         String posterUrl,
@@ -31,6 +31,7 @@ public record FestivalDetailResponse(
         return new FestivalDetailResponse(
                 festival.getId(),
                 festival.getName(),
+                festival.getInstagramUrl(),
                 FestivalHostResponse.from(festival.getHost()),
                 festival.getStartDate(),
                 festival.getEndDate(),
