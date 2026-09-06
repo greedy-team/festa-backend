@@ -40,6 +40,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -356,10 +357,11 @@ class ImportPreviewServiceTest {
     }
 
     @Test
-    void Artist_alias가_다른_Artist_대표명과_같으면_INVALID다() {
+    void 대표명이_다른_Artist의_대표명을_별칭으로_주장하면_자동으로_MATCHED되고_검수가_강제된다() {
         Artist existing = artist(10L, "Existing");
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(existing));
         given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of());
+        given(artistAliasRepository.findAllByArtistIdIn(anyCollection())).willReturn(List.of());
         String csv = String.join(",", ImportSection.ARTISTS.headers())
                 + "\nNew Artist,Existing,BAND,,false\n";
 
@@ -367,17 +369,24 @@ class ImportPreviewServiceTest {
                 ImportSection.ARTISTS, csv("file", "artists.csv", csv),
                 ImportConflictPolicy.UPDATE, Instant.EPOCH);
 
-        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
-        assertThat(response.rows().getFirst().errors()).extracting("code")
-                .contains("ARTIST_DUPLICATE_NAME");
+        assertSoftly(softly -> {
+            softly.assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.UPDATE);
+            softly.assertThat(response.rows().getFirst().matchedArtistId()).isEqualTo(10L);
+            softly.assertThat(response.rows().getFirst().values()).containsEntry("needsReview", true);
+            softly.assertThat(response.rows().getFirst().values().get("otherNames"))
+                    .asInstanceOf(LIST).contains("New Artist");
+            softly.assertThat(response.rows().getFirst().warnings()).extracting("code")
+                    .contains("ARTIST_MATCHED_VIA_ALIAS");
+        });
     }
 
     @Test
-    void Artist_alias가_다른_Artist_alias와_같으면_INVALID다() {
+    void 별칭이_다른_Artist의_별칭과_같으면_자동으로_MATCHED되고_검수가_강제된다() {
         Artist existing = artist(10L, "Existing");
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
         given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection()))
                 .willReturn(List.of(ArtistFixture.alias(existing, "Taken Alias").build()));
+        given(artistAliasRepository.findAllByArtistIdIn(anyCollection())).willReturn(List.of());
         String csv = String.join(",", ImportSection.ARTISTS.headers())
                 + "\nNew Artist,Taken Alias,BAND,,false\n";
 
@@ -385,13 +394,34 @@ class ImportPreviewServiceTest {
                 ImportSection.ARTISTS, csv("file", "artists.csv", csv),
                 ImportConflictPolicy.UPDATE, Instant.EPOCH);
 
-        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
-        assertThat(response.rows().getFirst().errors()).extracting("code")
-                .contains("ARTIST_DUPLICATE_NAME");
+        assertSoftly(softly -> {
+            softly.assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.UPDATE);
+            softly.assertThat(response.rows().getFirst().matchedArtistId()).isEqualTo(10L);
+            softly.assertThat(response.rows().getFirst().values()).containsEntry("needsReview", true);
+        });
     }
 
     @Test
-    void 신규_Artist_대표명이_기존_Artist_alias와_같으면_INVALID다() {
+    void 대표명_자체가_다른_Artist와도_다른_Artist의_별칭과도_안_겹치면_후보_2개_이상은_UNRESOLVED다() {
+        Artist owner = artist(27L, "SINCE");
+        Artist direct = artist(79L, "신스");
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(direct, owner));
+        given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of());
+        String csv = String.join(",", ImportSection.ARTISTS.headers())
+                + "\n신스,SINCE,BAND,,false\n";
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.ARTISTS, csv("file", "artists.csv", csv),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertThat(response.rows().getFirst().artistMatchStatus()).isEqualTo(ArtistMatchStatus.UNRESOLVED);
+        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
+        assertThat(response.rows().getFirst().errors()).extracting("code")
+                .contains("ARTIST_UNRESOLVED");
+    }
+
+    @Test
+    void 기존_Artist의_별칭을_대표명으로_쓰면_자동으로_MATCHED되고_대표명은_바뀌지_않는다() {
         Artist existing = artist(10L, "다이나믹 듀오");
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
         given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection()))
@@ -404,12 +434,64 @@ class ImportPreviewServiceTest {
                 ImportSection.ARTISTS, csv("file", "artists.csv", csv),
                 ImportConflictPolicy.UPDATE, Instant.EPOCH);
 
-        assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.INVALID);
-        assertThat(response.rows().getFirst().errors()).extracting("code")
-                .contains("ARTIST_DUPLICATE_NAME");
-        assertThat(response.blockers()).anyMatch(blocker ->
-                blocker.code().equals("ARTIST_DUPLICATE_NAME")
-                        && blocker.values().contains("다듀"));
+        assertSoftly(softly -> {
+            softly.assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.UPDATE);
+            softly.assertThat(response.rows().getFirst().matchedArtistId()).isEqualTo(10L);
+            softly.assertThat(response.rows().getFirst().values()).containsEntry("needsReview", true);
+            softly.assertThat(response.rows().getFirst().values().get("otherNames"))
+                    .asInstanceOf(LIST).contains("다듀");
+        });
+    }
+
+    @Test
+    void Lineup은_artist_canonical이_DB에_없으면_artist_raw로_폴백해_매칭한다() {
+        Artist existing = artist(85L, "엔사인");
+        Host host = host(1L, "연세대학교", "연세대");
+        Festival festival = Fixtures.withId(FestivalFixture.festival("대동제")
+                .host(host).importKey("연세대학교-신촌캠퍼스-2026")
+                .build(), 3L);
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(existing));
+        given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of());
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(festival));
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.LINEUPS,
+                lineupFile("true", "엔사인", "n.SSign"),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertSoftly(softly -> {
+            softly.assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
+            softly.assertThat(response.rows().getFirst().matchedArtistId()).isEqualTo(85L);
+            softly.assertThat(response.rows().getFirst().artistMatchStatus())
+                    .isEqualTo(ArtistMatchStatus.MATCHED);
+            softly.assertThat(response.rows().getFirst().errors()).isEmpty();
+            softly.assertThat(response.rows().getFirst().warnings()).extracting("code")
+                    .containsExactly("ARTIST_MATCHED_VIA_RAW_FALLBACK");
+        });
+    }
+
+    @Test
+    void Lineup은_artist_canonical로_직접_매칭되면_raw_폴백_경고가_없다() {
+        Artist existing = artist(85L, "엔사인");
+        Host host = host(1L, "연세대학교", "연세대");
+        Festival festival = Fixtures.withId(FestivalFixture.festival("대동제")
+                .host(host).importKey("연세대학교-신촌캠퍼스-2026")
+                .build(), 3L);
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(existing));
+        given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of());
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(festival));
+
+        ImportPreviewResponse response = service.previewSingle(
+                ImportSection.LINEUPS,
+                lineupFile("true", "엔사인", "엔사인"),
+                ImportConflictPolicy.UPDATE, Instant.EPOCH);
+
+        assertSoftly(softly -> {
+            softly.assertThat(response.rows().getFirst().matchedArtistId()).isEqualTo(85L);
+            softly.assertThat(response.rows().getFirst().artistMatchStatus())
+                    .isEqualTo(ArtistMatchStatus.MATCHED);
+            softly.assertThat(response.rows().getFirst().warnings()).isEmpty();
+        });
     }
 
     @Test
