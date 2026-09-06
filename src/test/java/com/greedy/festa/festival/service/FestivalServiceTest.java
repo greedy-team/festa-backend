@@ -704,6 +704,9 @@ class FestivalServiceTest extends PostgresTestSupport {
                 .startDate(날짜("2026-05-30"))
                 .endDate(날짜("2026-06-01"))
                 .posterUrl("https://cdn.example.com/poster.jpg")
+                // 주최 인스타(https://instagram.com/skku)와 서로 다른 값이어야
+                // 응답의 instagramUrl과 host.instagramUrl이 뒤섞여도 테스트가 잡는다
+                .instagramUrl("https://instagram.com/skku_festival")
                 .venueName("성균관대학교 인문사회과학 캠퍼스")
                 .address("서울 종로구 성균관로 25-2")
                 .latitude(37.5883)
@@ -725,6 +728,7 @@ class FestivalServiceTest extends PostgresTestSupport {
         // then
         assertThat(결과.id()).isEqualTo(축제.getId());
         assertThat(결과.name()).isEqualTo("인문사회과학 캠퍼스 대동제");
+        assertThat(결과.instagramUrl()).isEqualTo("https://instagram.com/skku_festival");
         assertThat(결과.startDate()).isEqualTo(날짜("2026-05-30"));
         assertThat(결과.endDate()).isEqualTo(날짜("2026-06-01"));
         assertThat(결과.posterUrl()).isEqualTo("https://cdn.example.com/poster.jpg");
@@ -745,6 +749,27 @@ class FestivalServiceTest extends PostgresTestSupport {
         assertThat(결과.location().address()).isEqualTo("서울 종로구 성균관로 25-2");
         assertThat(결과.location().latitude()).isEqualTo(37.5883);
         assertThat(결과.location().longitude()).isEqualTo(126.9936);
+    }
+
+    @Test
+    void 축제_인스타가_없으면_instagramUrl은_null이고_주최_인스타는_그대로_나간다() {
+        // given - 크롤러의 축제 인스타 커버리지가 71%라 null이 오히려 흔한 경로다
+        Host 주최 = HostFixture.host("테스트_한양대학교")
+                .instagramUrl("https://instagram.com/hanyang_official")
+                .build();
+        em.persist(주최);
+        Festival 축제 = FestivalFixture.festival("무악학술제")
+                .host(주최)
+                .build();
+        발행한다(축제);
+        비운다();
+
+        // when
+        FestivalDetailResponse 결과 = festivalService.getFestivalDetail(축제.getId());
+
+        // then
+        assertThat(결과.instagramUrl()).isNull();
+        assertThat(결과.host().instagramUrl()).isEqualTo("https://instagram.com/hanyang_official");
     }
 
     @Test
