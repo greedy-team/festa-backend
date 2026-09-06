@@ -19,7 +19,7 @@ public enum FestivalSortType {
 
     public Sort toSort() {
         return switch (this) {
-            case LATEST -> Sort.by(Sort.Direction.DESC, "publishedAt").and(ID_ASC);
+            case LATEST -> Sort.by(Sort.Direction.DESC, "startDate").and(ID_ASC);
             case UPCOMING -> Sort.by(Sort.Direction.ASC, "startDate").and(ID_ASC);
         };
     }
