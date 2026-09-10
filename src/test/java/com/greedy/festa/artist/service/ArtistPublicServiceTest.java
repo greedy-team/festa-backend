@@ -104,7 +104,7 @@ class ArtistPublicServiceTest {
                 eq(null), eq("100\\%\\_live"), any(LocalDate.class), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
-        artistService.findAll(0, 10, null, "APPEARANCES", "100%_live");
+        artistService.findAll(0, 10, null, "APPEARANCES", " 100 % _ live ");
 
         verify(artistRepository).findPublicByAppearances(
                 eq(null), eq("100\\%\\_live"), any(LocalDate.class), any(Pageable.class));

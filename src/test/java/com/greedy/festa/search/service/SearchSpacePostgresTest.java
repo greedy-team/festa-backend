@@ -76,7 +76,8 @@ class SearchSpacePostgresTest extends PostgresTestSupport {
             for (String type : List.of("ARTIST", "HOST", "FESTIVAL")) {
                 assertThat(searchService.search(query, type).counts()).isEqualTo(all.counts());
             }
-            assertListQueries(field, LikePatternUtils.escape(query.trim()), expected);
+            assertListQueries(field, LikePatternUtils.normalizeOptionalPattern(
+                    query, 50, com.greedy.festa.search.exception.SearchErrorCode.SEARCH_INVALID_QUERY), expected);
         }
     }
 
@@ -96,7 +97,7 @@ class SearchSpacePostgresTest extends PostgresTestSupport {
         entityManager.clear();
         SearchResponse result = searchService.search("sc ope", "ALL");
         assertThat(ids(result, field)).containsExactly(expected);
-        assertListQueries(field, "sc ope", List.of(expected));
+        assertListQueries(field, LikePatternUtils.toSearchPattern("sc ope"), List.of(expected));
     }
 
     private Long create(String field, String value, String suffix) {

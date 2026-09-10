@@ -32,7 +32,7 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
               AND (:yearStart IS NULL
                    OR (f.startDate >= :yearStart AND f.startDate < :nextYearStart))
               AND (:q IS NULL
-                   OR LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', REPLACE(CAST(:q AS String), ' ', ''), '%')) ESCAPE '\\')
+                   OR LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
               AND (:discovery IS NULL OR f.discovery = :discovery)
             GROUP BY f, h
             """,
@@ -47,7 +47,7 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
               AND (:yearStart IS NULL
                    OR (f.startDate >= :yearStart AND f.startDate < :nextYearStart))
               AND (:q IS NULL
-                   OR LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', REPLACE(CAST(:q AS String), ' ', ''), '%')) ESCAPE '\\')
+                   OR LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
               AND (:discovery IS NULL OR f.discovery = :discovery)
             """)
     Page<FestivalWithLineupCount> findReviewRows(
@@ -100,9 +100,9 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
             FROM Festival f
             JOIN FETCH f.host h
             WHERE f.publishedAt IS NOT NULL
-              AND (LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', REPLACE(CAST(:q AS String), ' ', ''), '%')) ESCAPE '\\'
-                   OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', REPLACE(CAST(:q AS String), ' ', ''), '%')) ESCAPE '\\'
-                   OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', REPLACE(CAST(:q AS String), ' ', ''), '%')) ESCAPE '\\')
+              AND (LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
             ORDER BY f.id ASC
             """)
     List<Festival> findPublishedSearchRows(@Param("q") String q);
@@ -112,9 +112,9 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
             FROM Festival f
             JOIN f.host h
             WHERE f.publishedAt IS NOT NULL
-              AND (LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', REPLACE(CAST(:q AS String), ' ', ''), '%')) ESCAPE '\\'
-                   OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', REPLACE(CAST(:q AS String), ' ', ''), '%')) ESCAPE '\\'
-                   OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', REPLACE(CAST(:q AS String), ' ', ''), '%')) ESCAPE '\\')
+              AND (LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
             """)
     long countPublishedSearchRows(@Param("q") String q);
 
@@ -134,7 +134,7 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
                OR (:status = 'ONGOING'  AND f.startDate <= :today AND f.endDate >= :today)
                OR (:status = 'ENDED'    AND f.endDate < :today))
           AND (CAST(:q AS String) IS NULL
-               OR LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', REPLACE(CAST(:q AS String), ' ', ''), '%')) ESCAPE '\\')
+               OR LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
         """,
             countQuery = """
         SELECT COUNT(f)
@@ -152,7 +152,7 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
                OR (:status = 'ONGOING'  AND f.startDate <= :today AND f.endDate >= :today)
                OR (:status = 'ENDED'    AND f.endDate < :today))
           AND (CAST(:q AS String) IS NULL
-               OR LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', REPLACE(CAST(:q AS String), ' ', ''), '%')) ESCAPE '\\')
+               OR LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
         """)
     Page<Festival> findPublishedRows(
             @Param("hostId") Long hostId,

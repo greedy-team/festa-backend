@@ -49,7 +49,7 @@ public class ArtistAdminServiceTest {
                 .willReturn(new PageImpl<>(List.of()));
 
         artistService.findAll(
-                null, "  100%_\\live  ", null, ArtistAdminSortType.NAME, 0, 20);
+                null, "  100 % _ \\ live  ", null, ArtistAdminSortType.NAME, 0, 20);
 
         verify(artistRepository).findAllWithAppearanceCount(
                 eq(null), eq(null), eq("100\\%\\_\\\\live"), any());

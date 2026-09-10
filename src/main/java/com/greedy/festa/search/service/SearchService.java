@@ -33,7 +33,7 @@ public class SearchService {
     public SearchResponse search(String query, String typeValue) {
         String normalizedQuery = LikePatternUtils.normalizeRequiredQuery(
                 query, 50, SearchErrorCode.SEARCH_INVALID_QUERY);
-        String likeQuery = LikePatternUtils.escape(normalizedQuery);
+        String likeQuery = LikePatternUtils.toSearchPattern(normalizedQuery);
         SearchType type = SearchType.from(typeValue);
         LocalDate today = LocalDate.now(clock.withZone(ClockConfig.KST));
 

@@ -36,7 +36,12 @@ public class LikePatternUtils {
     }
 
     private static String normalizeAndEscape(String raw, int maxLength, ErrorCode onTooLong) {
-        return escape(normalize(raw, maxLength, onTooLong));
+        return toSearchPattern(normalize(raw, maxLength, onTooLong));
+    }
+
+    /** Converts a validated query to a literal LIKE pattern, ignoring only U+0020 spaces. */
+    public static String toSearchPattern(String validatedQuery) {
+        return escape(validatedQuery.replace(" ", ""));
     }
 
     private static String normalize(String raw, int maxLength, ErrorCode onTooLong) {
