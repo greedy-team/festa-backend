@@ -112,7 +112,7 @@ class HostSearchAliasesPostgresTest extends PostgresTestSupport {
         entityManager.flush();
         entityManager.clear();
 
-        SearchResponse result = searchService.search("건국대", "ALL");
+        SearchResponse result = searchService.search("건구대", "ALL");
 
         assertThat(result.hosts()).isEmpty();
         assertThat(result.festivals()).isEmpty();
