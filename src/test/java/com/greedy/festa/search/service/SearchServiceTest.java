@@ -80,6 +80,17 @@ class SearchServiceTest {
     }
 
     @Test
+    void 응답의_공백은_보존하고_조회와_count에는_정규화된_검색어를_전달한다() {
+        String pattern = "a\\%\\_\\\\b";
+        SearchResponse response = searchService.search("  a % _ \\ b  ", "HOST");
+
+        assertThat(response.query()).isEqualTo("a % _ \\ b");
+        verify(hostRepository).findSearchRows(pattern);
+        verify(artistRepository).countSearchRows(pattern);
+        verify(festivalRepository).countPublishedSearchRows(pattern);
+    }
+
+    @Test
     void trim_후_51자_검색어는_계약_오류로_거절한다() {
         String query = "  " + "가".repeat(51) + "  ";
 

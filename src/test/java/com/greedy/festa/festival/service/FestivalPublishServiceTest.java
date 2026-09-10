@@ -46,7 +46,7 @@ class FestivalPublishServiceTest {
                 eq(null), any()))
                 .willReturn(new PageImpl<>(List.of()));
 
-        festivalPublishService.findAll(null, null, null, "  100%_\\live  ", null,
+        festivalPublishService.findAll(null, null, null, "  100 % _ \\ live  ", null,
                 FestivalAdminSortType.IMPORTED_DESC, 0, 20);
 
         verify(festivalRepository).findReviewRows(

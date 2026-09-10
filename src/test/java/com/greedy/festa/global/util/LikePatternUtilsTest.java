@@ -12,9 +12,30 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 class LikePatternUtilsTest {
 
     @Test
+    void internalSpacesStillCountTowardLimitAndRemainInQuery() {
+        String fifty = "a".repeat(25) + " " + "b".repeat(24);
+        assertThat(LikePatternUtils.normalizeRequiredQuery(" " + fifty + " ", 50,
+                SearchErrorCode.SEARCH_INVALID_QUERY)).isEqualTo(fifty);
+        assertThat(LikePatternUtils.normalizeOptionalPattern(" " + fifty + " ", 50,
+                ArtistErrorCode.ARTIST_INVALID_QUERY)).isEqualTo("a".repeat(25) + "b".repeat(24));
+        assertThatExceptionOfType(FestaException.class).isThrownBy(() ->
+                LikePatternUtils.normalizeRequiredQuery(fifty + "b", 50, SearchErrorCode.SEARCH_INVALID_QUERY));
+        assertThatExceptionOfType(FestaException.class).isThrownBy(() ->
+                LikePatternUtils.normalizeOptionalPattern(fifty + "b", 50, ArtistErrorCode.ARTIST_INVALID_QUERY));
+    }
+
+    @Test
     void escapesBackslashBeforeLikeWildcards() {
         assertThat(LikePatternUtils.escape("a\\b%c_d"))
                 .isEqualTo("a\\\\b\\%c\\_d");
+    }
+
+    @Test
+    void searchPatternRemovesOnlyAsciiSpacesBeforeEscaping() {
+        assertThat(LikePatternUtils.toSearchPattern("a \\ % _ \t\n\u00a0\u3000-. b"))
+                .isEqualTo("a\\\\\\%\\_\t\n\u00a0\u3000-.b");
+        assertThat(LikePatternUtils.normalizeOptionalPattern("  a \\ % _ b  ", 50,
+                ArtistErrorCode.ARTIST_INVALID_QUERY)).isEqualTo("a\\\\\\%\\_b");
     }
 
     @Test

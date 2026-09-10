@@ -62,6 +62,27 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 class FestivalServiceTest extends PostgresTestSupport {
 
     @Test
+    void publicAndAdminSearchIgnoreSpacesOnBothSides() {
+        Host host = 주최("공백검증대학교");
+        축제(host, "가나%축제", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        축제(host, "가 나 % 축제", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        축제(host, "가나다축제", 날짜(2026, 5, 22), 날짜(2026, 5, 24), 시각("2026-05-01T00:00:00Z"));
+        비운다();
+
+        for (String query : List.of("가나%축제", "  가 나 % 축 제  ")) {
+            var publicResult = 목록(null, null, null, null, query, FestivalSortType.LATEST);
+            var adminResult = festivalPublishService.findAll(
+                    null, null, null, query, null, FestivalAdminSortType.START_DATE, 0, 20);
+            assertThat(publicResult.items()).extracting(FestivalListItemResponse::name)
+                    .containsExactlyInAnyOrder("가나%축제", "가 나 % 축제");
+            assertThat(publicResult.totalElements()).isEqualTo(2);
+            assertThat(adminResult.items()).extracting(item -> item.name())
+                    .containsExactlyInAnyOrder("가나%축제", "가 나 % 축제");
+            assertThat(adminResult.totalElements()).isEqualTo(2);
+        }
+    }
+
+    @Test
     void publicQueryLongerThanFiftyCharactersIsRejected() {
         FestaException exception = catchThrowableOfType(
                 () -> festivalService.getFestivals(

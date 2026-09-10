@@ -37,10 +37,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             WHERE (:needsReview IS NULL OR a.needsReview = :needsReview)
               AND (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
-                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(a.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
                               WHERE al.artist = a
-                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
+                                AND LOWER(REPLACE(al.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
             GROUP BY a
             """,
             countQuery = """
@@ -49,10 +49,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             WHERE (:needsReview IS NULL OR a.needsReview = :needsReview)
               AND (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
-                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(a.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
                               WHERE al.artist = a
-                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
+                                AND LOWER(REPLACE(al.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
             """)
     Page<ArtistWithAppearanceCount> findAllWithAppearanceCount(
             @Param("needsReview") Boolean needsReview,
@@ -70,10 +70,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
                  AND f.endDate < :today
             WHERE (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
-                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(a.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
                               WHERE al.artist = a
-                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
+                                AND LOWER(REPLACE(al.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
             GROUP BY a
             ORDER BY COUNT(DISTINCT f) DESC, a.id ASC
             """,
@@ -82,10 +82,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             FROM Artist a
             WHERE (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
-                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(a.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
                               WHERE al.artist = a
-                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
+                                AND LOWER(REPLACE(al.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
             """)
     Page<ArtistWithAppearanceCount> findPublicByAppearances(
             @Param("genre") ArtistGenre genre,
@@ -103,10 +103,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
                  AND f.endDate < :today
             WHERE (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
-                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(a.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
                               WHERE al.artist = a
-                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
+                                AND LOWER(REPLACE(al.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
             GROUP BY a
             ORDER BY a.name ASC, a.id ASC
             """,
@@ -115,10 +115,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             FROM Artist a
             WHERE (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
-                   OR LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(a.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
                               WHERE al.artist = a
-                                AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
+                                AND LOWER(REPLACE(al.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
             """)
     Page<ArtistWithAppearanceCount> findPublicByName(
             @Param("genre") ArtistGenre genre,
@@ -197,10 +197,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             LEFT JOIN Festival f ON f = l.festival
                  AND f.publishedAt IS NOT NULL
                  AND f.endDate < :today
-            WHERE LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+            WHERE LOWER(REPLACE(a.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                OR EXISTS (SELECT 1 FROM ArtistAlias al
                           WHERE al.artist = a
-                            AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+                            AND LOWER(REPLACE(al.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
             GROUP BY a
             ORDER BY a.id ASC
             """)
@@ -212,10 +212,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     @Query("""
             SELECT COUNT(a)
             FROM Artist a
-            WHERE LOWER(a.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+            WHERE LOWER(REPLACE(a.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                OR EXISTS (SELECT 1 FROM ArtistAlias al
                           WHERE al.artist = a
-                            AND LOWER(al.name) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+                            AND LOWER(REPLACE(al.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
             """)
     long countSearchRows(@Param("q") String q);
 
