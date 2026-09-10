@@ -18,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.function.Function;
 
 @Service
 @RequiredArgsConstructor
@@ -33,23 +35,25 @@ public class SearchService {
     public SearchResponse search(String query, String typeValue) {
         String normalizedQuery = LikePatternUtils.normalizeRequiredQuery(
                 query, 50, SearchErrorCode.SEARCH_INVALID_QUERY);
-        String likeQuery = LikePatternUtils.toSearchPattern(normalizedQuery);
+        List<String> likeQueries = HostSearchAliases.queriesFor(normalizedQuery).stream()
+                .map(LikePatternUtils::toSearchPattern)
+                .toList();
         SearchType type = SearchType.from(typeValue);
         LocalDate today = LocalDate.now(clock.withZone(ClockConfig.KST));
 
         List<SearchArtistResponse> artists = includes(type, SearchType.ARTIST)
-                ? findArtists(likeQuery, today) : List.of();
+                ? findArtists(likeQueries.getFirst(), today) : List.of();
         List<SearchHostResponse> hosts = includes(type, SearchType.HOST)
-                ? findHosts(likeQuery) : List.of();
+                ? findHosts(likeQueries) : List.of();
         List<SearchFestivalResponse> festivals = includes(type, SearchType.FESTIVAL)
-                ? findFestivals(likeQuery) : List.of();
+                ? findFestivals(likeQueries) : List.of();
 
         long artistCount = includes(type, SearchType.ARTIST)
-                ? artists.size() : artistRepository.countSearchRows(likeQuery);
+                ? artists.size() : artistRepository.countSearchRows(likeQueries.getFirst());
         long hostCount = includes(type, SearchType.HOST)
-                ? hosts.size() : hostRepository.countSearchRows(likeQuery);
+                ? hosts.size() : countHosts(likeQueries);
         long festivalCount = includes(type, SearchType.FESTIVAL)
-                ? festivals.size() : festivalRepository.countPublishedSearchRows(likeQuery);
+                ? festivals.size() : countFestivals(likeQueries);
         SearchCounts counts = SearchCounts.of(festivalCount, artistCount, hostCount);
         return SearchResponse.of(
                 normalizedQuery,
@@ -67,16 +71,42 @@ public class SearchService {
                 .toList();
     }
 
-    private List<SearchHostResponse> findHosts(String query) {
-        return hostRepository.findSearchRows(query).stream()
-                .map(SearchHostResponse::from)
-                .toList();
+    private List<SearchHostResponse> findHosts(List<String> queries) {
+        return distinctById(
+                queries.stream()
+                        .flatMap(query -> hostRepository.findSearchRows(query).stream())
+                        .map(SearchHostResponse::from)
+                        .toList(),
+                SearchHostResponse::hostId
+        );
     }
 
-    private List<SearchFestivalResponse> findFestivals(String query) {
-        return festivalRepository.findPublishedSearchRows(query).stream()
-                .map(SearchFestivalResponse::from)
-                .toList();
+    private List<SearchFestivalResponse> findFestivals(List<String> queries) {
+        return distinctById(
+                queries.stream()
+                        .flatMap(query -> festivalRepository.findPublishedSearchRows(query).stream())
+                        .map(SearchFestivalResponse::from)
+                        .toList(),
+                SearchFestivalResponse::festivalId
+        );
+    }
+
+    private long countHosts(List<String> queries) {
+        return queries.size() == 1
+                ? hostRepository.countSearchRows(queries.getFirst())
+                : findHosts(queries).size();
+    }
+
+    private long countFestivals(List<String> queries) {
+        return queries.size() == 1
+                ? festivalRepository.countPublishedSearchRows(queries.getFirst())
+                : findFestivals(queries).size();
+    }
+
+    private <T> List<T> distinctById(List<T> items, Function<T, Long> idExtractor) {
+        LinkedHashMap<Long, T> distinctItems = new LinkedHashMap<>();
+        items.forEach(item -> distinctItems.putIfAbsent(idExtractor.apply(item), item));
+        return List.copyOf(distinctItems.values());
     }
 
     private boolean includes(SearchType selected, SearchType target) {
