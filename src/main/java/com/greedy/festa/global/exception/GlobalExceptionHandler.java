@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Map;
 
@@ -45,6 +46,15 @@ public class GlobalExceptionHandler {
         log.error("{} - {} {}", CommonErrorCode.INTERNAL_SERVER_ERROR.name(),
                 request.getMethod(), request.getRequestURI(), e);
         return toResponse(CommonErrorCode.INTERNAL_SERVER_ERROR, request);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFoundException(
+            NoResourceFoundException e, HttpServletRequest request) {
+
+        log.warn("{} - {} {}", CommonErrorCode.RESOURCE_NOT_FOUND.name(),
+                request.getMethod(), request.getRequestURI());
+        return toResponse(CommonErrorCode.RESOURCE_NOT_FOUND, request);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
