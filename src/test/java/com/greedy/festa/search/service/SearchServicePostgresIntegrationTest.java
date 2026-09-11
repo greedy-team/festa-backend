@@ -94,7 +94,7 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
         SearchResponse response = searchService.search("검색", "ALL");
 
         assertThat(response.festivals()).extracting(item -> item.name())
-                .containsExactly("공개 검색축제", "최근 공개 검색축제");
+                .containsExactly("최근 공개 검색축제", "공개 검색축제");
         assertThat(response.artists()).hasSize(1);
         assertThat(response.artists().getFirst().appearanceCount()).isEqualTo(2);
         assertThat(response.artists().getFirst().latestAppearanceDate())
@@ -106,6 +106,25 @@ class SearchServicePostgresIntegrationTest extends PostgresTestSupport {
         assertThat(hostResponse.hosts().getFirst().festivalCount()).isEqualTo(2);
         assertThat(hostResponse.hosts().getFirst().latestFestivalYearMonth())
                 .isEqualTo("2026-08");
+    }
+
+    @Test
+    void Festival_검색_결과는_개최일_내림차순이고_동일_개최일은_id_오름차순이다() {
+        Host host = persist(HostFixture.host("정렬대학교")
+                .shortName("정렬대")
+                .build());
+        Festival older = festival(host, "정렬 검색축제 과거", LocalDate.of(2025, 5, 1), true);
+        Festival latestFirst = festival(host, "정렬 검색축제 최신 첫번째", LocalDate.of(2026, 5, 1), true);
+        Festival latestSecond = festival(host, "정렬 검색축제 최신 두번째", LocalDate.of(2026, 5, 1), true);
+        flushAndClear();
+
+        SearchResponse response = searchService.search("정렬 검색축제", "FESTIVAL");
+
+        assertThat(response.festivals()).extracting(item -> item.festivalId())
+                .containsExactly(latestFirst.getId(), latestSecond.getId(), older.getId());
+        assertThat(response.counts().festival()).isEqualTo(3);
+        assertThat(response.artists()).isEmpty();
+        assertThat(response.hosts()).isEmpty();
     }
 
     @Test

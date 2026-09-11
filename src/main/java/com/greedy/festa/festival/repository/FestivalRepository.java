@@ -103,7 +103,7 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
               AND (LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
-            ORDER BY f.id ASC
+            ORDER BY f.startDate DESC, f.id ASC
             """)
     List<Festival> findPublishedSearchRows(@Param("q") String q);
 
