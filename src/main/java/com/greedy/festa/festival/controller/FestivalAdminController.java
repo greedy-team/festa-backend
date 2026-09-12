@@ -84,7 +84,8 @@ public class FestivalAdminController {
                     + "좌표는 크롤러 시드가 원본이지만 손으로 만든 축제는 여기서만 채울 수 있다.")
     @ApiResponse(responseCode = "201", description = "등록된 축제")
     @ApiResponse(responseCode = "400", description = "FESTIVAL_INVALID_NAME / FESTIVAL_INVALID_START_DATE "
-            + "/ FESTIVAL_INVALID_END_DATE / FESTIVAL_INVALID_HOST_ID / INVALID_DATE_RANGE",
+            + "/ FESTIVAL_INVALID_END_DATE / FESTIVAL_INVALID_HOST_ID / INVALID_DATE_RANGE "
+            + "/ INVALID_REQUEST_BODY - UNKNOWN 입장 정책을 요청한 경우",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "HOST_NOT_FOUND",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -104,7 +105,8 @@ public class FestivalAdminController {
                     + "발행 조건인 좌표(latitude·longitude)는 비울 수 없다.")
     @ApiResponse(responseCode = "200", description = "수정된 축제")
     @ApiResponse(responseCode = "400", description = "FESTIVAL_INVALID_NAME / FESTIVAL_INVALID_START_DATE "
-            + "/ FESTIVAL_INVALID_END_DATE / FESTIVAL_INVALID_HOST_ID / INVALID_DATE_RANGE",
+            + "/ FESTIVAL_INVALID_END_DATE / FESTIVAL_INVALID_HOST_ID / INVALID_DATE_RANGE "
+            + "/ INVALID_REQUEST_BODY - UNKNOWN 입장 정책을 요청한 경우",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "FESTIVAL_NOT_FOUND / HOST_NOT_FOUND",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -150,7 +152,7 @@ public class FestivalAdminController {
     @Operation(summary = "축제 일괄 발행",
             description = "festivalIds는 1~100개다. 부분 성공을 허용해 발행된 id는 publishedIds에, 막힌 id는 "
                     + "failed[]에 사유와 함께 담긴다. reason은 LINEUP_EMPTY / HOST_NOT_LINKED / "
-                    + "COORDINATES_MISSING / NOT_FOUND이며 에러 코드와는 다른 체계다. "
+                    + "COORDINATES_MISSING / ADMISSION_UNKNOWN / NOT_FOUND이며 에러 코드와는 다른 체계다. "
                     + "없는 id도 전체를 막지 않고, 이미 발행된 축제에 다시 요청해도 오류가 아니다.")
     @ApiResponse(responseCode = "200", description = "발행된 id 목록과 실패 목록")
     @ApiResponse(responseCode = "400", description = "FESTIVAL_INVALID_IDS",
@@ -164,7 +166,7 @@ public class FestivalAdminController {
             description = "라인업·주최·좌표가 모두 있어야 발행된다. 이미 발행된 축제에 다시 요청해도 오류가 아니다.")
     @ApiResponse(responseCode = "200", description = "발행 상태")
     @ApiResponse(responseCode = "400", description = "FESTIVAL_PUBLISH_LINEUP_EMPTY / FESTIVAL_PUBLISH_HOST_NOT_LINKED "
-            + "/ FESTIVAL_PUBLISH_COORDINATES_MISSING",
+            + "/ FESTIVAL_PUBLISH_COORDINATES_MISSING / FESTIVAL_PUBLISH_ADMISSION_UNKNOWN",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "FESTIVAL_NOT_FOUND",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

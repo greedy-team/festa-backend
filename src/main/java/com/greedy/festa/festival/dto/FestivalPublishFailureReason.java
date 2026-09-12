@@ -7,13 +7,15 @@ public enum FestivalPublishFailureReason {
     LINEUP_EMPTY,
     HOST_NOT_LINKED,
     COORDINATES_MISSING,
-    NOT_FOUND;
+    NOT_FOUND,
+    ADMISSION_UNKNOWN;
 
     public static FestivalPublishFailureReason from(FestivalPublishBlocker blocker) {
         return switch (blocker) {
             case LINEUP_EMPTY -> LINEUP_EMPTY;
             case HOST_NOT_LINKED -> HOST_NOT_LINKED;
             case COORDINATES_MISSING -> COORDINATES_MISSING;
+            case ADMISSION_UNKNOWN -> ADMISSION_UNKNOWN;
         };
     }
 }

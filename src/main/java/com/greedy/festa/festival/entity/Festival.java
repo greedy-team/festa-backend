@@ -7,12 +7,14 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
 @Entity
+@DynamicUpdate
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Festival extends BaseEntity {
@@ -44,14 +46,20 @@ public class Festival extends BaseEntity {
     private Double latitude;
     private Double longitude;
 
-    @Enumerated(EnumType.STRING)
     private ExternalVisitorPolicy externalVisitor;
 
-    @Enumerated(EnumType.STRING)
     private VerificationMethod verification;
 
-    @Enumerated(EnumType.STRING)
     private TicketType ticketType;
+
+    @Transient
+    private ExternalVisitorPolicy loadedExternalVisitor;
+
+    @Transient
+    private VerificationMethod loadedVerification;
+
+    @Transient
+    private TicketType loadedTicketType;
 
     private Instant ticketOpenAt;
     private String admissionNote;
@@ -123,9 +131,9 @@ public class Festival extends BaseEntity {
         this.venueName = venueName;
         this.latitude = latitude;
         this.longitude = longitude;
-        this.externalVisitor = externalVisitor;
-        this.verification = verification;
-        this.ticketType = ticketType;
+        this.externalVisitor = preserveUnknown(this.externalVisitor, externalVisitor);
+        this.verification = preserveUnknown(this.verification, verification);
+        this.ticketType = preserveUnknown(this.ticketType, ticketType);
         this.ticketOpenAt = ticketOpenAt;
         this.admissionRaw = admissionRaw;
         this.instagramUrl = instagramUrl;
@@ -156,9 +164,9 @@ public class Festival extends BaseEntity {
         this.address = blankToNull(address);
         this.latitude = latitude;
         this.longitude = longitude;
-        this.externalVisitor = externalVisitor;
-        this.verification = verification;
-        this.ticketType = ticketType;
+        this.externalVisitor = preserveUnknown(this.externalVisitor, externalVisitor);
+        this.verification = preserveUnknown(this.verification, verification);
+        this.ticketType = preserveUnknown(this.ticketType, ticketType);
         this.ticketOpenAt = ticketOpenAt;
         this.admissionNote = blankToNull(admissionNote);
         this.instagramUrl = blankToNull(instagramUrl);
@@ -170,6 +178,49 @@ public class Festival extends BaseEntity {
 
     public void unpublish() {
         this.publishedAt = null;
+    }
+
+    public boolean hasUnknownAdmissionValue() {
+        return isUnknown(externalVisitor) || isUnknown(verification) || isUnknown(ticketType);
+    }
+
+    @PostLoad
+    private void rememberLoadedAdmissionValues() {
+        loadedExternalVisitor = externalVisitor;
+        loadedVerification = verification;
+        loadedTicketType = ticketType;
+    }
+
+    @PrePersist
+    private void preventUnknownAdmissionValuesOnCreate() {
+        if (hasUnknownAdmissionValue()) {
+            throw new IllegalStateException("UNKNOWN 입장 정책은 저장할 수 없습니다.");
+        }
+    }
+
+    @PreUpdate
+    private void preventNewUnknownAdmissionValues() {
+        if (becameUnknown(loadedExternalVisitor, externalVisitor)
+                || becameUnknown(loadedVerification, verification)
+                || becameUnknown(loadedTicketType, ticketType)) {
+            throw new IllegalStateException("UNKNOWN admission values cannot be stored.");
+        }
+    }
+
+    private static <E extends Enum<E> & UnknownSafeEnum> E preserveUnknown(E current, E requested) {
+        if (current != null && current.isUnknown()
+                && (requested == null || requested.isUnknown())) {
+            return current;
+        }
+        return requested;
+    }
+
+    private static boolean isUnknown(UnknownSafeEnum value) {
+        return value != null && value.isUnknown();
+    }
+
+    private static boolean becameUnknown(UnknownSafeEnum loaded, UnknownSafeEnum current) {
+        return !isUnknown(loaded) && isUnknown(current);
     }
 
     public boolean withinPeriod(int day) {

@@ -1,9 +1,15 @@
 package com.greedy.festa.festival.entity;
 
-public enum VerificationMethod {
+public enum VerificationMethod implements UnknownSafeEnum {
     NONE,
     STUDENT_ID,
     PRE_BOOKING,
     INVITATION,
-    OTHER
+    OTHER,
+    UNKNOWN;
+
+    @Override
+    public boolean isUnknown() {
+        return this == UNKNOWN;
+    }
 }
