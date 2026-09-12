@@ -3,6 +3,12 @@ name: PROJECT-SPRING-CD
 on:
   push:
     branches: [develop, main]
+    # 문서만 바뀐 push는 배포하지 않는다. 필수 검사인 CI에는 경로 제외를 넣지 않는다.
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'CHANGELOG.json'
+  # 새 인스턴스의 최초 배포나 동일 코드 재배포는 경로 필터 없이 수동 실행한다.
   workflow_dispatch:
     inputs:
       environment:
@@ -47,9 +53,10 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: QEMU 설정
+        if: ${{ env.TARGET_PLATFORM == 'linux/arm64' }}
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
         with:
-          platforms: arm64,amd64
+          platforms: arm64
 
       - name: Docker Buildx 설정
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
