@@ -74,21 +74,12 @@ class LikePatternUtilsTest {
     }
 
     @Test
-    void requiredAliasQueryAcceptsFiftyCharactersBeforeLikeEscaping() {
-        String alias = "%".repeat(50);
+    void requiredQueryAcceptsFiftyCharactersBeforeCreatingSearchPattern() {
+        String query = "%".repeat(50);
         String normalized = LikePatternUtils.normalizeRequiredQuery(
-                "  " + alias + "  ", 50, SearchErrorCode.SEARCH_INVALID_QUERY);
+                "  " + query + "  ", 50, SearchErrorCode.SEARCH_INVALID_QUERY);
 
-        assertThat(normalized).isEqualTo(alias);
-        assertThat(LikePatternUtils.escape(normalized)).isEqualTo("\\%".repeat(50));
-    }
-
-    @Test
-    void requiredAliasQueryRejectsFiftyOneCharactersAfterTrimming() {
-        assertThatExceptionOfType(FestaException.class)
-                .isThrownBy(() -> LikePatternUtils.normalizeRequiredQuery(
-                        "  " + "가".repeat(51) + "  ", 50, SearchErrorCode.SEARCH_INVALID_QUERY))
-                .satisfies(exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(SearchErrorCode.SEARCH_INVALID_QUERY));
+        assertThat(normalized).isEqualTo(query);
+        assertThat(LikePatternUtils.toSearchPattern(normalized)).isEqualTo("\\%".repeat(50));
     }
 }

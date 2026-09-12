@@ -34,8 +34,24 @@ class HostSearchAliasesPostgresTest extends PostgresTestSupport {
     @Autowired SearchService searchService;
 
     static Stream<Arguments> aliases() {
-        return HostSearchAliases.mappings().entrySet().stream()
-                .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
+        return Stream.of(
+                Arguments.of("연대", "연세대학교"),
+                Arguments.of("고대", "고려대학교"),
+                Arguments.of("홍대", "홍익대학교"),
+                Arguments.of("외대", "한국외국어대학교"),
+                Arguments.of("한국외대", "한국외국어대학교"),
+                Arguments.of("이대", "이화여자대학교"),
+                Arguments.of("이화여대", "이화여자대학교"),
+                Arguments.of("숙대", "숙명여자대학교"),
+                Arguments.of("숙명여대", "숙명여자대학교"),
+                Arguments.of("설여대", "서울여자대학교"),
+                Arguments.of("서울여대", "서울여자대학교"),
+                Arguments.of("동덕여대", "동덕여자대학교"),
+                Arguments.of("동덕대", "동덕여자대학교"),
+                Arguments.of("덕성여대", "덕성여자대학교"),
+                Arguments.of("덕성대", "덕성여자대학교"),
+                Arguments.of("건대", "건국대학교")
+        );
     }
 
     @ParameterizedTest

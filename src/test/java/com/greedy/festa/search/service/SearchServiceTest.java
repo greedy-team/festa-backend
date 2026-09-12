@@ -166,6 +166,21 @@ class SearchServiceTest {
     }
 
     @Test
+    void 약어_ARTIST_검색은_Host와_Festival_목록_대신_단일_COUNT_쿼리만_사용한다() {
+        given(artistRepository.findSearchRows("연대", LocalDate.of(2026, 8, 27)))
+                .willReturn(List.of());
+        given(hostRepository.countSearchRows("연대", "연세대학교")).willReturn(2L);
+        given(festivalRepository.countPublishedSearchRows("연대", "연세대학교")).willReturn(3L);
+
+        SearchResponse response = searchService.search("연대", "ARTIST");
+
+        assertThat(response.counts()).isEqualTo(new SearchCounts(5, 3, 0, 2));
+        verify(hostRepository).countSearchRows("연대", "연세대학교");
+        verify(festivalRepository).countPublishedSearchRows("연대", "연세대학교");
+        verifyNoMoreInteractions(hostRepository, festivalRepository);
+    }
+
+    @Test
     void HOST_선택은_Host_목록과_나머지_count만_조회한다() {
         Host host = Fixtures.withId(HostFixture.host("봄대학교").build(), 1L);
         HostSearchRow hostRow = mock(HostSearchRow.class);

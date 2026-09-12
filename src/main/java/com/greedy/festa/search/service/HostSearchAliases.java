@@ -36,8 +36,4 @@ final class HostSearchAliases {
         String officialName = OFFICIAL_NAME_BY_ALIAS.get(query.replace(" ", ""));
         return officialName == null ? List.of(query) : List.of(query, officialName);
     }
-
-    static Map<String, String> mappings() {
-        return OFFICIAL_NAME_BY_ALIAS;
-    }
 }
