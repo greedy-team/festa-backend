@@ -34,6 +34,9 @@ jobs:
       - name: 빌드
         run: ./gradlew build
 
+      - name: 배포 스크립트 실패 경로 검증
+        run: python3 -B -m unittest discover -s deploy -p 'test_*.py' -v
+
       - name: 테스트 결과 PR 코멘트
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: ${{ !cancelled() }}
