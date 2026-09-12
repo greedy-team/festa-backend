@@ -66,10 +66,6 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
 
-    // 테스트 수신기가 OTLP 본문을 디코딩하는 데 쓴다. micrometer-registry-otlp가 의존하는
-    // proto 버전과 같다. Boot BOM이 관리하지 않으므로 버전을 적고, Boot를 올릴 때 함께 맞춘다.
-    testImplementation("io.opentelemetry.proto:opentelemetry-proto:1.10.0-alpha")
-
     // 실제 Postgres로 돌린다. Flyway 마이그레이션과 ddl-auto: validate가
     // 함께 돌아야 스키마와 엔티티가 어긋난 것을 CI가 잡는다.
     // Boot 4에서 테스트 슬라이스가 별도 모듈로 분리됐다 (@DataJpaTest, @AutoConfigureTestDatabase)
