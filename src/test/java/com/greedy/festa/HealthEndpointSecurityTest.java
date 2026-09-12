@@ -8,8 +8,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -22,6 +24,8 @@ import com.greedy.festa.host.repository.HostRepository;
 import com.greedy.festa.importer.repository.ImportBatchRepository;
 import com.greedy.festa.importer.repository.ImportCommitRowRepository;
 import com.greedy.festa.lineup.repository.LineupRepository;
+
+import io.micrometer.registry.otlp.OtlpMeterRegistry;
 
 @SpringBootTest(properties = {
         "spring.autoconfigure.exclude="
@@ -69,8 +73,21 @@ class HealthEndpointSecurityTest {
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
+    @Autowired
+    private ApplicationContext applicationContext;
+
     @Value("${local.server.port}")
     private int port;
+
+    // 로컬·CI·테스트가 아무것도 내보내지 않는다는 보장이다 (DEC-0185).
+    // 모듈이 클래스패스에 들어오면 export 기본값이 켜짐이라, application.yml에서 끄지 않으면
+    // 모든 테스트 컨텍스트가 localhost:4318로 매분 push를 시도한다.
+    @Test
+    void otlpRegistryIsAbsentByDefault() {
+        OtlpMeterRegistry registry = applicationContext.getBeanProvider(OtlpMeterRegistry.class).getIfAvailable();
+
+        assertThat(registry).isNull();
+    }
 
     @Test
     void healthEndpointIsPublic() throws Exception {
