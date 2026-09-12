@@ -102,7 +102,7 @@ class HostSearchAliasesPostgresTest extends PostgresTestSupport {
     }
 
     @org.junit.jupiter.api.Test
-    void aliasExpansionKeepsHostOrderAfterResultsAreMerged() {
+    void aliasExpansionKeepsHostOrderInSingleRepositoryQuery() {
         entityManager.createNativeQuery("ALTER TABLE host ALTER COLUMN id RESTART WITH 5")
                 .executeUpdate();
         Host officialNameMatch = HostFixture.host("한국외국어대학교").build();
@@ -125,7 +125,7 @@ class HostSearchAliasesPostgresTest extends PostgresTestSupport {
     }
 
     @org.junit.jupiter.api.Test
-    void aliasExpansionKeepsFestivalOrderAfterResultsAreMerged() {
+    void aliasExpansionKeepsFestivalOrderInSingleRepositoryQuery() {
         Host host = HostFixture.host("건국대학교").shortName("건대").build();
         entityManager.persist(host);
         Festival directMatch = FestivalFixture.festival("직접 일치 축제")

@@ -37,20 +37,30 @@ public interface HostRepository extends JpaRepository<Host, Long> {
             FROM Host h
             LEFT JOIN Festival f ON f.host = h
                  AND f.publishedAt IS NOT NULL
-            WHERE LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
-               OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+            WHERE LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:primaryQuery AS String), '%')) ESCAPE '\\'
+               OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:primaryQuery AS String), '%')) ESCAPE '\\'
+               OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:aliasQuery AS String), '%')) ESCAPE '\\'
+               OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:aliasQuery AS String), '%')) ESCAPE '\\'
             GROUP BY h
             ORDER BY h.id ASC
             """)
-    List<HostSearchRow> findSearchRows(@Param("q") String q);
+    List<HostSearchRow> findSearchRows(
+            @Param("primaryQuery") String primaryQuery,
+            @Param("aliasQuery") String aliasQuery
+    );
 
     @Query("""
             SELECT COUNT(h)
             FROM Host h
-            WHERE LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
-               OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
+            WHERE LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:primaryQuery AS String), '%')) ESCAPE '\\'
+               OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:primaryQuery AS String), '%')) ESCAPE '\\'
+               OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:aliasQuery AS String), '%')) ESCAPE '\\'
+               OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:aliasQuery AS String), '%')) ESCAPE '\\'
             """)
-    long countSearchRows(@Param("q") String q);
+    long countSearchRows(
+            @Param("primaryQuery") String primaryQuery,
+            @Param("aliasQuery") String aliasQuery
+    );
 
     @Query(value = """
             SELECT h.id AS "hostId",

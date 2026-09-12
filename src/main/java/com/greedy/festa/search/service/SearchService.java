@@ -18,10 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.function.Function;
 
 @Service
 @RequiredArgsConstructor
@@ -39,22 +36,24 @@ public class SearchService {
         List<String> likeQueries = HostSearchAliases.queriesFor(normalizedQuery).stream()
                 .map(LikePatternUtils::toSearchPattern)
                 .toList();
+        String primaryQuery = likeQueries.getFirst();
+        String aliasQuery = likeQueries.getLast();
         SearchType type = SearchType.from(typeValue);
         LocalDate today = LocalDate.now(clock.withZone(ClockConfig.KST));
 
         List<SearchArtistResponse> artists = includes(type, SearchType.ARTIST)
-                ? findArtists(likeQueries.getFirst(), today) : List.of();
+                ? findArtists(primaryQuery, today) : List.of();
         List<SearchHostResponse> hosts = includes(type, SearchType.HOST)
-                ? findHosts(likeQueries) : List.of();
+                ? findHosts(primaryQuery, aliasQuery) : List.of();
         List<SearchFestivalResponse> festivals = includes(type, SearchType.FESTIVAL)
-                ? findFestivals(likeQueries) : List.of();
+                ? findFestivals(primaryQuery, aliasQuery) : List.of();
 
         long artistCount = includes(type, SearchType.ARTIST)
-                ? artists.size() : artistRepository.countSearchRows(likeQueries.getFirst());
+                ? artists.size() : artistRepository.countSearchRows(primaryQuery);
         long hostCount = includes(type, SearchType.HOST)
-                ? hosts.size() : countHosts(likeQueries);
+                ? hosts.size() : hostRepository.countSearchRows(primaryQuery, aliasQuery);
         long festivalCount = includes(type, SearchType.FESTIVAL)
-                ? festivals.size() : countFestivals(likeQueries);
+                ? festivals.size() : festivalRepository.countPublishedSearchRows(primaryQuery, aliasQuery);
         SearchCounts counts = SearchCounts.of(festivalCount, artistCount, hostCount);
         return SearchResponse.of(
                 normalizedQuery,
@@ -72,47 +71,16 @@ public class SearchService {
                 .toList();
     }
 
-    private List<SearchHostResponse> findHosts(List<String> queries) {
-        return distinctById(
-                queries.stream()
-                        .flatMap(query -> hostRepository.findSearchRows(query).stream())
-                        .map(SearchHostResponse::from)
-                        .toList(),
-                SearchHostResponse::hostId
-        ).stream()
-                .sorted(Comparator.comparing(SearchHostResponse::hostId))
+    private List<SearchHostResponse> findHosts(String primaryQuery, String aliasQuery) {
+        return hostRepository.findSearchRows(primaryQuery, aliasQuery).stream()
+                .map(SearchHostResponse::from)
                 .toList();
     }
 
-    private List<SearchFestivalResponse> findFestivals(List<String> queries) {
-        return distinctById(
-                queries.stream()
-                        .flatMap(query -> festivalRepository.findPublishedSearchRows(query).stream())
-                        .map(SearchFestivalResponse::from)
-                        .toList(),
-                SearchFestivalResponse::festivalId
-        ).stream()
-                .sorted(Comparator.comparing(SearchFestivalResponse::startDate).reversed()
-                        .thenComparing(SearchFestivalResponse::festivalId))
+    private List<SearchFestivalResponse> findFestivals(String primaryQuery, String aliasQuery) {
+        return festivalRepository.findPublishedSearchRows(primaryQuery, aliasQuery).stream()
+                .map(SearchFestivalResponse::from)
                 .toList();
-    }
-
-    private long countHosts(List<String> queries) {
-        return queries.size() == 1
-                ? hostRepository.countSearchRows(queries.getFirst())
-                : findHosts(queries).size();
-    }
-
-    private long countFestivals(List<String> queries) {
-        return queries.size() == 1
-                ? festivalRepository.countPublishedSearchRows(queries.getFirst())
-                : findFestivals(queries).size();
-    }
-
-    private <T> List<T> distinctById(List<T> items, Function<T, Long> idExtractor) {
-        LinkedHashMap<Long, T> distinctItems = new LinkedHashMap<>();
-        items.forEach(item -> distinctItems.putIfAbsent(idExtractor.apply(item), item));
-        return List.copyOf(distinctItems.values());
     }
 
     private boolean includes(SearchType selected, SearchType target) {
