@@ -72,8 +72,6 @@ jobs:
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           AES_KEY: ${{ secrets.AES_KEY }}
           ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
@@ -101,11 +99,6 @@ jobs:
             exit 1
           fi
 
-          if [[ "$DEPLOY_ENVIRONMENT" == "development" ]]; then
-            GOOGLE_CLIENT_ID="development-dummy-client"
-            GOOGLE_CLIENT_SECRET="development-dummy-secret"
-          fi
-
           install -m 700 -d "$RUNNER_TEMP/ssh"
           printf '%s\n' "$OCI_SSH_PRIVATE_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"
           chmod 600 "$RUNNER_TEMP/ssh/key"
@@ -124,8 +117,6 @@ jobs:
             write_env DB_URL "$DB_URL"
             write_env DB_USERNAME "$DB_USERNAME"
             write_env DB_PASSWORD "$DB_PASSWORD"
-            write_env GOOGLE_CLIENT_ID "$GOOGLE_CLIENT_ID"
-            write_env GOOGLE_CLIENT_SECRET "$GOOGLE_CLIENT_SECRET"
             write_env JWT_SECRET "$JWT_SECRET"
             write_env AES_KEY "$AES_KEY"
             write_env ADMIN_JWT_SECRET "$ADMIN_JWT_SECRET"
