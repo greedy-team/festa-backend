@@ -174,13 +174,15 @@ docs/pr/        PR 본문 초안
 | push `develop` | `PROJECT-SPRING-CD` — OCI E2 인스턴스로 배포 (`development` 환경) |
 | push `main` | `PROJECT-SPRING-CD` — OCI A1 인스턴스로 배포 (`production` 환경) |
 
-배포는 `PROJECT-SPRING-CD.yaml`이 담당합니다. GitHub 러너에서 Docker 이미지를 빌드해 SSH로
-인스턴스에 전달하고, 서버는 `deploy/compose.yaml`로 app과 postgres를 함께 띄웁니다 — 서버는
+배포는 `PROJECT-SPRING-CD.yaml`이 담당합니다. GitHub 러너에서 Docker 이미지를 빌드해 비공개
+GHCR에 올리고, 서버가 pull한 뒤 `deploy/compose.yaml`로 app과 postgres를 함께 띄웁니다 — 서버는
 컴파일하지 않습니다. 헬스체크에 실패하면 직전 성공 이미지로 자동 롤백하되, **되돌리는 것은
 이미지뿐이고 이미 적용된 DB 스키마는 그대로 남습니다.**
 
 `production` Environment는 아직 만들어져 있지 않습니다. 그 상태로 `main`에 푸시되면
 `DEPLOY_ENABLED` 가드에서 배포가 중단됩니다.
+
+GHCR 인증 설정과 이미지 보존·검증 절차는 [`deploy/README.md`](./deploy/README.md)를 따릅니다.
 
 `push` 이벤트는 **푸시된 커밋에서** 워크플로우를 읽으므로, CD 워크플로우 자체도 `main`에
 올라가 있어야 합니다. 같은 릴리스 흐름을 타면 자연히 해결됩니다.
