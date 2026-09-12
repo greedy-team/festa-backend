@@ -22,6 +22,8 @@ services:
 
   app:
     image: ${APP_IMAGE:?APP_IMAGE is required}
+    # 배포가 먼저 pull한다. 롤백은 인증·레지스트리 없이 로컬 정상 이미지를 쓴다.
+    pull_policy: never
     restart: unless-stopped
     depends_on:
       postgres:
