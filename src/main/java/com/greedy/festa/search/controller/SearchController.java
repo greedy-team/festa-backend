@@ -23,7 +23,8 @@ public class SearchController {
     private final SearchService searchService;
 
     @Operation(summary = "통합 검색",
-            description = "아티스트 대표명·별칭, 주최 이름·약칭, 축제 이름·주최 이름을 검색합니다. "
+            description = "아티스트 대표명·별칭, 주최 이름·표시 약칭·검색용 별칭, "
+                    + "축제 이름·주최 이름·표시 약칭·검색용 별칭을 검색합니다. "
                     + "type은 ALL(기본) / ARTIST / HOST / FESTIVAL입니다.")
     @ApiResponse(responseCode = "200", description = "검색 결과")
     @ApiResponse(responseCode = "400", description = "SEARCH_INVALID_QUERY / SEARCH_INVALID_TYPE",
