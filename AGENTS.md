@@ -46,7 +46,7 @@ Codex는 `AGENTS.md`와 `.agents/skills/`만 자동으로 읽습니다. `.claude
 
 - Spring Boot 4.1 · Java 21
 - Gradle 9.6 (Kotlin DSL)
-- Spring Data JPA · Spring Security · OAuth2 Client · Validation
+- Spring Data JPA · Spring Security · OAuth2 Client
 
 ## 코드 스타일
 
