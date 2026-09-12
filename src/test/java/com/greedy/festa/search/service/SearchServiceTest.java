@@ -3,6 +3,7 @@ package com.greedy.festa.search.service;
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.artist.repository.ArtistSearchRow;
+import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.host.entity.Host;
@@ -13,6 +14,7 @@ import com.greedy.festa.search.dto.SearchCounts;
 import com.greedy.festa.search.dto.SearchType;
 import com.greedy.festa.search.exception.SearchErrorCode;
 import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.support.fixture.FestivalFixture;
 import com.greedy.festa.support.fixture.Fixtures;
 import com.greedy.festa.support.fixture.HostFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -200,6 +202,31 @@ class SearchServiceTest {
         verify(artistRepository, never()).findSearchRows("봄", LocalDate.of(2026, 8, 27));
         verify(hostRepository, never()).findSearchRows("봄");
         verify(festivalRepository, never()).countPublishedSearchRows("봄");
+    }
+
+    @Test
+    void 약어_확장_결과를_병합해도_축제는_개최일_내림차순으로_정렬한다() {
+        Host host = Fixtures.withId(HostFixture.host("건국대학교").shortName("건대").build(), 1L);
+        Festival directMatch = Fixtures.withId(FestivalFixture.festival("직접 일치 축제")
+                .host(host)
+                .startDate(LocalDate.of(2026, 5, 1))
+                .endDate(LocalDate.of(2026, 5, 3))
+                .build(), 1L);
+        Festival officialNameMatch = Fixtures.withId(FestivalFixture.festival("정식명 일치 축제")
+                .host(host)
+                .startDate(LocalDate.of(2026, 9, 20))
+                .endDate(LocalDate.of(2026, 9, 22))
+                .build(), 2L);
+        given(festivalRepository.findPublishedSearchRows("건대"))
+                .willReturn(List.of(directMatch));
+        given(festivalRepository.findPublishedSearchRows("건국대학교"))
+                .willReturn(List.of(officialNameMatch, directMatch));
+
+        SearchResponse response = searchService.search("건대", "FESTIVAL");
+
+        assertThat(response.festivals()).extracting(item -> item.festivalId())
+                .containsExactly(officialNameMatch.getId(), directMatch.getId());
+        assertThat(response.counts().festival()).isEqualTo(2);
     }
 
     @Test

@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.function.Function;
@@ -88,7 +89,10 @@ public class SearchService {
                         .map(SearchFestivalResponse::from)
                         .toList(),
                 SearchFestivalResponse::festivalId
-        );
+        ).stream()
+                .sorted(Comparator.comparing(SearchFestivalResponse::startDate).reversed()
+                        .thenComparing(SearchFestivalResponse::festivalId))
+                .toList();
     }
 
     private long countHosts(List<String> queries) {

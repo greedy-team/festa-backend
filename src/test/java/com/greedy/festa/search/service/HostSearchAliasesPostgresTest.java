@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -98,6 +99,34 @@ class HostSearchAliasesPostgresTest extends PostgresTestSupport {
         assertThat(result.festivals()).extracting(item -> item.festivalId()).containsExactly(festival.getId());
         assertThat(result.counts().host()).isOne();
         assertThat(result.counts().festival()).isOne();
+    }
+
+    @org.junit.jupiter.api.Test
+    void aliasExpansionKeepsFestivalOrderAfterResultsAreMerged() {
+        Host host = HostFixture.host("건국대학교").shortName("건대").build();
+        entityManager.persist(host);
+        Festival directMatch = FestivalFixture.festival("직접 일치 축제")
+                .host(host)
+                .startDate(LocalDate.of(2026, 5, 1))
+                .endDate(LocalDate.of(2026, 5, 3))
+                .build();
+        Festival officialNameMatch = FestivalFixture.festival("정식명 일치 축제")
+                .host(host)
+                .startDate(LocalDate.of(2026, 9, 20))
+                .endDate(LocalDate.of(2026, 9, 22))
+                .build();
+        directMatch.publish(Instant.parse("2026-08-01T00:00:00Z"));
+        officialNameMatch.publish(Instant.parse("2026-08-01T00:00:00Z"));
+        entityManager.persist(directMatch);
+        entityManager.persist(officialNameMatch);
+        entityManager.flush();
+        entityManager.clear();
+
+        SearchResponse result = searchService.search("건대", "FESTIVAL");
+
+        assertThat(result.festivals()).extracting(item -> item.festivalId())
+                .containsExactly(officialNameMatch.getId(), directMatch.getId());
+        assertThat(result.counts().festival()).isEqualTo(2);
     }
 
     @org.junit.jupiter.api.Test
