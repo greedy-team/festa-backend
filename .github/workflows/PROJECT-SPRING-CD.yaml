@@ -79,6 +79,7 @@ jobs:
           ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
           ADMIN_INITIAL_USERNAME: ${{ secrets.ADMIN_INITIAL_USERNAME }}
           ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
+          GRAFANA_OTLP_AUTH: ${{ secrets.GRAFANA_OTLP_AUTH }}
         run: |
           if [[ "$DB_URL" != "jdbc:postgresql://postgres:5432/festa" ]]; then
             echo "DB_URL은 jdbc:postgresql://postgres:5432/festa와 정확히 일치해야 합니다." >&2
@@ -99,6 +100,24 @@ jobs:
           if [[ -z "$ADMIN_INITIAL_USERNAME" && -n "$ADMIN_INITIAL_PASSWORD" ]]; then
             echo "ADMIN_INITIAL_PASSWORD만 설정되어 있습니다. ADMIN_INITIAL_USERNAME도 등록하거나 둘 다 비워야 합니다." >&2
             exit 1
+          fi
+
+          # 텔레메트리 비밀은 없어도 앱이 뜬다. 그러나 형식이 깨진 값은 서버에 닿기 전에 막는다.
+          # 원문을 먼저 검사한다 — base64 -d는 줄바꿈이 섞인 입력도 통과시킨다.
+          if [[ -n "$GRAFANA_OTLP_AUTH" ]]; then
+            if [[ ! "$GRAFANA_OTLP_AUTH" =~ ^[A-Za-z0-9+/]+={0,2}$ ]]; then
+              echo "GRAFANA_OTLP_AUTH에 공백·줄바꿈이 있거나 base64가 아닙니다." >&2
+              exit 1
+            fi
+            decoded="$(printf '%s' "$GRAFANA_OTLP_AUTH" | base64 -d 2>/dev/null; printf x)"
+            decoded="${decoded%x}"
+            if [[ ! "$decoded" =~ ^[0-9]+:glc_[^[:space:]]+$ ]]; then
+              echo "GRAFANA_OTLP_AUTH는 <instanceId>:<glc 토큰>을 인코딩한 값이어야 합니다." >&2
+              exit 1
+            fi
+            unset decoded
+          else
+            echo "::warning::GRAFANA_OTLP_AUTH가 비어 있습니다. 배포는 계속되지만 메트릭은 전송되지 않습니다."
           fi
 
           if [[ "$DEPLOY_ENVIRONMENT" == "development" ]]; then
@@ -129,6 +148,7 @@ jobs:
             write_env JWT_SECRET "$JWT_SECRET"
             write_env AES_KEY "$AES_KEY"
             write_env ADMIN_JWT_SECRET "$ADMIN_JWT_SECRET"
+            write_env GRAFANA_OTLP_AUTH "$GRAFANA_OTLP_AUTH"
             write_env ADMIN_INITIAL_USERNAME "$ADMIN_INITIAL_USERNAME"
             write_env ADMIN_INITIAL_PASSWORD "$ADMIN_INITIAL_PASSWORD"
           } > "$RUNNER_TEMP/app.env"
