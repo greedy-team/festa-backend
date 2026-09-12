@@ -102,6 +102,29 @@ class HostSearchAliasesPostgresTest extends PostgresTestSupport {
     }
 
     @org.junit.jupiter.api.Test
+    void aliasExpansionKeepsHostOrderAfterResultsAreMerged() {
+        entityManager.createNativeQuery("ALTER TABLE host ALTER COLUMN id RESTART WITH 5")
+                .executeUpdate();
+        Host officialNameMatch = HostFixture.host("한국외국어대학교").build();
+        entityManager.persist(officialNameMatch);
+        entityManager.flush();
+        entityManager.createNativeQuery("ALTER TABLE host ALTER COLUMN id RESTART WITH 90")
+                .executeUpdate();
+        Host directMatch = HostFixture.host("한국외국어대학교 서울캠퍼스")
+                .shortName("외대")
+                .build();
+        entityManager.persist(directMatch);
+        entityManager.flush();
+        entityManager.clear();
+
+        SearchResponse result = searchService.search("외대", "HOST");
+
+        assertThat(result.hosts()).extracting(item -> item.hostId())
+                .containsExactly(officialNameMatch.getId(), directMatch.getId());
+        assertThat(result.counts().host()).isEqualTo(2);
+    }
+
+    @org.junit.jupiter.api.Test
     void aliasExpansionKeepsFestivalOrderAfterResultsAreMerged() {
         Host host = HostFixture.host("건국대학교").shortName("건대").build();
         entityManager.persist(host);

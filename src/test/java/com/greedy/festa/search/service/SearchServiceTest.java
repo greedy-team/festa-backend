@@ -205,6 +205,32 @@ class SearchServiceTest {
     }
 
     @Test
+    void 약어_확장_결과를_병합해도_Host는_id_오름차순으로_정렬한다() {
+        Host directMatch = Fixtures.withId(HostFixture.host("한국외국어대학교 서울캠퍼스")
+                .shortName("외대")
+                .build(), 90L);
+        Host officialNameMatch = Fixtures.withId(HostFixture.host("한국외국어대학교")
+                .build(), 5L);
+        HostSearchRow directRow = mock(HostSearchRow.class);
+        given(directRow.getHost()).willReturn(directMatch);
+        given(directRow.getFestivalCount()).willReturn(0L);
+        HostSearchRow officialRow = mock(HostSearchRow.class);
+        given(officialRow.getHost()).willReturn(officialNameMatch);
+        given(officialRow.getFestivalCount()).willReturn(0L);
+        given(hostRepository.findSearchRows("외대")).willReturn(List.of(directRow));
+        given(hostRepository.findSearchRows("한국외국어대학교"))
+                .willReturn(List.of(officialRow, directRow));
+
+        SearchResponse response = searchService.search("외대", "HOST");
+
+        assertThat(response.hosts()).extracting(item -> item.hostId())
+                .containsExactly(officialNameMatch.getId(), directMatch.getId());
+        assertThat(response.counts().host()).isEqualTo(2);
+        verify(hostRepository).findSearchRows("외대");
+        verify(hostRepository).findSearchRows("한국외국어대학교");
+    }
+
+    @Test
     void 약어_확장_결과를_병합해도_축제는_개최일_내림차순으로_정렬한다() {
         Host host = Fixtures.withId(HostFixture.host("건국대학교").shortName("건대").build(), 1L);
         Festival directMatch = Fixtures.withId(FestivalFixture.festival("직접 일치 축제")

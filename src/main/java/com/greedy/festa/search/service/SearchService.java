@@ -79,7 +79,9 @@ public class SearchService {
                         .map(SearchHostResponse::from)
                         .toList(),
                 SearchHostResponse::hostId
-        );
+        ).stream()
+                .sorted(Comparator.comparing(SearchHostResponse::hostId))
+                .toList();
     }
 
     private List<SearchFestivalResponse> findFestivals(List<String> queries) {
