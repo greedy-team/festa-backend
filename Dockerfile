@@ -1,13 +1,3 @@
-FROM eclipse-temurin:21-jdk-alpine AS builder
-
-WORKDIR /workspace
-
-COPY gradlew settings.gradle.kts build.gradle.kts ./
-COPY gradle ./gradle
-COPY src ./src
-
-RUN ./gradlew bootJar --no-daemon
-
 FROM eclipse-temurin:21-jre-alpine
 
 RUN apk add --no-cache curl \
@@ -16,7 +6,7 @@ RUN apk add --no-cache curl \
 
 WORKDIR /app
 
-COPY --from=builder --chown=festa:festa /workspace/build/libs/*.jar app.jar
+COPY --chown=festa:festa app.jar app.jar
 
 # 파일 로그가 나가는 자리. 여기에 붙는 이름 있는 볼륨이 첫 생성 때 이 디렉터리의
 # 소유권을 물려받으므로, 비root(festa)로 도는 앱이 권한 조정 없이 쓸 수 있다.
