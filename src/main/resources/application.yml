@@ -116,6 +116,33 @@ management:
         # 기본은 꺼짐이다. 모듈이 들어오면 Boot 기본값은 true이고 localhost:4318로 매분 push를 시도한다.
         # 켜는 것은 deploy/compose.yaml의 리터럴 스위치뿐이다 — 로컬과 CI는 compose를 쓰지 않는다.
         enabled: false
+        step: 60s
+        # 기본 ms면 이름이 _milliseconds가 된다. 나중에 바꾸면 모든 시리즈 이름이 바뀌므로 첫날에 고정한다.
+        base-time-unit: seconds
+        compression-mode: gzip
+        # 종료 시 마지막 push(연결 1s + 읽기 5s)가 docker stop 기본 유예(10s) 안에 끝날 여지를 늘린다.
+        # 보장은 아니다 — 놓쳐도 누적값이라 다음 기동 뒤 push에서 이어진다.
+        read-timeout: 5s
+        headers:
+          # 비밀이 없으면 빈 문자열로 떨어진다. 앱은 그대로 뜨고 전송만 실패한다 (DEC-0185).
+          Authorization: "Basic ${GRAFANA_OTLP_AUTH:}"
+  opentelemetry:
+    # Grafana 안내 화면의 OTEL_* 환경변수 방식은 쓰지 않는다. MANAGEMENT_OTLP_* 리터럴과
+    # GRAFANA_OTLP_AUTH만 쓴다 — OTEL_* 변수는 yml보다 우선 적용되고,
+    # OTEL_*_HEADERS의 퍼센트 디코딩은 base64의 + 를 공백으로 망가뜨린다.
+    map-environment-variables: false
+    resource-attributes:
+      # 환경 라벨은 이것 하나다. 값이 빈 문자열이면 local로 대체되지 않고 라벨 자체가 빠지므로,
+      # 새 환경에서는 배포 뒤 Explore로 라벨 값을 먼저 확인한다 (DEC-0184).
+      "[deployment.environment.name]": ${SPRING_PROFILES_ACTIVE:local}
+  metrics:
+    observations:
+      # 관측마다 생기는 .active LongTaskTimer 시리즈를 없앤다.
+      ignored-meters: long-task-timer
+  observations:
+    enable:
+      # Spring Security 관측 시리즈 약 100~200개를 없앤다. 무료 한도가 활성 시리즈 10k다.
+      spring.security: false
 
 # API 문서는 꺼둔 것이 기본값이다. 프로파일을 지정하지 않으면 닫힌 채로 뜨므로,
 # 배포 설정을 손대지 않아도 외부에 노출되지 않는다. 여는 것은 development 프로파일뿐이다.
