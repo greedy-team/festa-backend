@@ -4,7 +4,6 @@ import com.greedy.festa.global.exception.ErrorResponse;
 import com.greedy.festa.host.service.HostService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpStatus;
@@ -15,8 +14,7 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.then;
 
-@WebMvcTest(controllers = HostController.class,
-        excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class)
+@WebMvcTest(controllers = HostController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @SuppressWarnings("NonAsciiCharacters")
 class HostControllerTest {

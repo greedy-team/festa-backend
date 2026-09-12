@@ -8,7 +8,6 @@ import com.greedy.festa.global.exception.ErrorResponse;
 import com.greedy.festa.global.exception.FestaException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpStatus;
@@ -21,8 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
-@WebMvcTest(controllers = AdminAuthController.class,
-        excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class)
+@WebMvcTest(controllers = AdminAuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @SuppressWarnings("NonAsciiCharacters")
 class AdminAuthControllerTest {

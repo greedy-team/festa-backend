@@ -6,7 +6,7 @@
 
 - Spring Boot 4.1 · Java 21
 - Gradle 9.6 (Kotlin DSL)
-- Spring Data JPA · Spring Security · OAuth2 Client
+- Spring Data JPA · Spring Security
 
 ## 로컬 실행
 
@@ -26,8 +26,6 @@ Run Configuration의 Environment variables에 넣습니다.
 | `DB_URL` | `jdbc:postgresql://localhost:5432/festa` | 아래 「로컬 데이터베이스」의 포트와 맞춘다 |
 | `DB_USERNAME` | `festa` | |
 | `DB_PASSWORD` | `festa` | |
-| `GOOGLE_CLIENT_ID` | `dummy` | 구글 로그인을 실제로 쓸 때만 진짜 값이 필요하다 |
-| `GOOGLE_CLIENT_SECRET` | `dummy` | |
 | `JWT_SECRET` | `local-dev-jwt-secret` | |
 | `ADMIN_JWT_SECRET` | `ZmVzdGEtYWRtaW4tand0LXRlc3Qtc2VjcmV0LWtleS0zMg==` | 관리자 토큰 서명 키. base64로 32바이트 이상 |
 | `AES_KEY` | `local-dev-aes-key` | |
