@@ -33,7 +33,6 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.apache.commons:commons-csv:1.14.1")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -42,8 +41,9 @@ dependencies {
     // 2.x는 Boot 3 전용이고, 3.1.0이 Boot 4.1.0을 대상으로 올라온 버전이다.
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
 
+    // flyway-core는 아래 둘이 각각 끌고 온다. 따로 적으면 BOM이 정하는 버전을
+    // 두 곳에서 관리하는 모양이 되므로 선언하지 않는다.
     implementation("org.springframework.boot:spring-boot-flyway")
-    implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
 
     runtimeOnly("org.postgresql:postgresql")
@@ -56,7 +56,6 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jjwtVersion")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.security:spring-security-test")
 
     // 실제 Postgres로 돌린다. Flyway 마이그레이션과 ddl-auto: validate가
     // 함께 돌아야 스키마와 엔티티가 어긋난 것을 CI가 잡는다.
@@ -64,8 +63,9 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-jdbc-test")
 
-    testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    // 컨테이너는 PostgresTestSupport가 static 블록에서 직접 띄운다. @Testcontainers
+    // (junit-jupiter)도 @ServiceConnection(spring-boot-testcontainers)도 쓰지 않으므로
+    // 두 모듈은 넣지 않는다. 코어 testcontainers는 아래 한 줄이 끌고 온다.
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("org.springframework.boot:spring-boot-webmvc-test")
 }
