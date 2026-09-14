@@ -226,10 +226,7 @@ class ArtistMergeServiceTest extends PostgresTestSupport {
         ArtistMergeResponse 결과 = 병합한다(아이유, true, IU);
         반영한다();
 
-        assertSoftly(softly -> {
-            softly.assertThat(artistRepository.findById(아이유.getId()))
-                    .get()
-        });
+        assertThat(결과.targetId()).isEqualTo(아이유.getId());
     }
 
     @Test
