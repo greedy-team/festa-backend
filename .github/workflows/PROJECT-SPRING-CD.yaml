@@ -121,7 +121,14 @@ jobs:
           ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
           ADMIN_INITIAL_USERNAME: ${{ secrets.ADMIN_INITIAL_USERNAME }}
           ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
+          API_DOMAINS: ${{ vars.API_DOMAINS }}
         run: |
+          # 서버에 닿기 전에 막는다. compose가 이 값을 필수로 선언해서, 비어 있으면
+          # 컨테이너 재기동과 롤백이 둘 다 같은 자리에서 죽는다.
+          if [[ -z "${API_DOMAINS//[[:space:],]/}" ]]; then
+            echo "API_DOMAINS Variable에 Caddy가 서빙할 도메인을 등록해야 합니다. 예: api.every-festa.com" >&2
+            exit 1
+          fi
           if [[ "$DB_URL" != "jdbc:postgresql://postgres:5432/festa" ]]; then
             echo "DB_URL은 jdbc:postgresql://postgres:5432/festa와 정확히 일치해야 합니다." >&2
             exit 1
@@ -166,6 +173,7 @@ jobs:
             write_env ADMIN_JWT_SECRET "$ADMIN_JWT_SECRET"
             write_env ADMIN_INITIAL_USERNAME "$ADMIN_INITIAL_USERNAME"
             write_env ADMIN_INITIAL_PASSWORD "$ADMIN_INITIAL_PASSWORD"
+            write_env API_DOMAINS "$API_DOMAINS"
           } > "$RUNNER_TEMP/app.env"
 
       - name: OCI에서 비공개 이미지 다운로드
