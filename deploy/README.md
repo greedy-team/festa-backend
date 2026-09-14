@@ -27,6 +27,8 @@ PAT 값은 저장소·채팅·명령 인자에 넣지 않고 GitHub Settings의 
 도메인을 옮기는 동안에는 한 서버가 옛 도메인과 새 도메인을 함께 서빙한다.
 `PUBLIC_BASE_URL`은 배포 마지막 HTTPS 확인의 주소다. 접속은 DNS가 아니라 방금 배포한
 `OCI_HOST`로 고정하므로, 도메인이 아직 다른 서버를 가리키면 이 확인은 실패한다.
+`PUBLIC_BASE_URL`의 도메인은 `API_DOMAINS` 중 하나여야 하며, 어긋나면 서버에 닿기 전에 멈춘다.
+두 값을 바꿀 때는 `API_DOMAINS`에 도메인을 먼저 더하고 나서 `PUBLIC_BASE_URL`을 옮긴다.
 
 러너의 업로드는 자동 발급 `GITHUB_TOKEN`의 `packages: write`를 사용한다.
 이미지는 `ghcr.io/greedy-team/festa-backend`에 생성하며 최초 가시성은 private이다.

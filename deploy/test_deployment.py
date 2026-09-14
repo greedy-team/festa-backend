@@ -220,6 +220,23 @@ ssh() { bash -c "${@: -1}"; }
                 self.assertIn('PUBLIC_BASE_URL', result.stderr)
                 self.assertNotIn('API_DOMAINS', (self.path / 'app.env').read_text(encoding='utf-8'))
 
+    def test_public_base_url_domain_outside_api_domains_stops_before_server(self):
+        # dev-api.every-festa.com은 api.every-festa.com을 부분 문자열로 품는다 — 포함 검색으로는 못 막는다
+        for domains, base_url in (('dev-api.every-festa.com', 'https://api.every-festa.com'),
+                                  ('api.every-festa.com', 'https://dev-api.every-festa.com')):
+            with self.subTest(domains=domains, base_url=base_url):
+                result = self.run_prepare_step(API_DOMAINS=domains, PUBLIC_BASE_URL=base_url)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('PUBLIC_BASE_URL', result.stderr)
+                self.assertIn('API_DOMAINS', result.stderr)
+                self.assertNotIn('API_DOMAINS', (self.path / 'app.env').read_text(encoding='utf-8'))
+
+    def test_public_base_url_domain_matches_any_api_domain_ignoring_case(self):
+        for base_url in ('https://dev-api.every-festa.com', 'https://Dev-API.every-festa.com'):
+            with self.subTest(base_url=base_url):
+                result = self.run_prepare_step(PUBLIC_BASE_URL=base_url)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_caddy_domains_are_wired_through_compose_and_workflow(self):
         caddyfile = (ROOT / 'deploy/Caddyfile').read_text(encoding='utf-8')
         compose = (ROOT / 'deploy/compose.yaml').read_text(encoding='utf-8')

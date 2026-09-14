@@ -138,8 +138,23 @@ jobs:
           fi
           # 마지막 HTTPS 확인에서 형식 오류가 걸리면 컨테이너를 이미 바꾼 뒤이고, 첫 운영 배포의
           # 정상적인 실패(도메인이 아직 다른 서버를 가리킴)와 구별되지 않는다. 그래서 여기서 먼저 막는다.
-          if [[ ! "$PUBLIC_BASE_URL" =~ ^https://[A-Za-z0-9.-]+$ ]]; then
+          if [[ ! "$PUBLIC_BASE_URL" =~ ^https://([A-Za-z0-9.-]+)$ ]]; then
             echo "PUBLIC_BASE_URL Variable은 경로 없는 https://<도메인> 형식이어야 합니다: '$PUBLIC_BASE_URL'" >&2
+            exit 1
+          fi
+          # 형식이 각각 맞아도 두 값이 서로 다른 도메인일 수 있다. HTTPS 확인은 PUBLIC_BASE_URL의 도메인으로
+          # 접속하므로, Caddy가 서빙하지 않는 도메인이면 위와 같은 이유로 컨테이너를 바꾼 뒤에야 구별되지 않는
+          # 실패가 난다. API_DOMAINS를 쉼표·공백으로 나눈 도메인 하나와 정확히 같아야 하고, 대소문자는 가리지 않는다.
+          public_host="${BASH_REMATCH[1],,}"
+          public_host_served=false
+          read -ra api_domains <<< "${API_DOMAINS//,/ }"
+          for api_domain in "${api_domains[@]}"; do
+            if [[ "${api_domain,,}" == "$public_host" ]]; then
+              public_host_served=true
+            fi
+          done
+          if [[ "$public_host_served" != true ]]; then
+            echo "PUBLIC_BASE_URL의 도메인($public_host)이 API_DOMAINS에 없습니다: '$API_DOMAINS'. 두 Variable을 같은 도메인으로 맞춰야 합니다." >&2
             exit 1
           fi
           if [[ "$DB_URL" != "jdbc:postgresql://postgres:5432/festa" ]]; then
