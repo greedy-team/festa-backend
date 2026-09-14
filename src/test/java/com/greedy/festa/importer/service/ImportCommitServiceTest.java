@@ -394,7 +394,7 @@ class ImportCommitServiceTest {
     }
 
     @Test
-    void 신규_Artist는_저장_preview값이_false여도_needsReview_true로_생성한다() {
+    void 신규_Artist를_저장_preview로_생성한다() {
         StoredPreviewRow source = artistRow(1, ImportPreviewAction.CREATE, null);
         Map<String, Object> normalized = new LinkedHashMap<>(source.normalized());
         normalized.put("legacy", false);

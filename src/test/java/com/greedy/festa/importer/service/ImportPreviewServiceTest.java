@@ -430,7 +430,7 @@ class ImportPreviewServiceTest {
     }
 
     @Test
-    void 신규_Artist는_CSV값과_무관하게_needsReview가_true다() {
+    void 신규_Artist_preview에는_새_CSV_계약_필드만_포함된다() {
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
         given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of());
         String csv = String.join(",", ImportSection.ARTISTS.headers())
