@@ -1,6 +1,6 @@
 # festa-backend
 
-축제 정보 서비스 백엔드. Spring Boot 기반이며 배포는 아직 구성 전입니다.
+축제 정보 서비스 백엔드. Spring Boot 기반이며 OCI 인스턴스에 Docker Compose로 배포합니다.
 
 ## 빠른 시작
 
@@ -39,20 +39,91 @@ Codex는 `AGENTS.md`와 `.agents/skills/`만 자동으로 읽습니다. `.claude
 
 - **`main`에 직접 푸시 금지.** `main`은 릴리스 브랜치입니다
 - **`version.yml`의 `options.deploy`는 `none`으로 유지.** `docker-ssh`로 되돌리면 `npx projectops` 업데이트 때 Docker 워크플로우 4종이 재설치됩니다
-- **커밋 메시지에 `Co-Authored-By` 금지**
+- **커밋 메시지에 AI 태그 금지.** `Co-Authored-By: Claude`·`Generated with …`·GPT 서명 등 전부 — 규칙 원본은 [`TEAM-CONVENTIONS.md`](./TEAM-CONVENTIONS.md) §4
 - **커밋·푸시는 사용자가 요청할 때만.** 알아서 하지 않습니다
 
 ## 기술 스택
 
 - Spring Boot 4.1 · Java 21
 - Gradle 9.6 (Kotlin DSL)
-- Spring Data JPA · Spring Security · OAuth2 Client · Validation
+- Spring Data JPA · Spring Security
 
 ## 코드 스타일
 
 - 기존 파일의 스타일을 따릅니다. 주변 코드와 다른 방식을 새로 들이지 않습니다
 - 포맷터는 아직 도입 전입니다. 도입되면 이 문단과 `/commit`의 포맷 단계를 함께 채웁니다
 - 요청하지 않은 리팩터링·추상화를 끼워 넣지 않습니다
+
+## 로그를 남길 때
+
+**어느 계층에 남기는가**
+
+| 계층 | 남기나 | 이유 |
+| --- | --- | --- |
+| 컨트롤러 | 아니오 | 요청·응답은 공통 지점이 이미 본다. 메서드마다 찍으면 같은 사건이 두 줄이 된다 |
+| 엔티티·리포지토리 | 아니오 | 호출 맥락을 모른다. 무엇 때문에 불렸는지 없는 줄은 나중에 못 읽는다 |
+| 서비스 | 중요한 도메인 사건만 | 되돌릴 수 없는 작업(삭제·병합·발행 취소)과 일괄 작업 요약 |
+| 예외 처리 | 예 | `GlobalExceptionHandler`가 요청 경로와 함께 한 번에 남긴다 |
+| 인증 진입점 | 예 | 토큰 오류는 보안 필터에서 끝나 전역 예외 처리까지 가지 않는다 |
+
+컨트롤러의 `@ExceptionHandler`는 예외 처리 지점이지 컨트롤러 로직이 아닙니다. 전역 핸들러로
+넘기지 않고 직접 응답하는 분기는 거기서 남깁니다.
+
+**작업 로그는 커밋된 뒤에 남깁니다**
+
+서비스의 `@Transactional` 메서드 안에서 바로 찍으면 아직 커밋 전입니다. 뒤이어 롤백되면
+하지 않은 일이 "수행됨"으로 기록돼, 되짚기의 근거여야 할 로그가 거짓말을 합니다.
+
+```java
+AfterCommitLogger.info(log, "주최 삭제 - hostId={}", id);
+```
+
+`AfterCommitLogger`는 트랜잭션이 있으면 커밋 뒤로 미루고, 없으면 그 자리에서 남깁니다.
+로거를 넘겨받는 이유는 로그의 출처를 작업한 클래스로 유지하기 위해서입니다 — 자체 로거로
+찍으면 모든 관리 작업이 한 이름으로 뭉쳐 나옵니다.
+
+콜백은 커밋한 스레드에서 그대로 이어 돌므로 아래의 MDC(관리자·요청 번호)가 유지됩니다.
+다른 스레드로 넘기는 방식(`@Async` 리스너 등)을 쓰면 그 이름이 조용히 사라집니다.
+
+실패 로그는 이 규칙 밖입니다. 롤백된 작업이야말로 남겨야 할 사건이므로 그 자리에서 찍습니다.
+
+**도메인 맥락은 응답이 아니라 로그로**
+
+응답 본문의 `message`는 언제나 `ErrorCode`의 문구입니다. 어느 축제인지, 어떤 값이 문제였는지는
+`FestaException`의 `logMessage`에 담고, 삼킨 원인은 세 번째 인자로 넘깁니다.
+
+```java
+throw new FestaException(ImportErrorCode.IMPORT_INVALID_CSV, "CSV 본문 파싱 실패", e);
+```
+
+**잡은 자리에서 찍지 않습니다.** 거기서는 어느 요청이 실패했는지 모릅니다. 예외에 실어 보내면
+`GlobalExceptionHandler`가 요청 경로와 함께 한 줄로 남깁니다. 두 곳에서 찍으면 한 사건이 두 줄이 됩니다.
+
+`GlobalExceptionHandler.toResponse`는 메시지를 인자로 받지 않습니다. 구조가 규칙을 강제하므로,
+맥락을 붙였다는 이유로 응답이 달라지는 경로가 없습니다.
+
+**누가 했는지는 자동으로 붙습니다**
+
+`JwtAuthenticationFilter`가 토큰의 관리자 이름을 MDC(`admin`)에 담고,
+`logging.pattern.correlation`이 모든 줄에 `[이름]`으로 찍습니다. 토큰이 없는 공개 API
+요청은 `[-]`입니다. 그 앞의 칸은 `AccessLogFilter`가 넣는 요청 번호입니다 (#118).
+
+**그러니 로그 문구에 관리자를 손으로 넣지 않습니다.** 줄마다 붙이면 새로 추가되는 로그에서
+빠지고, 무엇보다 서비스의 `INFO` 줄에만 붙어 배포와 함께 사라집니다. MDC에 두면 파일로
+보존되는 `WARN` 이상 — 즉 실패한 작업에도 같은 이름이 붙습니다.
+
+**남기지 않는 것**
+
+- 비밀번호·토큰·시크릿은 어떤 형태로도 남기지 않습니다. 로그인 실패에는 시도한 아이디만 남깁니다
+- 업로드된 CSV 본문은 남기지 않습니다. 어느 단계에서 깨졌는지와 예외만 남깁니다
+
+**레벨**
+
+`INFO`는 화면(stdout)으로만 나가고 컨테이너에 딸려 있어, 배포로 컨테이너가 교체되면 사라집니다.
+파일로 보존되는 것은 `WARN` 이상입니다 (#116).
+
+따라서 **감사 목적의 `INFO` 줄은 다음 배포까지만 남습니다.** 영구 보존이 필요하면 로그가 아니라
+감사 테이블입니다 — 임포트가 그렇게 하고 있습니다(DEC-0077).
 
 ## 작업 흐름
 
@@ -100,17 +171,41 @@ docs/pr/        PR 본문 초안
 | PR → `develop` 머지 | 이슈 자동 종료 |
 | `develop` → `main` PR | CHANGELOG 생성 후 자동 머지 |
 | push `main` | 버전 태그 + README 갱신 |
-| **배포** | **미설정** — 백엔드팀이 구성합니다 |
+| push `develop` | `PROJECT-SPRING-CD` — OCI E2 인스턴스로 배포 (`development` 환경) |
+| push `main` | `PROJECT-SPRING-CD` — OCI A1 인스턴스로 배포 (`production` 환경) |
 
-**배포를 붙일 자리는 `main` push입니다.** `on: push: branches: [main]` 워크플로우를
-추가하면 릴리스 자동 머지가 일으키는 `main` 푸시에서 함께 실행됩니다. 프론트의 Vercel
-배포가 정확히 그 자리에 있습니다.
+배포는 `PROJECT-SPRING-CD.yaml`이 담당합니다. GitHub 러너에서 Docker 이미지를 빌드해 비공개
+GHCR에 올리고, 서버가 pull한 뒤 `deploy/compose.yaml`로 app과 postgres를 함께 띄웁니다 — 서버는
+컴파일하지 않습니다. 헬스체크에 실패하면 직전 성공 이미지로 자동 롤백하되, **되돌리는 것은
+이미지뿐이고 이미 적용된 DB 스키마는 그대로 남습니다.**
+
+운영 서버 전환(#173)이 끝나면 `development`는 `dev-api.every-festa.com`(E2), `production`은 `api.every-festa.com`(A1)을 서빙합니다. 전환 중의 단계별 값은 #173을 따릅니다.
+도메인은 Environment Variable `API_DOMAINS`·`PUBLIC_BASE_URL`로 정합니다. 선택한 Environment의
+`DEPLOY_ENABLED`가 `true`가 아니면 배포는 가드에서 중단됩니다.
+
+GHCR 인증 설정과 이미지 보존·검증 절차는 [`deploy/README.md`](./deploy/README.md)를 따릅니다.
 
 `push` 이벤트는 **푸시된 커밋에서** 워크플로우를 읽으므로, CD 워크플로우 자체도 `main`에
 올라가 있어야 합니다. 같은 릴리스 흐름을 타면 자연히 해결됩니다.
+
+### 앱에 환경변수를 추가할 때
+
+`application.yml`에 **기본값 없는** `${VAR}`를 추가하면 세 곳을 함께 고쳐야 합니다.
+하나라도 빠지면 앱이 기동하지 못해 배포가 실패하고 롤백됩니다.
+
+1. GitHub Environment(`development`·`production` 둘 다)에 Secret 등록
+2. `.github/workflows/PROJECT-SPRING-CD.yaml` — `env:` 블록과 `write_env` 목록
+3. `deploy/compose.yaml` — app 서비스의 `environment:`
+
+테스트는 이런 값을 인라인으로 주입하므로 **CI는 통과합니다.** 누락은 실제 배포에서만
+드러납니다 (이슈 #47).
+
+기본값을 주면(`${VAR:}`) 이 절차 없이도 앱은 뜨지만, 그 값에 의존하는 기능은 동작하지
+않습니다.
 
 ## 주의할 점
 
 - 릴리스 워크플로우는 `git add -A`로 커밋합니다. 워킹 트리에 남긴 임시 파일이 릴리스 커밋에 쓸려 들어갑니다
 - `.github/scripts/`와 워크플로우는 `npx projectops` 업데이트 시 덮어써집니다. 설정은 코드 기본값이 아니라 `version.yml`에 둡니다
+- `PROJECT-SPRING-CI.yaml`은 우리가 쓴 파일이지만 ProjectOps가 차지할 수 있는 이름입니다. 프론트의 `PROJECT-REACT-CI.yaml`이 ProjectOps 제공 템플릿이라 대칭을 택했습니다. 업데이트 후 이 파일이 낯설게 바뀌어 있다면 그 경우입니다
 - `version.yml`의 `deploy:` 블록은 런타임에 아무도 읽지 않습니다. `npx projectops` 재실행 때만 쓰이는 메모입니다

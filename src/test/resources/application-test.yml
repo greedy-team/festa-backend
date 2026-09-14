@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/placeholder
+    username: test
+    password: test
+
+app:
+  jwt:
+    secret: test-jwt-secret-for-local-tests-only-32bytes
+    admin-secret: ZmVzdGEtYWRtaW4tand0LXRlc3Qtc2VjcmV0LWtleS0zMg==

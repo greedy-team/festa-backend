@@ -1,5 +1,6 @@
 build/
 .gradle/
+.gradle-user-home/
 .idea/
 out/
 *.log
