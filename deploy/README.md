@@ -21,7 +21,7 @@ PAT 값은 저장소·채팅·명령 인자에 넣지 않고 GitHub Settings의 
 | `API_DOMAINS` | `dev-api.every-festa.com` | `api.every-festa.com` |
 | `PUBLIC_BASE_URL` | `https://dev-api.every-festa.com` | `https://api.every-festa.com` |
 
-표는 운영 서버 전환(#99)이 끝난 뒤의 값이다. 전환 중에는 development가 `api.every-festa.com`을 함께 서빙한다.
+표는 운영 서버 전환(#173)이 끝난 뒤의 값이다. 전환 중에는 development가 `api.every-festa.com`을 함께 서빙한다.
 
 `API_DOMAINS`는 Caddy가 인증서를 받아 서빙할 도메인이다. 쉼표 뒤에 공백을 두어 여러 개를 줄 수 있어(`api.every-festa.com, dev-api.every-festa.com`),
 도메인을 옮기는 동안에는 한 서버가 옛 도메인과 새 도메인을 함께 서빙한다.
