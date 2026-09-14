@@ -179,8 +179,9 @@ GHCR에 올리고, 서버가 pull한 뒤 `deploy/compose.yaml`로 app과 postgre
 컴파일하지 않습니다. 헬스체크에 실패하면 직전 성공 이미지로 자동 롤백하되, **되돌리는 것은
 이미지뿐이고 이미 적용된 DB 스키마는 그대로 남습니다.**
 
-`production` Environment는 아직 만들어져 있지 않습니다. 그 상태로 `main`에 푸시되면
-`DEPLOY_ENABLED` 가드에서 배포가 중단됩니다.
+`development`는 `dev-api.every-festa.com`(E2), `production`은 `api.every-festa.com`(A1)을 서빙합니다.
+도메인은 Environment Variable `API_DOMAINS`·`PUBLIC_BASE_URL`로 정합니다. 선택한 Environment의
+`DEPLOY_ENABLED`가 `true`가 아니면 배포는 가드에서 중단됩니다.
 
 GHCR 인증 설정과 이미지 보존·검증 절차는 [`deploy/README.md`](./deploy/README.md)를 따릅니다.
 
@@ -192,7 +193,7 @@ GHCR 인증 설정과 이미지 보존·검증 절차는 [`deploy/README.md`](./
 `application.yml`에 **기본값 없는** `${VAR}`를 추가하면 세 곳을 함께 고쳐야 합니다.
 하나라도 빠지면 앱이 기동하지 못해 배포가 실패하고 롤백됩니다.
 
-1. GitHub Environment(`development`)에 Secret 등록
+1. GitHub Environment(`development`·`production` 둘 다)에 Secret 등록
 2. `.github/workflows/PROJECT-SPRING-CD.yaml` — `env:` 블록과 `write_env` 목록
 3. `deploy/compose.yaml` — app 서비스의 `environment:`
 
