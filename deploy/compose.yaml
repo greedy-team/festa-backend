@@ -65,6 +65,9 @@ services:
     restart: unless-stopped
     depends_on:
       - app
+    environment:
+      # Caddyfile의 사이트 주소. 비밀이 아니라 GitHub Environment Variable이 app.env로 넘어온다.
+      API_DOMAINS: ${API_DOMAINS:?API_DOMAINS is required}
     ports:
       - "80:80"
       - "443:443"

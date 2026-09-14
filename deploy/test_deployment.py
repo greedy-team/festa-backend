@@ -15,6 +15,15 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = (ROOT / '.github/workflows/PROJECT-SPRING-CD.yaml').read_text(encoding='utf-8')
 REMOTE = re.findall(r"<<'REMOTE'\n(.*?)^          REMOTE", WORKFLOW, re.M | re.S)
+
+
+def step_script(name):
+    """러너에서 도는 스텝의 run 블록을 꺼낸다. 원격 heredoc이 아닌 스텝을 그대로 실행하려고 쓴다."""
+    step = WORKFLOW.split(f'      - name: {name}\n')[1]
+    step = step.split('      - name:')[0].split('        run: |\n')[1]
+    return textwrap.dedent(step)
+
+
 BASH = 'C:/Program Files/Git/bin/bash.exe' if os.name == 'nt' else shutil.which('bash')
 MOCKS = r'''
 docker() {
@@ -168,6 +177,98 @@ ssh() { bash -c "${@: -1}"; }
         self.assertIn('login ghcr.io --username reader --password-stdin', self.read('calls'))
         self.assertIn('pull ' + self.image, self.read('calls'))
         self.assertNotIn('test-only-token', result.stdout + result.stderr + self.read('calls'))
+
+    def run_prepare_step(self, **overrides):
+        self.env.update(RUNNER_TEMP=self.path.as_posix(), DEPLOY_ENVIRONMENT='development',
+                        DB_URL='jdbc:postgresql://postgres:5432/festa',
+                        OCI_HOST_KEY='test ssh-ed25519 AAAA', OCI_SSH_PRIVATE_KEY='test-key',
+                        ADMIN_JWT_SECRET='test-admin-secret', ADMIN_INITIAL_USERNAME='',
+                        ADMIN_INITIAL_PASSWORD='',
+                        API_DOMAINS='api.every-festa.com, dev-api.every-festa.com',
+                        PUBLIC_BASE_URL='https://api.every-festa.com')
+        self.env.update(overrides)
+        return self.run_script(step_script('SSH와 실행 환경 준비'))
+
+    def test_api_domains_is_written_to_app_env(self):
+        result = self.run_prepare_step()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("API_DOMAINS='api.every-festa.com, dev-api.every-festa.com'",
+                      (self.path / 'app.env').read_text(encoding='utf-8'))
+
+    def test_missing_api_domains_stops_before_server(self):
+        for value in ('', ' , ', '   '):
+            with self.subTest(value=value):
+                result = self.run_prepare_step(API_DOMAINS=value)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('API_DOMAINS', result.stderr)
+
+    def test_api_domains_comma_without_space_stops_before_server(self):
+        for value in ('api.every-festa.com,dev-api.every-festa.com', 'api.every-festa.com,',
+                      'api.every-festa.com, '):
+            with self.subTest(value=value):
+                result = self.run_prepare_step(API_DOMAINS=value)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('API_DOMAINS', result.stderr)
+                self.assertNotIn('API_DOMAINS', (self.path / 'app.env').read_text(encoding='utf-8'))
+
+    def test_malformed_public_base_url_stops_before_server(self):
+        for value in ('', 'http://api.every-festa.com', 'https://api.every-festa.com/',
+                      'https://api.every-festa.com?x=1'):
+            with self.subTest(value=value):
+                result = self.run_prepare_step(PUBLIC_BASE_URL=value)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('PUBLIC_BASE_URL', result.stderr)
+                self.assertNotIn('API_DOMAINS', (self.path / 'app.env').read_text(encoding='utf-8'))
+
+    def test_public_base_url_domain_outside_api_domains_stops_before_server(self):
+        # dev-api.every-festa.com은 api.every-festa.com을 부분 문자열로 품는다 — 포함 검색으로는 못 막는다
+        for domains, base_url in (('dev-api.every-festa.com', 'https://api.every-festa.com'),
+                                  ('api.every-festa.com', 'https://dev-api.every-festa.com')):
+            with self.subTest(domains=domains, base_url=base_url):
+                result = self.run_prepare_step(API_DOMAINS=domains, PUBLIC_BASE_URL=base_url)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('PUBLIC_BASE_URL', result.stderr)
+                self.assertIn('API_DOMAINS', result.stderr)
+                self.assertNotIn('API_DOMAINS', (self.path / 'app.env').read_text(encoding='utf-8'))
+
+    def test_public_base_url_domain_matches_any_api_domain_ignoring_case(self):
+        for base_url in ('https://dev-api.every-festa.com', 'https://Dev-API.every-festa.com'):
+            with self.subTest(base_url=base_url):
+                result = self.run_prepare_step(PUBLIC_BASE_URL=base_url)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_caddy_domains_are_wired_through_compose_and_workflow(self):
+        caddyfile = (ROOT / 'deploy/Caddyfile').read_text(encoding='utf-8')
+        compose = (ROOT / 'deploy/compose.yaml').read_text(encoding='utf-8')
+        caddy_service = compose.split('\n  caddy:\n')[1].split('\nvolumes:\n')[0]
+        self.assertIn('{$API_DOMAINS} {', caddyfile)
+        self.assertNotIn('every-festa.com {', caddyfile)
+        self.assertIn('API_DOMAINS: ${API_DOMAINS:?API_DOMAINS is required}', caddy_service)
+        self.assertIn('API_DOMAINS: ${{ vars.API_DOMAINS }}', WORKFLOW)
+        self.assertIn('write_env API_DOMAINS "$API_DOMAINS"', WORKFLOW)
+
+    def run_https_check(self, base_url):
+        self.env.update(PUBLIC_BASE_URL=base_url, OCI_HOST='129.225.160.27')
+        record_curl = '''
+curl() { printf '%s\\n' "$*" >> "$OCI_DEPLOY_PATH/curl-args"; }
+'''
+        return self.run_script(record_curl + step_script('HTTPS 서빙 확인'))
+
+    def test_https_check_connects_to_deployed_server(self):
+        result = self.run_https_check('https://api.every-festa.com')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = self.read('curl-args')
+        self.assertIn('--connect-to api.every-festa.com:443:129.225.160.27:443', args)
+        self.assertIn('https://api.every-festa.com/actuator/health', args)
+
+    def test_https_check_rejects_malformed_base_url(self):
+        for value in ('', 'http://api.every-festa.com', 'https://api.every-festa.com/',
+                      'https://api.every-festa.com?x=1'):
+            with self.subTest(value=value):
+                result = self.run_https_check(value)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('PUBLIC_BASE_URL', result.stderr)
+                self.assertFalse((self.path / 'curl-args').exists())
 
 
 if __name__ == '__main__':
