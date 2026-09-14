@@ -211,6 +211,28 @@ ssh() { bash -c "${@: -1}"; }
         self.assertIn('API_DOMAINS: ${{ vars.API_DOMAINS }}', WORKFLOW)
         self.assertIn('write_env API_DOMAINS "$API_DOMAINS"', WORKFLOW)
 
+    def run_https_check(self, base_url):
+        self.env.update(PUBLIC_BASE_URL=base_url, OCI_HOST='129.225.160.27')
+        record_curl = '''
+curl() { printf '%s\\n' "$*" >> "$OCI_DEPLOY_PATH/curl-args"; }
+'''
+        return self.run_script(record_curl + step_script('HTTPS 서빙 확인'))
+
+    def test_https_check_connects_to_deployed_server(self):
+        result = self.run_https_check('https://api.every-festa.com')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = self.read('curl-args')
+        self.assertIn('--connect-to api.every-festa.com:443:129.225.160.27:443', args)
+        self.assertIn('https://api.every-festa.com/actuator/health', args)
+
+    def test_https_check_rejects_malformed_base_url(self):
+        for value in ('', 'http://api.every-festa.com', 'https://api.every-festa.com/'):
+            with self.subTest(value=value):
+                result = self.run_https_check(value)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('PUBLIC_BASE_URL', result.stderr)
+                self.assertFalse((self.path / 'curl-args').exists())
+
 
 if __name__ == '__main__':
     unittest.main()
