@@ -36,8 +36,8 @@ class ImportCsvParserTest {
     @Test
     void UTF8_BOM과_quoted_comma_escaped_quote_multiline을_파싱한다() {
         String csv = "\uFEFF" + String.join(",", ImportSection.ARTISTS.headers()) + "\r\n"
-                + "\"밴드, 이름\",\"별칭 \"\"A\"\"|별칭B\",BAND,https://example.com/a.jpg,"
-                + "\"true\r\n\"";
+                + "\"밴드, 이름\",\"별칭 \"\"A\"\"|별칭B\",BAND,"
+                + "\"https://example.com/a.jpg\r\n\"";
 
         List<ParsedCsvRow> rows = parser.parse(file("artists.csv", csv), ImportSection.ARTISTS);
 

@@ -361,7 +361,7 @@ class ImportPreviewServiceTest {
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(existing));
         given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of());
         String csv = String.join(",", ImportSection.ARTISTS.headers())
-                + "\nNew Artist,Existing,BAND,,false\n";
+                + "\nNew Artist,Existing,BAND,\n";
 
         ImportPreviewResponse response = service.previewSingle(
                 ImportSection.ARTISTS, csv("file", "artists.csv", csv),
@@ -379,7 +379,7 @@ class ImportPreviewServiceTest {
         given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection()))
                 .willReturn(List.of(ArtistFixture.alias(existing, "Taken Alias").build()));
         String csv = String.join(",", ImportSection.ARTISTS.headers())
-                + "\nNew Artist,Taken Alias,BAND,,false\n";
+                + "\nNew Artist,Taken Alias,BAND,\n";
 
         ImportPreviewResponse response = service.previewSingle(
                 ImportSection.ARTISTS, csv("file", "artists.csv", csv),
@@ -398,7 +398,7 @@ class ImportPreviewServiceTest {
                 .willReturn(List.of(ArtistFixture.alias(existing, "다듀").build()));
         given(artistAliasRepository.findAllByArtistIdIn(anyCollection())).willReturn(List.of());
         String csv = String.join(",", ImportSection.ARTISTS.headers())
-                + "\n다듀,,HIPHOP,,false\n";
+                + "\n다듀,,HIPHOP,\n";
 
         ImportPreviewResponse response = service.previewSingle(
                 ImportSection.ARTISTS, csv("file", "artists.csv", csv),
@@ -417,8 +417,8 @@ class ImportPreviewServiceTest {
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
         given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of());
         String csv = String.join(",", ImportSection.ARTISTS.headers())
-                + "\nAlpha,Beta,BAND,,false\n"
-                + "Beta,,BAND,,false\n";
+                + "\nAlpha,Beta,BAND,\n"
+                + "Beta,,BAND,\n";
 
         ImportPreviewResponse response = service.previewSingle(
                 ImportSection.ARTISTS, csv("file", "artists.csv", csv),
@@ -620,9 +620,9 @@ class ImportPreviewServiceTest {
     private MockMultipartFile artistsFile() {
         String header = String.join(",", ImportSection.ARTISTS.headers());
         return csv("file", "artists.csv", header + "\n"
-                + "10CM,십센치,BAND,,false\n"
-                + "십센치,권정열,BAND,,false\n"
-                + "새 아티스트,새별칭,,,true\n");
+                + "10CM,십센치,BAND,\n"
+                + "십센치,권정열,BAND,\n"
+                + "새 아티스트,새별칭,,\n");
     }
 
     private MockMultipartFile csv(String part, String name, String content) {
