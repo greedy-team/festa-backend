@@ -1,7 +1,77 @@
 # Changelog
 
-**현재 버전:** 0.0.4  
-**마지막 업데이트:** 2026-08-03T06:23:59Z  
+**현재 버전:** 0.0.5  
+**마지막 업데이트:** 2026-09-14T10:35:46Z  
+
+---
+
+## [0.0.5] - 2026-09-14
+
+**PR:** #175  
+
+**개선**
+- 약어 검색을 단일 쿼리로 통합한다
+
+**기타**
+- Merge pull request from greedy-team/chore_99_a1_프로덕션_배포_서버_온보딩
+- chore : 운영 서버 전환 참조를 후속 이슈 으로 옮긴다
+- chore : PUBLIC_BASE_URL 도메인이 API_DOMAINS에 없으면 서버에 닿기 전에 막는다
+- chore : API_DOMAINS 쉼표 형식과 PUBLIC_BASE_URL 형식을 서버에 닿기 전에 막는다
+- chore : 환경별 서빙 도메인 변수 절차를 문서에 반영한다
+- chore : HTTPS 서빙 확인을 DNS가 아니라 배포 대상 서버로 고정한다
+- chore : Caddy 서빙 도메인을 환경별 API_DOMAINS 변수로 받는다
+- chore : 운영 프로파일에 공개 프론트 CORS 허용 출처를 둔다
+- Merge pull request from greedy-team/chore_165_이미지를_통째로_전송하지_말고_레지스트리_경유로_바꾼다
+- docs : GHCR 인증 설정과 이미지 검증 절차를 적는다
+- chore : 배포 스크립트의 실패 경로를 CI에서 검증한다
+- chore : 배포 이미지를 GHCR 경유로 전달한다
+- Merge pull request from greedy-team/chore_164_이미지_빌드에서_매번_새로_받는_의존성을_러너_캐시로_옮긴다
+- chore : 배포 JAR 빌드를 러너 Gradle 캐시로 옮긴다
+- Merge pull request from greedy-team/feat_146_host_통용_약어_검색_지원
+- docs : 통합검색 Swagger에 약어 검색 범위를 명시한다
+- Merge pull request from greedy-team/chore_156_문서_전용_배포와_쓰이지_않는_qemu_설치를_걷어낸다
+- chore : 문서 전용 배포를 제외하고 QEMU를 ARM 빌드에만 설정
+- Merge pull request from greedy-team/chore_158_한_번도_쓰이지_않은_의존성_4개와_중복_선언_1개를_걷어낸다
+- Merge branch 'develop' into chore_158_한_번도_쓰이지_않은_의존성_4개와_중복_선언_1개를_걷어낸다
+- 약어 검색 계약 검증을 보강한다
+- fix : 약어 검색 Host 정렬을 유지한다
+- fix : 약어 검색 축제 정렬을 유지한다
+- test : 목록 외 Host 약어 비추론을 검증한다
+- refactor : HostAlias DB 설계를 제거한다
+- feat : Host 통용 약어를 통합검색에 적용
+- chore : AGENTS.md 기술 스택에서 Validation 표기를 지운다
+- feat : Host 약어 검색을 상수 매핑으로 단순화
+- Merge pull request from greedy-team/chore_157_쓰지_않는_google_oauth_클라이언트_설정을_걷어낸다
+- chore : 한 번도 쓰이지 않은 의존성 4개와 중복 선언 1개를 걷어낸다
+- chore : 쓰지 않는 Google OAuth 클라이언트 설정을 걷어낸다
+- Merge pull request from greedy-team/fix_152_festival_search_start_date_order
+- fix : Festival 검색 결과를 개최일 최신순으로 정렬
+- Merge pull request from greedy-team/feat_147_검색어와_db_값의_공백_차이_무시
+- Merge pull request from greedy-team/fix_143_매핑_없는_경로가_404가_아니라_500이라_스캐너_트래픽이_로그를_20배로_부풀린다
+- feat : 검색어 공백 정규화를 공통 Java 계층으로 이동
+- feat : 검색어와 DB 값의 띄어쓰기 차이를 무시한다
+- fix : 매핑 없는 경로를 NoResourceFoundException으로 잡아 404로 응답하고 WARN으로 남긴다
+- Merge pull request from greedy-team/feat_138_최신순_정렬_기준을_발행_시각에서_개최일로_바꾼다
+- Merge pull request from greedy-team/feat_139_축제_상세_응답에_축제_인스타그램_url을_낸다
+- feat : 축제 상세 응답에 축제 인스타그램 URL을 낸다
+- feat : 최신순 정렬 기준을 발행 시각에서 개최일로 바꾼다
+- docs : 가드와 계약 테스트 보강 최종 구현 리포트를 추가한다
+- docs : 관리자 쓰기 엔드포인트 HTTP 계약 고정 최종 구현 리포트를 추가한다
+- Merge pull request from greedy-team/chore_134_관리자_쓰기_엔드포인트의_http_계약을_고정한다
+- Merge pull request from greedy-team/chore_132_실행된_적_없는_가드와_프로덕션과_다른_매퍼로_검증하는_계약_테스트를_메운다
+- docs : 엔티티 공통 픽스처 최종 구현 리포트 작성
+- Merge pull request from greedy-team/refactor_130_엔티티_생성_코드를_공통_픽스처로_묶는다
+- chore : 관리자 쓰기 엔드포인트의 HTTP 계약을 고정한다
+- chore : 실행된 적 없는 가드와 계약 테스트의 매퍼를 메운다
+- refactor : 엔티티 생성 코드를 공통 픽스처로 묶는다
+- Merge pull request from greedy-team/refactor_98_q_파라미터의_like_이스케이프_처리를_통일
+- refactor : 검색어 정규화 정책을 공통화한다
+- fix : LIKE 이스케이프의 null 계약을 명시한다
+- Merge remote-tracking branch 'origin/develop' into refactor_98_q_파라미터의_like_이스케이프_처리를_통일
+- docs : 기록되지 않던 실패 지점 로그 최종 구현 리포트 추가
+- Merge pull request from greedy-team/feat_117_기록되지_않는_실패_지점에_로그_남기기
+- Merge remote-tracking branch 'origin/develop' into feat_117_기록되지_않는_실패_지점에_로그_남기기
+- fix : 관리 작업 로그를 커밋된 뒤에 남긴다
 
 ---
 
