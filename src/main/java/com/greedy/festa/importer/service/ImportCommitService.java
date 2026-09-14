@@ -370,15 +370,12 @@ public class ImportCommitService {
                         .name(text(row.normalized(), "name"))
                         .genre(enumValue(row.normalized(), "genre", ArtistGenre.class))
                         .imageUrl(nullableText(row.normalized(), "imageUrl"))
-                        .needsReview(true)
                         .build());
             } else {
                 artist = state.artistsById().get(row.matchedArtistId());
                 if (action == ImportCommitAction.UPDATE) {
-                    Boolean needsReview = nullableBoolean(row.normalized(), "needsReview");
                     artist.updateFromImport(enumValue(row.normalized(), "genre", ArtistGenre.class),
-                            nullableText(row.normalized(), "imageUrl"),
-                            needsReview == null ? artist.isNeedsReview() : needsReview);
+                            nullableText(row.normalized(), "imageUrl"));
                 }
             }
             if (action != ImportCommitAction.SKIP) {
@@ -570,8 +567,7 @@ public class ImportCommitService {
                 value.get("instagram_url"), optionalInteger(value.get("day")),
                 optionalInteger(value.get("order")), value.get("artist_raw"),
                 value.get("artist_canonical"), optionalBoolean(value.get("revealed")),
-                payloadList(value.get("other_names")), value.get("genre"), value.get("image_url"),
-                optionalBoolean(value.get("needs_review")));
+                payloadList(value.get("other_names")), value.get("genre"), value.get("image_url"));
     }
 
     private ImportCommitResponse response(Long importId, Instant committedAt, Execution execution) {

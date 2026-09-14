@@ -434,14 +434,14 @@ class ImportPreviewServiceTest {
         given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of());
         given(artistAliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of());
         String csv = String.join(",", ImportSection.ARTISTS.headers())
-                + "\nNew Artist,,BAND,,false\n";
+                + "\nNew Artist,,BAND,\n";
 
         ImportPreviewResponse response = service.previewSingle(
                 ImportSection.ARTISTS, csv("file", "artists.csv", csv),
                 ImportConflictPolicy.UPDATE, Instant.EPOCH);
 
         assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
-        assertThat(response.rows().getFirst().values()).containsEntry("needsReview", true);
+        assertThat(response.rows().getFirst().values()).doesNotContainKey("needsReview");
     }
 
     @Test
@@ -634,6 +634,6 @@ class ImportPreviewServiceTest {
     }
 
     private Artist artist(Long id, String name) {
-        return Fixtures.withId(ArtistFixture.artist(name).needsReview(false).build(), id);
+        return Fixtures.withId(ArtistFixture.artist(name).build(), id);
     }
 }

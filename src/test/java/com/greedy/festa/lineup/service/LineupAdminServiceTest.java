@@ -67,7 +67,7 @@ class LineupAdminServiceTest extends PostgresTestSupport {
         Host 주최 = em.merge(HostFixture.host("테스트대학교").region("서울 광진구").build());
         축제 = em.merge(FestivalFixture.festival("세종연회")
                 .host(주최).startDate(시작일).endDate(종료일).build());
-        아티스트 = em.merge(ArtistFixture.artist("테스트밴드").needsReview(false).build());
+        아티스트 = em.merge(ArtistFixture.artist("테스트밴드").build());
         반영한다();
     }
 

@@ -335,7 +335,7 @@ class ImportCommitServiceTest {
         ArtistAlias owned = ArtistFixture.alias(other, "taken").build();
         StoredPreviewRow update = row(ImportSection.ARTISTS, 1, "target",
                 ImportPreviewAction.UPDATE,
-                Map.of("name", "target", "otherNames", List.of("taken"), "needsReview", false),
+                Map.of("name", "target", "otherNames", List.of("taken")),
                 null, 10L, null, ArtistMatchStatus.MATCHED, List.of(), false);
         prepare(preview(update));
         given(aliasRepository.findAllWithArtistByNameIn(anyCollection())).willReturn(List.of(owned));
@@ -351,8 +351,7 @@ class ImportCommitServiceTest {
         StoredPreviewRow first = artistRow(1, ImportPreviewAction.CREATE, null);
         StoredPreviewRow second = row(ImportSection.ARTISTS, 2, "other artist",
                 ImportPreviewAction.CREATE,
-                Map.of("name", "other artist", "otherNames", List.of("new alias"),
-                        "needsReview", false), null, null, null,
+                Map.of("name", "other artist", "otherNames", List.of("new alias")), null, null, null,
                 ArtistMatchStatus.NEW, List.of(), false);
         prepare(preview(first, second));
 
@@ -398,7 +397,7 @@ class ImportCommitServiceTest {
     void 신규_Artist는_저장_preview값이_false여도_needsReview_true로_생성한다() {
         StoredPreviewRow source = artistRow(1, ImportPreviewAction.CREATE, null);
         Map<String, Object> normalized = new LinkedHashMap<>(source.normalized());
-        normalized.put("needsReview", false);
+        normalized.put("legacy", false);
         StoredPreviewRow row = row(ImportSection.ARTISTS, 1, "new artist",
                 ImportPreviewAction.CREATE, normalized, null, null, null,
                 ArtistMatchStatus.NEW, List.of(), false);
@@ -409,7 +408,6 @@ class ImportCommitServiceTest {
 
         ArgumentCaptor<Artist> saved = ArgumentCaptor.forClass(Artist.class);
         verify(artistRepository).save(saved.capture());
-        assertThat(saved.getValue().isNeedsReview()).isTrue();
     }
 
     @Test
@@ -558,7 +556,7 @@ class ImportCommitServiceTest {
     private StoredPreviewRow artistRow(int line, ImportPreviewAction action, Long matchedId) {
         return row(ImportSection.ARTISTS, line, "new artist", action,
                 Map.of("name", "new artist", "otherNames", List.of("new alias"),
-                        "genre", "BAND", "imageUrl", "", "needsReview", true),
+                        "genre", "BAND", "imageUrl", ""),
                 null, matchedId, null,
                 matchedId == null ? ArtistMatchStatus.NEW : ArtistMatchStatus.MATCHED,
                 List.of(), false);
@@ -632,7 +630,7 @@ class ImportCommitServiceTest {
     }
 
     private Artist artist(Long id, String name) {
-        return Fixtures.withId(ArtistFixture.artist(name).needsReview(false).build(), id);
+        return Fixtures.withId(ArtistFixture.artist(name).build(), id);
     }
 
     private Festival festivalEntity(Long id, Host host, boolean published) {

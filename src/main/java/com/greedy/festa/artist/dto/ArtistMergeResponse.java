@@ -6,8 +6,7 @@ import java.util.List;
 
 public record ArtistMergeResponse(
         Long targetId, String name, Integer mergedCount,
-        Integer movedAppearances, Integer removedDuplicates,
-        List<String> otherNames, Boolean needsReview
+        Integer movedAppearances, Integer removedDuplicates, List<String> otherNames
 ) {
 
     public static ArtistMergeResponse of(
@@ -16,8 +15,7 @@ public record ArtistMergeResponse(
     ) {
         return new ArtistMergeResponse(
                 target.getId(), target.getName(), mergedCount,
-                movedAppearances, removedDuplicates, otherNames,
-                target.isNeedsReview()
+                movedAppearances, removedDuplicates, otherNames
         );
     }
 }

@@ -67,13 +67,12 @@ public class ArtistAdminController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping
     public PageResponse<ArtistResponse> findAll(
-            @RequestParam(required = false) Boolean needsReview,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String genre,
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return artistAdminService.findAll(needsReview, q,
+        return artistAdminService.findAll(q,
                 ArtistGenre.from(genre),
                 ArtistAdminSortType.from(sort),
                 page, size);
@@ -108,7 +107,7 @@ public class ArtistAdminController {
                     + "instagramUrl은 생략·null·공백을 모두 삭제로 읽는다. "
                     + "otherNames는 생략하거나 null이면 기존 별칭을 유지하고, 빈 배열([])이면 전체 삭제하며, "
                     + "값이 있으면 그 배열로 전체 교체한다. "
-                    + "genre·needsReview는 생략하거나 null이면 기존 값을 유지한다.")
+                    + "genre는 생략하거나 null이면 기존 값을 유지한다.")
     @ApiResponse(responseCode = "200", description = "수정된 아티스트")
     @ApiResponse(responseCode = "400", description = "ARTIST_INVALID_NAME / ARTIST_INVALID_ALIAS",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

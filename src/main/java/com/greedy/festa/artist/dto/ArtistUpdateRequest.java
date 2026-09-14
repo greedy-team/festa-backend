@@ -8,7 +8,6 @@ public record ArtistUpdateRequest(
         String name,
         List<String> otherNames,
         ArtistGenre genre,
-        String instagramUrl,
-        Boolean needsReview
+        String instagramUrl
 ) {
 }

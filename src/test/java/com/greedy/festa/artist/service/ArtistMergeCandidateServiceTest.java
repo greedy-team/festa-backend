@@ -297,7 +297,7 @@ public class ArtistMergeCandidateServiceTest {
 
     private Artist 아티스트(Long id, String name) {
         return Fixtures.withId(
-                ArtistFixture.artist(name).needsReview(false).build(), id);
+                ArtistFixture.artist(name).build(), id);
     }
 
     private ArtistAlias 별칭(Artist artist, String name) {

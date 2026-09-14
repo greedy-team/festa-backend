@@ -227,11 +227,8 @@ class ArtistMergeServiceTest extends PostgresTestSupport {
         반영한다();
 
         assertSoftly(softly -> {
-            softly.assertThat(결과.needsReview()).isTrue();
             softly.assertThat(artistRepository.findById(아이유.getId()))
                     .get()
-                    .extracting(Artist::isNeedsReview)
-                    .isEqualTo(true);
         });
     }
 
@@ -345,7 +342,6 @@ class ArtistMergeServiceTest extends PostgresTestSupport {
 
     private Artist 아티스트를_넣는다(String 이름) {
         Artist 아티스트 = ArtistFixture.artist(이름)
-                .needsReview(false)
                 .build();
         em.persist(아티스트);
         return 아티스트;

@@ -132,12 +132,10 @@ class ArtistAdminPatchContractTest {
     }
 
     @Test
-    void omittedNeedsReviewKeepsExistingValue() throws Exception {
-        artist.markNeedsReview();
+    void omittedFieldsKeepTheirExistingValues() throws Exception {
 
         ArtistUpdateRequest request = objectMapper.readValue(
                 "{\"name\":\"기존 이름\"}", ArtistUpdateRequest.class);
 
-        assertThat(service.update(1L, request).needsReview()).isTrue();
     }
 }

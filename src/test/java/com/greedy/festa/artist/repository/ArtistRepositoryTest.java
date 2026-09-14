@@ -407,16 +407,15 @@ class ArtistRepositoryTest extends PostgresTestSupport {
     }
 
     private Page<ArtistWithAppearanceCount> 조회한다(
-            String q, ArtistGenre genre, Boolean needsReview, ArtistAdminSortType sort
+            String q, ArtistGenre genre, boolean ignored, ArtistAdminSortType sort
     ) {
         return artistRepository.findAllWithAppearanceCount(
-                needsReview, genre, q, PageRequest.of(0, 10, sort.toSort()));
+                genre, q, PageRequest.of(0, 10, sort.toSort()));
     }
 
     private Artist 아티스트를_넣는다(String 이름, ArtistGenre 장르, boolean 검토대기) {
         Artist 아티스트 = ArtistFixture.artist(이름)
                 .genre(장르)
-                .needsReview(검토대기)
                 .build();
         em.persist(아티스트);
         return 아티스트;

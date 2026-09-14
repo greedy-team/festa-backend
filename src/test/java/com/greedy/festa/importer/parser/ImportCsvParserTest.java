@@ -30,7 +30,7 @@ class ImportCsvParserTest {
         assertThat(ImportSection.LINEUPS.headers()).containsExactly(
                 "import_key", "day", "order", "artist_raw", "artist_canonical", "revealed");
         assertThat(ImportSection.ARTISTS.headers()).containsExactly(
-                "name", "other_names", "genre", "image_url", "needs_review");
+                "name", "other_names", "genre", "image_url");
     }
 
     @Test
@@ -45,7 +45,6 @@ class ImportCsvParserTest {
         assertThat(rows.getFirst().line()).isEqualTo(1);
         assertThat(rows.getFirst().values().get("name")).isEqualTo("밴드, 이름");
         assertThat(rows.getFirst().values().get("other_names")).isEqualTo("별칭 \"A\"|별칭B");
-        assertThat(rows.getFirst().values().get("needs_review")).isEqualTo("true\r\n");
     }
 
     @Test
