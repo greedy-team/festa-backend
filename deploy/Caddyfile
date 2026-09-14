@@ -1,6 +1,6 @@
 # 서빙할 도메인은 환경마다 다르다 — compose가 API_DOMAINS로 넘긴다
 # (development: dev-api.every-festa.com, production: api.every-festa.com).
-# 쉼표로 여러 개를 줄 수 있어, 도메인을 옮기는 동안에는 한 서버가 둘을 함께 서빙한다.
+# 쉼표 뒤에 공백을 두어 여러 개를 줄 수 있어, 도메인을 옮기는 동안에는 한 서버가 둘을 함께 서빙한다.
 # 인증서 발급과 갱신은 Caddy가 알아서 한다.
 # 발급받은 인증서는 compose의 caddy-data 볼륨에 남는다 — 볼륨이 없으면
 # 재배포마다 재발급을 시도해 Let's Encrypt 발급 한도에 걸린다.

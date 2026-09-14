@@ -14,14 +14,16 @@
 PAT 값은 저장소·채팅·명령 인자에 넣지 않고 GitHub Settings의 Secret 입력란에서 등록한다.
 
 각 Environment의 Variables에는 서빙 도메인을 등록한다. 비밀이 아니므로 Variable이다.
-`API_DOMAINS`가 없으면 배포는 서버에 닿기 전에 멈추고, `PUBLIC_BASE_URL`이 없거나 형식이 틀리면 컨테이너를 교체한 뒤 마지막 HTTPS 확인에서 실패한다.
+둘 중 하나라도 없거나 형식이 틀리면 배포는 서버에 닿기 전에 멈춘다.
 
 | Variable | development | production |
 | --- | --- | --- |
 | `API_DOMAINS` | `dev-api.every-festa.com` | `api.every-festa.com` |
 | `PUBLIC_BASE_URL` | `https://dev-api.every-festa.com` | `https://api.every-festa.com` |
 
-`API_DOMAINS`는 Caddy가 인증서를 받아 서빙할 도메인이다. 쉼표로 여러 개를 줄 수 있어,
+표는 운영 서버 전환(#99)이 끝난 뒤의 값이다. 전환 중에는 development가 `api.every-festa.com`을 함께 서빙한다.
+
+`API_DOMAINS`는 Caddy가 인증서를 받아 서빙할 도메인이다. 쉼표 뒤에 공백을 두어 여러 개를 줄 수 있어(`api.every-festa.com, dev-api.every-festa.com`),
 도메인을 옮기는 동안에는 한 서버가 옛 도메인과 새 도메인을 함께 서빙한다.
 `PUBLIC_BASE_URL`은 배포 마지막 HTTPS 확인의 주소다. 접속은 DNS가 아니라 방금 배포한
 `OCI_HOST`로 고정하므로, 도메인이 아직 다른 서버를 가리키면 이 확인은 실패한다.

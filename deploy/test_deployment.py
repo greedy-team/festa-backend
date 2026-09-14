@@ -184,7 +184,8 @@ ssh() { bash -c "${@: -1}"; }
                         OCI_HOST_KEY='test ssh-ed25519 AAAA', OCI_SSH_PRIVATE_KEY='test-key',
                         ADMIN_JWT_SECRET='test-admin-secret', ADMIN_INITIAL_USERNAME='',
                         ADMIN_INITIAL_PASSWORD='',
-                        API_DOMAINS='api.every-festa.com, dev-api.every-festa.com')
+                        API_DOMAINS='api.every-festa.com, dev-api.every-festa.com',
+                        PUBLIC_BASE_URL='https://api.every-festa.com')
         self.env.update(overrides)
         return self.run_script(step_script('SSH와 실행 환경 준비'))
 
@@ -195,11 +196,29 @@ ssh() { bash -c "${@: -1}"; }
                       (self.path / 'app.env').read_text(encoding='utf-8'))
 
     def test_missing_api_domains_stops_before_server(self):
-        for value in ('', ' , '):
+        for value in ('', ' , ', '   '):
             with self.subTest(value=value):
                 result = self.run_prepare_step(API_DOMAINS=value)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn('API_DOMAINS', result.stderr)
+
+    def test_api_domains_comma_without_space_stops_before_server(self):
+        for value in ('api.every-festa.com,dev-api.every-festa.com', 'api.every-festa.com,',
+                      'api.every-festa.com, '):
+            with self.subTest(value=value):
+                result = self.run_prepare_step(API_DOMAINS=value)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('API_DOMAINS', result.stderr)
+                self.assertNotIn('API_DOMAINS', (self.path / 'app.env').read_text(encoding='utf-8'))
+
+    def test_malformed_public_base_url_stops_before_server(self):
+        for value in ('', 'http://api.every-festa.com', 'https://api.every-festa.com/',
+                      'https://api.every-festa.com?x=1'):
+            with self.subTest(value=value):
+                result = self.run_prepare_step(PUBLIC_BASE_URL=value)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('PUBLIC_BASE_URL', result.stderr)
+                self.assertNotIn('API_DOMAINS', (self.path / 'app.env').read_text(encoding='utf-8'))
 
     def test_caddy_domains_are_wired_through_compose_and_workflow(self):
         caddyfile = (ROOT / 'deploy/Caddyfile').read_text(encoding='utf-8')
@@ -226,7 +245,8 @@ curl() { printf '%s\\n' "$*" >> "$OCI_DEPLOY_PATH/curl-args"; }
         self.assertIn('https://api.every-festa.com/actuator/health', args)
 
     def test_https_check_rejects_malformed_base_url(self):
-        for value in ('', 'http://api.every-festa.com', 'https://api.every-festa.com/'):
+        for value in ('', 'http://api.every-festa.com', 'https://api.every-festa.com/',
+                      'https://api.every-festa.com?x=1'):
             with self.subTest(value=value):
                 result = self.run_https_check(value)
                 self.assertNotEqual(result.returncode, 0)
