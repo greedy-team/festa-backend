@@ -110,6 +110,8 @@ jobs:
       - name: SSH와 실행 환경 준비
         env:
           DEPLOY_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'production' || 'development') }}
+          # #166: development에서만 명시적으로 켜는 기동 시간 실험. 기본값은 기존 JVM 설정.
+          STARTUP_JVM_TRIAL: ${{ vars.STARTUP_JVM_TRIAL }}
           OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
           OCI_HOST_KEY: ${{ secrets.OCI_HOST_KEY }}
           OCI_HOST: ${{ secrets.OCI_HOST }}
@@ -149,6 +151,11 @@ jobs:
           printf '%s\n' "$OCI_HOST_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/known_hosts"
           chmod 600 "$RUNNER_TEMP/ssh/known_hosts"
 
+          app_java_tool_options=''
+          if [[ "$DEPLOY_ENVIRONMENT" == development && "$STARTUP_JVM_TRIAL" == true ]]; then
+            app_java_tool_options='-XX:TieredStopAtLevel=1'
+          fi
+          echo "기동 시간 실험: JAVA_TOOL_OPTIONS=${app_java_tool_options:-<default>}"
           umask 077
           write_env() {
             local key="$1"
@@ -157,6 +164,7 @@ jobs:
             printf "%s='%s'\n" "$key" "$value"
           }
           {
+            write_env APP_JAVA_TOOL_OPTIONS "$app_java_tool_options"
             write_env SPRING_PROFILES_ACTIVE "$DEPLOY_ENVIRONMENT"
             write_env DB_URL "$DB_URL"
             write_env DB_USERNAME "$DB_USERNAME"
@@ -244,7 +252,9 @@ jobs:
             fi
 
             echo "새 이미지 배포 실패. $previous_image 로 롤백합니다." >&2
-            APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 300
+            # 이미지뿐 아니라 실패 원인일 수 있는 실험 옵션도 해제한다.
+            sed -i '/^APP_JAVA_TOOL_OPTIONS=/d' app.env
+            APP_JAVA_TOOL_OPTIONS='' APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 300
             curl --fail --silent --show-error --retry 10 --retry-delay 3 \
               http://localhost:8080/actuator/health
             rm -f .deployment-in-progress

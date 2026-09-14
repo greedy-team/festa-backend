@@ -33,6 +33,8 @@ services:
       # 다만 develop 자동 배포는 development로 뜨므로 실제 배포에서는 켜져 있다 —
       # 저장소가 공개라 API 표면을 가릴 실익이 없어 그대로 둔다.
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
+      # #166: 기본은 빈 값. development 후보 실험만 CD가 값을 전달한다.
+      JAVA_TOOL_OPTIONS: ${APP_JAVA_TOOL_OPTIONS:-}
       DB_URL: ${DB_URL:?DB_URL is required}
       DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}

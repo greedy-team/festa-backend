@@ -93,6 +93,29 @@ class DeploymentTest(unittest.TestCase):
         self.assertIn('image rm festa-backend:obsolete', calls)
         self.assertIn('image rm ghcr.io/greedy-team/festa-backend:old', calls)
 
+    def test_trial_is_development_only_and_opt_in(self):
+        setup = WORKFLOW.split("          app_java_tool_options=''\n")[1]
+        setup = "app_java_tool_options=''\n" + setup.split('          umask 077')[0]
+        for environment, enabled, expected in (
+            ('development', 'true', '-XX:TieredStopAtLevel=1'),
+            ('development', '', '<default>'),
+            ('development', 'false', '<default>'),
+            ('production', 'true', '<default>'),
+        ):
+            with self.subTest(environment=environment, enabled=enabled):
+                self.env.update(DEPLOY_ENVIRONMENT=environment, STARTUP_JVM_TRIAL=enabled)
+                result = self.run_script(setup)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('JAVA_TOOL_OPTIONS=' + expected, result.stdout)
+
+    def test_failed_trial_clears_option_before_rollback(self):
+        self.write('app.env', "APP_JAVA_TOOL_OPTIONS='-XX:TieredStopAtLevel=1'\nDB_USERNAME='test'")
+        result = self.run_script(REMOTE[0], 'health_failure')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('APP_JAVA_TOOL_OPTIONS=', self.read('app.env'))
+        self.assertIn("DB_USERNAME='test'", self.read('app.env'))
+        self.assertIn(self.previous + '|compose', self.read('calls'))
+
     def test_ghcr_previous_is_preserved(self):
         previous = 'ghcr.io/greedy-team/festa-backend:previous-amd64-122-1'
         self.env['PREVIOUS'] = previous
