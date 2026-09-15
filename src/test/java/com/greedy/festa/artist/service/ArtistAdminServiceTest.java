@@ -1,23 +1,30 @@
 package com.greedy.festa.artist.service;
 
 import com.greedy.festa.artist.dto.ArtistCreateRequest;
+import com.greedy.festa.artist.dto.ArtistAdminSortType;
 import com.greedy.festa.artist.dto.ArtistResponse;
 import com.greedy.festa.artist.dto.ArtistUpdateRequest;
 import com.greedy.festa.artist.entity.Artist;
 import com.greedy.festa.artist.entity.ArtistGenre;
+import com.greedy.festa.artist.exception.ArtistErrorCode;
 import com.greedy.festa.artist.repository.ArtistAliasRepository;
 import com.greedy.festa.artist.repository.ArtistRepository;
 import com.greedy.festa.support.fixture.ArtistFixture;
+import com.greedy.festa.global.exception.FestaException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 class ArtistAdminServiceTest {
@@ -58,5 +65,28 @@ class ArtistAdminServiceTest {
         assertThat(response.name()).isEqualTo("updated");
         assertThat(response.genre()).isEqualTo(ArtistGenre.HIPHOP);
         assertThat(response.instagramUrl()).isEqualTo("https://instagram.com/updated");
+    }
+
+    @Test
+    void rejectsDuplicateArtistNameOnCreate() {
+        given(artistRepository.existsByName("artist")).willReturn(true);
+
+        FestaException exception = catchThrowableOfType(FestaException.class,
+                () -> service.create(new ArtistCreateRequest(
+                        "artist", List.of(), ArtistGenre.BAND, null)));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ArtistErrorCode.ARTIST_DUPLICATE_NAME);
+        verify(artistRepository, never()).save(any());
+    }
+
+    @Test
+    void preservesListQueryEscapingWithoutTheRemovedReviewFilter() {
+        given(artistRepository.findAllWithAppearanceCount(eq(null), eq("100\\%\\_\\\\live"), any()))
+                .willReturn(new PageImpl<>(List.of()));
+
+        service.findAll("  100 % _ \\ live  ", null, ArtistAdminSortType.NAME, 0, 20);
+
+        verify(artistRepository).findAllWithAppearanceCount(
+                eq(null), eq("100\\%\\_\\\\live"), any());
     }
 }

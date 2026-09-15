@@ -20,6 +20,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Clock;
@@ -43,6 +44,23 @@ class ArtistServicePostgresIntegrationTest extends PostgresTestSupport {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Test
+    void 아티스트_검수_필요_컬럼은_Flyway로_제거된다() {
+        Boolean exists = jdbcTemplate.queryForObject("""
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = current_schema()
+                      AND table_name = 'artist'
+                      AND column_name = 'needs_review'
+                )
+                """, Boolean.class);
+
+        assertThat(exists).isFalse();
+    }
 
     @Test
     void 실제_PostgreSQL에서_KST_분류와_발행_필터_5건_limit_total을_함께_검증한다() {

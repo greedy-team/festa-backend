@@ -45,6 +45,8 @@ class ImportCsvParserTest {
         assertThat(rows.getFirst().line()).isEqualTo(1);
         assertThat(rows.getFirst().values().get("name")).isEqualTo("밴드, 이름");
         assertThat(rows.getFirst().values().get("other_names")).isEqualTo("별칭 \"A\"|별칭B");
+        assertThat(rows.getFirst().values().get("image_url"))
+                .isEqualTo("https://example.com/a.jpg\r\n");
     }
 
     @Test

@@ -131,11 +131,4 @@ class ArtistAdminPatchContractTest {
         assertThat(service.update(1L, request).genre()).isEqualTo(ArtistGenre.DANCE);
     }
 
-    @Test
-    void omittedFieldsKeepTheirExistingValues() throws Exception {
-
-        ArtistUpdateRequest request = objectMapper.readValue(
-                "{\"name\":\"기존 이름\"}", ArtistUpdateRequest.class);
-
-    }
 }

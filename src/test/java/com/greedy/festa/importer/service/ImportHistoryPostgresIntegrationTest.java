@@ -115,20 +115,6 @@ class ImportHistoryPostgresIntegrationTest extends PostgresTestSupport {
         assertThat(indexExists("idx_import_batch_uploaded_at_id_desc")).isTrue();
     }
 
-    @Test
-    void FlywayRemovesArtistReviewColumn() {
-        Boolean exists = jdbcTemplate.queryForObject("""
-                SELECT EXISTS (
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_schema = current_schema()
-                      AND table_name = 'artist'
-                      AND column_name = 'needs_review'
-                )
-                """, Boolean.class);
-
-        assertThat(exists).isFalse();
-    }
-
     private Long insertAdmin(String username) {
         return jdbcTemplate.queryForObject("""
                 INSERT INTO admin_user (username, password_hash, created_at)

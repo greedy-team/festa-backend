@@ -441,7 +441,8 @@ class ImportPreviewServiceTest {
                 ImportConflictPolicy.UPDATE, Instant.EPOCH);
 
         assertThat(response.rows().getFirst().action()).isEqualTo(ImportPreviewAction.CREATE);
-        assertThat(response.rows().getFirst().values()).doesNotContainKey("needsReview");
+        assertThat(response.rows().getFirst().values())
+                .containsOnlyKeys("name", "otherNames", "genre", "imageUrl");
     }
 
     @Test
