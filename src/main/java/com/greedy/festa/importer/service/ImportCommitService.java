@@ -203,6 +203,7 @@ public class ImportCommitService {
 
     private void validateSelectedArtistClaims(List<StoredPreviewRow> selected) {
         Map<String, Set<String>> ownersByName = new HashMap<>();
+        Map<Long, Set<Integer>> linesByMatchedArtistId = new HashMap<>();
         selected.stream().filter(row -> row.section() == ImportSection.ARTISTS)
                 .filter(row -> row.action() != ImportPreviewAction.SKIP)
                 .forEach(row -> {
@@ -211,8 +212,15 @@ public class ImportCommitService {
                             : "existing:" + row.matchedArtistId();
                     artistKeys(row).forEach(name -> ownersByName
                             .computeIfAbsent(name, ignored -> new LinkedHashSet<>()).add(owner));
+                    if (row.matchedArtistId() != null) {
+                        linesByMatchedArtistId.computeIfAbsent(row.matchedArtistId(),
+                                ignored -> new LinkedHashSet<>()).add(row.line());
+                    }
                 });
         if (ownersByName.values().stream().anyMatch(owners -> owners.size() > 1)) {
+            throw error(ImportErrorCode.IMPORT_UNCOMMITTABLE);
+        }
+        if (linesByMatchedArtistId.values().stream().anyMatch(lines -> lines.size() > 1)) {
             throw error(ImportErrorCode.IMPORT_UNCOMMITTABLE);
         }
     }
@@ -235,11 +243,17 @@ public class ImportCommitService {
                 artistNames.add(row.importKey());
                 aliasNames.add(row.importKey());
                 aliasNames.addAll(strings(row.normalized().get("otherNames")));
+                aliasNames.addAll(strings(row.normalized().get("inputOtherNames")));
             } else if (row.section() == ImportSection.LINEUPS) {
-                String name = text(row.normalized(), "artistCanonical");
-                if (!name.isBlank()) {
-                    artistNames.add(name);
-                    aliasNames.add(name);
+                String canonical = text(row.normalized(), "artistCanonical");
+                String raw = text(row.normalized(), "artistRaw");
+                if (!canonical.isBlank()) {
+                    artistNames.add(canonical);
+                    aliasNames.add(canonical);
+                }
+                if (!raw.isBlank()) {
+                    artistNames.add(raw);
+                    aliasNames.add(raw);
                 }
                 festivalKeys.add(row.importKey());
             } else if (row.section() == ImportSection.FESTIVALS) {
@@ -286,6 +300,9 @@ public class ImportCommitService {
             }
             validateAliasOwnership(row, null, state);
             return;
+        }
+        for (String alias : strings(row.normalized().get("inputOtherNames"))) {
+            matchedIds.addAll(currentArtistIds(alias, state));
         }
         if (row.matchedArtistId() == null || !matchedIds.equals(Set.of(row.matchedArtistId()))) {
             throw error(ImportErrorCode.IMPORT_PREVIEW_STALE);
@@ -343,11 +360,14 @@ public class ImportCommitService {
             throw error(ImportErrorCode.IMPORT_PREVIEW_STALE);
         }
         if (Boolean.TRUE.equals(row.revealed()) && row.matchedArtistId() != null) {
-            String artistName = text(row.normalized(), "artistCanonical");
-            if (artistName.isBlank()) {
-                artistName = text(row.normalized(), "artistRaw");
-            }
-            if (!currentArtistIds(artistName, state).equals(Set.of(row.matchedArtistId()))) {
+            String canonical = text(row.normalized(), "artistCanonical");
+            String raw = text(row.normalized(), "artistRaw");
+            Set<Long> expected = Set.of(row.matchedArtistId());
+            boolean matchesCanonical = !canonical.isBlank()
+                    && currentArtistIds(canonical, state).equals(expected);
+            boolean matchesRaw = !matchesCanonical && !raw.isBlank()
+                    && currentArtistIds(raw, state).equals(expected);
+            if (!matchesCanonical && !matchesRaw) {
                 throw error(ImportErrorCode.IMPORT_PREVIEW_STALE);
             }
         }
