@@ -16,7 +16,6 @@ import com.greedy.festa.festival.service.FestivalPublishService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpStatus;
@@ -36,8 +35,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
-@WebMvcTest(controllers = FestivalAdminController.class,
-        excludeAutoConfiguration = OAuth2ClientWebSecurityAutoConfiguration.class)
+@WebMvcTest(controllers = FestivalAdminController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @SuppressWarnings("NonAsciiCharacters")
 class FestivalAdminWriteContractTest {

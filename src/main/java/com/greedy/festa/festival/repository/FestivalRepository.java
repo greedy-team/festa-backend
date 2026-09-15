@@ -100,23 +100,35 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
             FROM Festival f
             JOIN FETCH f.host h
             WHERE f.publishedAt IS NOT NULL
-              AND (LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
-                   OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
-                   OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+              AND (LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:primaryQuery AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:primaryQuery AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:primaryQuery AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:aliasQuery AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:aliasQuery AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:aliasQuery AS String), '%')) ESCAPE '\\')
             ORDER BY f.startDate DESC, f.id ASC
             """)
-    List<Festival> findPublishedSearchRows(@Param("q") String q);
+    List<Festival> findPublishedSearchRows(
+            @Param("primaryQuery") String primaryQuery,
+            @Param("aliasQuery") String aliasQuery
+    );
 
     @Query("""
             SELECT COUNT(f)
             FROM Festival f
             JOIN f.host h
             WHERE f.publishedAt IS NOT NULL
-              AND (LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
-                   OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
-                   OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\')
+              AND (LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:primaryQuery AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:primaryQuery AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:primaryQuery AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(f.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:aliasQuery AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:aliasQuery AS String), '%')) ESCAPE '\\'
+                   OR LOWER(REPLACE(h.shortName, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:aliasQuery AS String), '%')) ESCAPE '\\')
             """)
-    long countPublishedSearchRows(@Param("q") String q);
+    long countPublishedSearchRows(
+            @Param("primaryQuery") String primaryQuery,
+            @Param("aliasQuery") String aliasQuery
+    );
 
     @Query(value = """
         SELECT f

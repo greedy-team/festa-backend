@@ -3,6 +3,12 @@ name: PROJECT-SPRING-CD
 on:
   push:
     branches: [develop, main]
+    # 문서만 바뀐 push는 배포하지 않는다. 필수 검사인 CI에는 경로 제외를 넣지 않는다.
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'CHANGELOG.json'
+  # 새 인스턴스의 최초 배포나 동일 코드 재배포는 경로 필터 없이 수동 실행한다.
   workflow_dispatch:
     inputs:
       environment:
@@ -27,8 +33,8 @@ jobs:
       name: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'production' || 'development') }}
     permissions:
       contents: read
+      packages: write
     env:
-      IMAGE_NAME: festa-backend
       TARGET_PLATFORM: ${{ (github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'production' || 'development')) == 'production' && 'linux/arm64' || 'linux/amd64' }}
       OCI_PORT: ${{ secrets.OCI_SSH_PORT || '22' }}
       OCI_DEPLOY_PATH: ${{ vars.OCI_DEPLOY_PATH || '/opt/festa' }}
@@ -46,22 +52,60 @@ jobs:
       - name: 코드 체크아웃
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
+      - name: GHCR 설정 확인과 이미지 이름 준비
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+        run: |
+          if [[ -z "$GHCR_USERNAME" || -z "$GHCR_READ_TOKEN" ]]; then
+            echo "GHCR_USERNAME과 GHCR_READ_TOKEN(read:packages) Secret이 필요합니다." >&2
+            exit 1
+          fi
+          image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
+          architecture="${TARGET_PLATFORM#linux/}"
+          echo "IMAGE_NAME=$image_name" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=$GITHUB_SHA-$architecture-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+
+      - name: GHCR 업로드 인증
+        env:
+          GHCR_PUSH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_PUSH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: JDK 21 설정
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: 실행 JAR 빌드
+        run: ./gradlew bootJar --no-daemon
+
       - name: QEMU 설정
+        if: ${{ env.TARGET_PLATFORM == 'linux/arm64' }}
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
         with:
-          platforms: arm64,amd64
+          platforms: arm64
 
       - name: Docker Buildx 설정
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - name: 컨테이너 이미지 빌드
+      - name: 컨테이너 이미지 빌드와 GHCR 업로드
         run: |
+          # build/는 .dockerignore에서 제외하므로 산출물만 별도 컨텍스트로 전달한다.
+          image_context="$RUNNER_TEMP/image-context"
+          mkdir -p "$image_context"
+          cp Dockerfile "$image_context/Dockerfile"
+          jar_file="$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-plain.jar')"
+          cp "$jar_file" "$image_context/app.jar"
           docker buildx build \
             --platform "$TARGET_PLATFORM" \
-            --tag "$IMAGE_NAME:$GITHUB_SHA" \
-            --output "type=docker,dest=$RUNNER_TEMP/$IMAGE_NAME.tar" \
-            .
-          gzip "$RUNNER_TEMP/$IMAGE_NAME.tar"
+            --tag "$IMAGE_NAME:$IMAGE_TAG" \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --cache-from "type=registry,ref=$IMAGE_NAME:buildcache-${TARGET_PLATFORM#linux/}" \
+            --cache-to "type=registry,ref=$IMAGE_NAME:buildcache-${TARGET_PLATFORM#linux/},mode=max" \
+            --push \
+            "$image_context"
 
       - name: SSH와 실행 환경 준비
         env:
@@ -72,15 +116,48 @@ jobs:
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           AES_KEY: ${{ secrets.AES_KEY }}
           ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
           ADMIN_INITIAL_USERNAME: ${{ secrets.ADMIN_INITIAL_USERNAME }}
           ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
           GRAFANA_OTLP_AUTH: ${{ secrets.GRAFANA_OTLP_AUTH }}
+          API_DOMAINS: ${{ vars.API_DOMAINS }}
+          PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
         run: |
+          # 서버에 닿기 전에 막는다. compose가 이 값을 필수로 선언해서, 비어 있으면
+          # 컨테이너 재기동과 롤백이 둘 다 같은 자리에서 죽는다.
+          if [[ -z "${API_DOMAINS//[[:space:],]/}" ]]; then
+            echo "API_DOMAINS Variable에 Caddy가 서빙할 도메인을 등록해야 합니다. 예: api.every-festa.com" >&2
+            exit 1
+          fi
+          # Caddy는 "쉼표+공백"으로 주소를 나눈다. "a,b"는 잘못된 주소 하나로, 끝 쉼표는 파싱 오류로
+          # 읽혀 운영 트래픽을 받는 서버의 caddy가 재시작을 반복한다.
+          if [[ "$API_DOMAINS" =~ ,[^[:space:]] || "$API_DOMAINS" =~ ,[[:space:]]*$ ]]; then
+            echo "API_DOMAINS는 쉼표 뒤에 공백을 두고 끝에 쉼표가 없어야 합니다. 예: api.every-festa.com, dev-api.every-festa.com" >&2
+            exit 1
+          fi
+          # 마지막 HTTPS 확인에서 형식 오류가 걸리면 컨테이너를 이미 바꾼 뒤이고, 첫 운영 배포의
+          # 정상적인 실패(도메인이 아직 다른 서버를 가리킴)와 구별되지 않는다. 그래서 여기서 먼저 막는다.
+          if [[ ! "$PUBLIC_BASE_URL" =~ ^https://([A-Za-z0-9.-]+)$ ]]; then
+            echo "PUBLIC_BASE_URL Variable은 경로 없는 https://<도메인> 형식이어야 합니다: '$PUBLIC_BASE_URL'" >&2
+            exit 1
+          fi
+          # 형식이 각각 맞아도 두 값이 서로 다른 도메인일 수 있다. HTTPS 확인은 PUBLIC_BASE_URL의 도메인으로
+          # 접속하므로, Caddy가 서빙하지 않는 도메인이면 위와 같은 이유로 컨테이너를 바꾼 뒤에야 구별되지 않는
+          # 실패가 난다. API_DOMAINS를 쉼표·공백으로 나눈 도메인 하나와 정확히 같아야 하고, 대소문자는 가리지 않는다.
+          public_host="${BASH_REMATCH[1],,}"
+          public_host_served=false
+          read -ra api_domains <<< "${API_DOMAINS//,/ }"
+          for api_domain in "${api_domains[@]}"; do
+            if [[ "${api_domain,,}" == "$public_host" ]]; then
+              public_host_served=true
+            fi
+          done
+          if [[ "$public_host_served" != true ]]; then
+            echo "PUBLIC_BASE_URL의 도메인($public_host)이 API_DOMAINS에 없습니다: '$API_DOMAINS'. 두 Variable을 같은 도메인으로 맞춰야 합니다." >&2
+            exit 1
+          fi
           if [[ "$DB_URL" != "jdbc:postgresql://postgres:5432/festa" ]]; then
             echo "DB_URL은 jdbc:postgresql://postgres:5432/festa와 정확히 일치해야 합니다." >&2
             exit 1
@@ -120,11 +197,6 @@ jobs:
             echo "::warning::GRAFANA_OTLP_AUTH가 비어 있습니다. 배포는 계속되지만 메트릭은 전송되지 않습니다."
           fi
 
-          if [[ "$DEPLOY_ENVIRONMENT" == "development" ]]; then
-            GOOGLE_CLIENT_ID="development-dummy-client"
-            GOOGLE_CLIENT_SECRET="development-dummy-secret"
-          fi
-
           install -m 700 -d "$RUNNER_TEMP/ssh"
           printf '%s\n' "$OCI_SSH_PRIVATE_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"
           chmod 600 "$RUNNER_TEMP/ssh/key"
@@ -143,17 +215,33 @@ jobs:
             write_env DB_URL "$DB_URL"
             write_env DB_USERNAME "$DB_USERNAME"
             write_env DB_PASSWORD "$DB_PASSWORD"
-            write_env GOOGLE_CLIENT_ID "$GOOGLE_CLIENT_ID"
-            write_env GOOGLE_CLIENT_SECRET "$GOOGLE_CLIENT_SECRET"
             write_env JWT_SECRET "$JWT_SECRET"
             write_env AES_KEY "$AES_KEY"
             write_env ADMIN_JWT_SECRET "$ADMIN_JWT_SECRET"
             write_env GRAFANA_OTLP_AUTH "$GRAFANA_OTLP_AUTH"
             write_env ADMIN_INITIAL_USERNAME "$ADMIN_INITIAL_USERNAME"
             write_env ADMIN_INITIAL_PASSWORD "$ADMIN_INITIAL_PASSWORD"
+            write_env API_DOMAINS "$API_DOMAINS"
           } > "$RUNNER_TEMP/app.env"
 
-      - name: OCI 인스턴스로 전송
+      - name: OCI에서 비공개 이미지 다운로드
+        env:
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+        run: |
+          # 토큰은 SSH 표준 입력으로만 전달한다. 인증 파일은 pull 뒤 삭제한다.
+          # 이 단계가 실패하면 실행 중인 앱과 서버 설정을 바꾸지 않는다.
+          printf -v remote_command '%q ' bash -c "$(cat deploy/pull-image.sh)" -- "$GHCR_USERNAME" "$IMAGE_NAME:$IMAGE_TAG"
+          printf '%s' "$GHCR_READ_TOKEN" | ssh \
+            -i "$RUNNER_TEMP/ssh/key" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+            -p "$OCI_PORT" \
+            "$OCI_USER@$OCI_HOST" \
+            "$remote_command"
+
+      - name: OCI 인스턴스로 설정 전송
         env:
           OCI_HOST: ${{ secrets.OCI_HOST }}
           OCI_USER: ${{ secrets.OCI_USER }}
@@ -168,7 +256,6 @@ jobs:
             -i "$RUNNER_TEMP/ssh/key" \
             -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
             -P "$OCI_PORT" \
-            "$RUNNER_TEMP/$IMAGE_NAME.tar.gz" \
             "$RUNNER_TEMP/app.env" \
             deploy/compose.yaml \
             deploy/Caddyfile \
@@ -184,12 +271,11 @@ jobs:
             -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
             -p "$OCI_PORT" \
             "$OCI_USER@$OCI_HOST" \
-            "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' IMAGE_TAG='$GITHUB_SHA' bash -s" <<'REMOTE'
+            "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' IMAGE_TAG='$IMAGE_TAG' bash -s" <<'REMOTE'
           set -Eeuo pipefail
           cd "$OCI_DEPLOY_PATH"
-          trap 'rm -f "$IMAGE_NAME.tar.gz"' EXIT
           chmod 600 app.env
-          gzip -dc "$IMAGE_NAME.tar.gz" | docker load
+          docker image inspect "$IMAGE_NAME:$IMAGE_TAG" >/dev/null
           if [[ ! -s .last-successful-image ]]; then
             current_container="$(APP_IMAGE="$IMAGE_NAME:$IMAGE_TAG" docker compose --env-file app.env ps -q app)"
             if [[ -n "$current_container" ]]; then
@@ -224,19 +310,29 @@ jobs:
 
       - name: HTTPS 서빙 확인
         env:
-          PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL || 'https://api.every-festa.com' }}
+          PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
+          OCI_HOST: ${{ secrets.OCI_HOST }}
         run: |
           # 실제 서비스 경로는 도메인 → 앞단(TLS 종단) → app:8080이다. 8080만 보면
           # 인증서 발급 실패나 443 차단을 배포 성공으로 넘겨버린다.
           # 앱 8080은 루프백에만 묶여 있어 러너에서 직접 부를 수 없다 —
           # 밖에서 하는 확인은 이 스텝 하나다.
           # 첫 배포에서는 인증서를 받아오는 시간이 필요해 넉넉히 재시도한다.
+          # 접속은 방금 배포한 OCI_HOST로 고정한다. DNS를 따르면 도메인이 아직 다른 서버를
+          # 가리킬 때 그 서버의 200으로 성공 처리된다. 인증서·SNI 검증은 도메인 기준 그대로다.
+          if [[ ! "$PUBLIC_BASE_URL" =~ ^https://([A-Za-z0-9.-]+)$ ]]; then
+            echo "PUBLIC_BASE_URL Variable은 경로 없는 https://<도메인> 형식이어야 합니다: '$PUBLIC_BASE_URL'" >&2
+            exit 1
+          fi
+          public_host="${BASH_REMATCH[1]}"
           if ! curl --fail --silent --show-error \
             --retry 15 --retry-delay 4 --retry-all-errors --connect-timeout 10 \
+            --connect-to "$public_host:443:$OCI_HOST:443" \
             "$PUBLIC_BASE_URL/actuator/health"; then
-            echo "HTTPS 서빙 확인 실패: $PUBLIC_BASE_URL 에 인증서 경고 없이 닿지 못했습니다." >&2
+            echo "HTTPS 서빙 확인 실패: $OCI_HOST 에서 $PUBLIC_BASE_URL 을 인증서 경고 없이 서빙하지 못했습니다." >&2
+            echo "도메인이 아직 다른 서버를 가리키면 인증서를 받을 수 없어 이 단계는 실패하는 것이 정상입니다." >&2
             echo "앱 이미지는 되돌리지 않습니다 — 앱이 아니라 앞단 문제라 롤백해도 고쳐지지 않습니다." >&2
-            echo "서버에서 'docker compose --env-file app.env logs caddy'로 발급 로그를 확인하세요." >&2
+            echo "서버에서 'docker logs festa-caddy-1'(기본 배포 경로 /opt/festa 기준)로 발급 로그를 확인하세요." >&2
             exit 1
           fi
 
@@ -250,7 +346,7 @@ jobs:
             -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
             -p "$OCI_PORT" \
             "$OCI_USER@$OCI_HOST" \
-            "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' EXPECTED_IMAGE='$IMAGE_NAME:$GITHUB_SHA' bash -s" <<'REMOTE'
+            "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' EXPECTED_IMAGE='$IMAGE_NAME:$IMAGE_TAG' bash -s" <<'REMOTE'
           set -Eeuo pipefail
           cd "$OCI_DEPLOY_PATH"
           deploying_image="$(cat .deployment-in-progress 2>/dev/null || true)"
@@ -267,5 +363,10 @@ jobs:
               continue
             fi
             docker image rm "$image" || true
-          done < <(docker image ls --filter "reference=$IMAGE_NAME:*" --format '{{.Repository}}:{{.Tag}}')
+          # 첫 GHCR 배포에서 이전 festa-backend:<sha>도 보존하고, 다음 성공 때 정리한다.
+          done < <(docker image ls --filter "reference=$IMAGE_NAME:*" --filter 'reference=festa-backend:*' --format '{{.Repository}}:{{.Tag}}')
           REMOTE
+
+      - name: GHCR 업로드 인증 정리
+        if: always()
+        run: docker logout ghcr.io

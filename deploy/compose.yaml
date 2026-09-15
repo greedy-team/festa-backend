@@ -22,6 +22,8 @@ services:
 
   app:
     image: ${APP_IMAGE:?APP_IMAGE is required}
+    # 배포가 먼저 pull한다. 롤백은 인증·레지스트리 없이 로컬 정상 이미지를 쓴다.
+    pull_policy: never
     restart: unless-stopped
     depends_on:
       postgres:
@@ -34,8 +36,6 @@ services:
       DB_URL: ${DB_URL:?DB_URL is required}
       DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       AES_KEY: ${AES_KEY:?AES_KEY is required}
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:?ADMIN_JWT_SECRET is required}
@@ -72,6 +72,9 @@ services:
     restart: unless-stopped
     depends_on:
       - app
+    environment:
+      # Caddyfile의 사이트 주소. 비밀이 아니라 GitHub Environment Variable이 app.env로 넘어온다.
+      API_DOMAINS: ${API_DOMAINS:?API_DOMAINS is required}
     ports:
       - "80:80"
       - "443:443"

@@ -33,23 +33,27 @@ public class SearchService {
     public SearchResponse search(String query, String typeValue) {
         String normalizedQuery = LikePatternUtils.normalizeRequiredQuery(
                 query, 50, SearchErrorCode.SEARCH_INVALID_QUERY);
-        String likeQuery = LikePatternUtils.toSearchPattern(normalizedQuery);
+        List<String> likeQueries = HostSearchAliases.queriesFor(normalizedQuery).stream()
+                .map(LikePatternUtils::toSearchPattern)
+                .toList();
+        String primaryQuery = likeQueries.getFirst();
+        String aliasQuery = likeQueries.getLast();
         SearchType type = SearchType.from(typeValue);
         LocalDate today = LocalDate.now(clock.withZone(ClockConfig.KST));
 
         List<SearchArtistResponse> artists = includes(type, SearchType.ARTIST)
-                ? findArtists(likeQuery, today) : List.of();
+                ? findArtists(primaryQuery, today) : List.of();
         List<SearchHostResponse> hosts = includes(type, SearchType.HOST)
-                ? findHosts(likeQuery) : List.of();
+                ? findHosts(primaryQuery, aliasQuery) : List.of();
         List<SearchFestivalResponse> festivals = includes(type, SearchType.FESTIVAL)
-                ? findFestivals(likeQuery) : List.of();
+                ? findFestivals(primaryQuery, aliasQuery) : List.of();
 
         long artistCount = includes(type, SearchType.ARTIST)
-                ? artists.size() : artistRepository.countSearchRows(likeQuery);
+                ? artists.size() : artistRepository.countSearchRows(primaryQuery);
         long hostCount = includes(type, SearchType.HOST)
-                ? hosts.size() : hostRepository.countSearchRows(likeQuery);
+                ? hosts.size() : hostRepository.countSearchRows(primaryQuery, aliasQuery);
         long festivalCount = includes(type, SearchType.FESTIVAL)
-                ? festivals.size() : festivalRepository.countPublishedSearchRows(likeQuery);
+                ? festivals.size() : festivalRepository.countPublishedSearchRows(primaryQuery, aliasQuery);
         SearchCounts counts = SearchCounts.of(festivalCount, artistCount, hostCount);
         return SearchResponse.of(
                 normalizedQuery,
@@ -67,14 +71,14 @@ public class SearchService {
                 .toList();
     }
 
-    private List<SearchHostResponse> findHosts(String query) {
-        return hostRepository.findSearchRows(query).stream()
+    private List<SearchHostResponse> findHosts(String primaryQuery, String aliasQuery) {
+        return hostRepository.findSearchRows(primaryQuery, aliasQuery).stream()
                 .map(SearchHostResponse::from)
                 .toList();
     }
 
-    private List<SearchFestivalResponse> findFestivals(String query) {
-        return festivalRepository.findPublishedSearchRows(query).stream()
+    private List<SearchFestivalResponse> findFestivals(String primaryQuery, String aliasQuery) {
+        return festivalRepository.findPublishedSearchRows(primaryQuery, aliasQuery).stream()
                 .map(SearchFestivalResponse::from)
                 .toList();
     }

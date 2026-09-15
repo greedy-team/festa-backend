@@ -3,13 +3,6 @@ spring:
     url: jdbc:postgresql://localhost:5432/placeholder
     username: test
     password: test
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: test-client-id
-            client-secret: test-client-secret
 
 app:
   jwt:

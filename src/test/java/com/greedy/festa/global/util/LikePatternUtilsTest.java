@@ -72,4 +72,14 @@ class LikePatternUtilsTest {
                 .satisfies(exception -> assertThat(exception.getErrorCode())
                         .isEqualTo(ArtistErrorCode.ARTIST_INVALID_QUERY));
     }
+
+    @Test
+    void requiredQueryAcceptsFiftyCharactersBeforeCreatingSearchPattern() {
+        String query = "%".repeat(50);
+        String normalized = LikePatternUtils.normalizeRequiredQuery(
+                "  " + query + "  ", 50, SearchErrorCode.SEARCH_INVALID_QUERY);
+
+        assertThat(normalized).isEqualTo(query);
+        assertThat(LikePatternUtils.toSearchPattern(normalized)).isEqualTo("\\%".repeat(50));
+    }
 }
