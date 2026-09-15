@@ -9,10 +9,18 @@ public enum FestivalPublishBlocker {
 
     LINEUP_EMPTY,
     HOST_NOT_LINKED,
-    COORDINATES_MISSING;
+    COORDINATES_MISSING,
+    ADMISSION_UNKNOWN;
 
     public static List<FestivalPublishBlocker> evaluate(
             boolean hostLinked, Double latitude, Double longitude, long lineupCount
+    ) {
+        return evaluate(hostLinked, latitude, longitude, lineupCount, false);
+    }
+
+    public static List<FestivalPublishBlocker> evaluate(
+            boolean hostLinked, Double latitude, Double longitude, long lineupCount,
+            boolean admissionUnknown
     ) {
         List<FestivalPublishBlocker> blockers = new ArrayList<>();
 
@@ -25,6 +33,9 @@ public enum FestivalPublishBlocker {
         if (latitude == null || longitude == null) {
             blockers.add(COORDINATES_MISSING);
         }
+        if (admissionUnknown) {
+            blockers.add(ADMISSION_UNKNOWN);
+        }
 
         return List.copyOf(blockers);
     }
@@ -34,6 +45,7 @@ public enum FestivalPublishBlocker {
             case LINEUP_EMPTY -> FestivalErrorCode.FESTIVAL_PUBLISH_LINEUP_EMPTY;
             case HOST_NOT_LINKED -> FestivalErrorCode.FESTIVAL_PUBLISH_HOST_NOT_LINKED;
             case COORDINATES_MISSING -> FestivalErrorCode.FESTIVAL_PUBLISH_COORDINATES_MISSING;
+            case ADMISSION_UNKNOWN -> FestivalErrorCode.FESTIVAL_PUBLISH_ADMISSION_UNKNOWN;
         };
     }
 }

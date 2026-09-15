@@ -39,6 +39,7 @@ public enum FestivalErrorCode implements ErrorCode {
     FESTIVAL_PUBLISH_LINEUP_EMPTY("라인업이 없어 발행할 수 없습니다", HttpStatus.BAD_REQUEST),
     FESTIVAL_PUBLISH_HOST_NOT_LINKED("주최가 연결되지 않아 발행할 수 없습니다", HttpStatus.BAD_REQUEST),
     FESTIVAL_PUBLISH_COORDINATES_MISSING("좌표가 없어 발행할 수 없습니다", HttpStatus.BAD_REQUEST),
+    FESTIVAL_PUBLISH_ADMISSION_UNKNOWN("입장 정책에 미지값이 있어 발행할 수 없습니다", HttpStatus.BAD_REQUEST),
     FESTIVAL_NOT_FOUND("존재하지 않는 축제입니다", HttpStatus.NOT_FOUND);
 
     private final String message;

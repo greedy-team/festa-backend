@@ -1,7 +1,13 @@
 package com.greedy.festa.festival.entity;
 
-public enum ExternalVisitorPolicy {
+public enum ExternalVisitorPolicy implements UnknownSafeEnum {
     ALLOWED,
     CONDITIONAL,
-    DENIED
+    DENIED,
+    UNKNOWN;
+
+    @Override
+    public boolean isUnknown() {
+        return this == UNKNOWN;
+    }
 }

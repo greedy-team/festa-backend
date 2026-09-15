@@ -9,6 +9,7 @@ import com.greedy.festa.festival.entity.ExternalVisitorPolicy;
 import com.greedy.festa.festival.entity.Festival;
 import com.greedy.festa.festival.entity.TicketType;
 import com.greedy.festa.festival.entity.VerificationMethod;
+import com.greedy.festa.festival.entity.UnknownSafeEnum;
 import com.greedy.festa.festival.repository.FestivalRepository;
 import com.greedy.festa.global.config.ClockConfig;
 import com.greedy.festa.global.exception.FestaException;
@@ -318,14 +319,11 @@ public class ImportPreviewService {
                 existing == null ? null : existing.getDescription()));
         normalized.put("hashtags", pipeValues(payload.get("hashtags")));
         normalized.put("externalVisitorPolicy", keepExisting(trim(payload.get("external_visitor_policy")),
-                existing == null || existing.getExternalVisitor() == null
-                        ? null : existing.getExternalVisitor().name()));
+                existingAdmissionValue(existing == null ? null : existing.getExternalVisitor())));
         normalized.put("verificationMethod", keepExisting(trim(payload.get("verification_method")),
-                existing == null || existing.getVerification() == null
-                        ? null : existing.getVerification().name()));
+                existingAdmissionValue(existing == null ? null : existing.getVerification())));
         normalized.put("ticketType", keepExisting(trim(payload.get("ticket_type")),
-                existing == null || existing.getTicketType() == null
-                        ? null : existing.getTicketType().name()));
+                existingAdmissionValue(existing == null ? null : existing.getTicketType())));
         normalized.put("ticketOpenAt", keepExisting(isoInstant(ticketOpenAt),
                 existing == null ? null : isoInstant(existing.getTicketOpenAt())));
         normalized.put("ticketOpenAtRaw", payload.get("ticket_open_at"));
@@ -695,10 +693,20 @@ public class ImportPreviewService {
             return;
         }
         try {
-            Enum.valueOf(type, text);
+            E parsed = Enum.valueOf(type, text);
+            if (parsed instanceof UnknownSafeEnum unknownSafeEnum && unknownSafeEnum.isUnknown()) {
+                errors.add(error("INVALID_ENUM", field + " 값이 올바르지 않습니다"));
+            }
         } catch (IllegalArgumentException e) {
             errors.add(error("INVALID_ENUM", field + " 값이 올바르지 않습니다"));
         }
+    }
+
+    private String existingAdmissionValue(UnknownSafeEnum value) {
+        if (value == null || value.isUnknown()) {
+            return null;
+        }
+        return ((Enum<?>) value).name();
     }
 
     private void enumText(
