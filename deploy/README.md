@@ -42,7 +42,20 @@ PAT 값은 저장소·채팅·명령 인자에 넣지 않고 GitHub Settings의 
 - GHCR의 배포 버전은 자동 삭제하지 않는다. 서버 정리와 별개이며, 수동 정리 시
   두 환경의 현재·직전 정상 태그와 아키텍처별 빌드 캐시를 보존한다.
 
-롤백 대상은 이미지뿐이다. DB 스키마, `app.env`, Compose 설정은 되돌리지 않는다.
+롤백 대상은 이미지뿐이다. DB 스키마와 Compose 설정은 되돌리지 않고, `app.env`에서는
+JVM 기동 옵션 줄만 지운다(아래 "개발 서버 JVM 옵션").
+
+## 개발 서버 JVM 옵션
+
+CD는 `development`의 `app.env`에 `APP_JAVA_TOOL_OPTIONS='-XX:TieredStopAtLevel=1'`을 기록하고
+Compose가 앱의 `JAVA_TOOL_OPTIONS`로 전달한다. `production`은 빈 값을 기록해 JVM 기본값을 쓴다.
+별도 Secret이나 Variable은 필요 없다. 이 옵션은 C2 최적화를 사용하지 않아 기동 시간을 줄이는 대신
+장시간 실행 성능이 낮아질 수 있으므로 개발 서버에만 적용한다.
+
+기동 비교와 채택 근거는 [#166 측정 결과](../docs/reports/20260913_166_JVM_기동_시간_측정.md)에 있다.
+배포 실패로 롤백할 때는 `app.env`에서 이 옵션 줄을 지우고 JVM 기본값으로 직전 이미지를 띄운다.
+다음 정상 배포가 `app.env`를 다시 쓰면서 옵션이 복원된다. 채택을 되돌리려면 CD의 development
+분기에서도 빈 값을 기록하도록 고친 뒤 재배포한다.
 
 ## 검증
 
