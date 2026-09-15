@@ -93,22 +93,20 @@ class DeploymentTest(unittest.TestCase):
         self.assertIn('image rm festa-backend:obsolete', calls)
         self.assertIn('image rm ghcr.io/greedy-team/festa-backend:old', calls)
 
-    def test_trial_is_development_only_and_opt_in(self):
+    def test_startup_option_is_development_only(self):
         setup = WORKFLOW.split("          app_java_tool_options=''\n")[1]
         setup = "app_java_tool_options=''\n" + setup.split('          umask 077')[0]
-        for environment, enabled, expected in (
-            ('development', 'true', '-XX:TieredStopAtLevel=1'),
-            ('development', '', '<default>'),
-            ('development', 'false', '<default>'),
-            ('production', 'true', '<default>'),
+        for environment, expected in (
+            ('development', '-XX:TieredStopAtLevel=1'),
+            ('production', '<default>'),
         ):
-            with self.subTest(environment=environment, enabled=enabled):
-                self.env.update(DEPLOY_ENVIRONMENT=environment, STARTUP_JVM_TRIAL=enabled)
+            with self.subTest(environment=environment):
+                self.env['DEPLOY_ENVIRONMENT'] = environment
                 result = self.run_script(setup)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn('JAVA_TOOL_OPTIONS=' + expected, result.stdout)
 
-    def test_failed_trial_clears_option_before_rollback(self):
+    def test_failed_deploy_clears_startup_option_before_rollback(self):
         self.write('app.env', "APP_JAVA_TOOL_OPTIONS='-XX:TieredStopAtLevel=1'\nDB_USERNAME='test'")
         result = self.run_script(REMOTE[0], 'health_failure')
         self.assertNotEqual(result.returncode, 0)
