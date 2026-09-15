@@ -49,7 +49,7 @@ class ArtistServicePostgresIntegrationTest extends PostgresTestSupport {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void 아티스트_검수_필요_컬럼은_Flyway로_제거된다() {
+    void 아티스트_검수_필요_컬럼은_호환성을_위해_false_기본값으로_유지된다() {
         Boolean exists = jdbcTemplate.queryForObject("""
                 SELECT EXISTS (
                     SELECT 1 FROM information_schema.columns
@@ -59,7 +59,17 @@ class ArtistServicePostgresIntegrationTest extends PostgresTestSupport {
                 )
                 """, Boolean.class);
 
-        assertThat(exists).isFalse();
+        assertThat(exists).isTrue();
+
+        jdbcTemplate.update("""
+                INSERT INTO artist (name, created_at, updated_at)
+                VALUES ('default-review-state-artist', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """);
+
+        Boolean needsReview = jdbcTemplate.queryForObject("""
+                SELECT needs_review FROM artist WHERE name = 'default-review-state-artist'
+                """, Boolean.class);
+        assertThat(needsReview).isFalse();
     }
 
     @Test
