@@ -10,8 +10,10 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
+@BatchSize(size = 50)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Host extends BaseEntity {

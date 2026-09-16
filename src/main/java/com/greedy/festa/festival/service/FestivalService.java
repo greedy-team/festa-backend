@@ -14,6 +14,7 @@ import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.exception.CommonErrorCode;
 import com.greedy.festa.global.exception.FestaException;
 import com.greedy.festa.global.util.LikePatternUtils;
+import com.greedy.festa.host.repository.HostRepository;
 import com.greedy.festa.lineup.entity.Lineup;
 import com.greedy.festa.lineup.repository.LineupRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class FestivalService {
     private static final int LIST_MAX_PAGE_SIZE = 50;
 
     private final FestivalRepository festivalRepository;
+    private final HostRepository hostRepository;
     private final LineupRepository lineupRepository;
     private final Clock clock;
 
@@ -94,6 +96,14 @@ public class FestivalService {
                 LikePatternUtils.normalizeOptionalPattern(q, 50, FestivalErrorCode.FESTIVAL_INVALID_QUERY),
                 PageRequest.of(page, size, sort.toSort())
         );
+
+        List<Long> hostIds = festivals.getContent().stream()
+                .map(festival -> festival.getHost().getId())
+                .distinct()
+                .toList();
+        if (!hostIds.isEmpty()) {
+            hostRepository.findAllById(hostIds);
+        }
 
         return PageResponse.from(festivals.map(FestivalListItemResponse::from));
     }
