@@ -39,14 +39,15 @@ export default function () {
   const search = endpoint(summary, 'search');
   const upcoming = endpoint(summary, 'festival_upcoming');
 
-  assert(search.requests.count === 9, 'search request counts must include every tag series');
-  assert(search.requests.rps === 3, 'search RPS must sum every tag series');
+  assert(search.requests.count === 9, 'search request count must retain the exact endpoint aggregate');
+  assert(search.requests.rps === 3, 'search RPS must retain the exact endpoint aggregate');
   assert(Object.keys(search.requests).length === 2, 'request summaries must contain only count and RPS');
   assert(search.httpErrorRate === 1 / 9, 'search error rate must be weighted by request count');
-  assert(search.checkFailureCount === 1, 'search check failures must sum every tag series');
-  assert(search.duration.avg === 40, 'search average latency must be weighted by request count');
-  assert(search.duration.p95 === null && !search.duration.latencyPercentilesExact,
-    'combined tag-series percentiles must not be presented as exact');
+  assert(search.checkFailureCount === 1, 'search check failures must retain the exact endpoint aggregate');
+  assert(search.duration.avg === 40, 'search average latency must retain the exact endpoint aggregate');
+  assert(search.duration.p50 === 10 && search.duration.p95 === 100 && search.duration.p99 === 110
+    && search.duration.latencyPercentilesExact,
+  'endpoint aggregate percentiles must retain the exact k6 submetric');
   assert(upcoming.requests.count === 12 && upcoming.duration.p95 === 8
     && upcoming.duration.latencyPercentilesExact,
   'a single-series endpoint must keep its exact latency summary');

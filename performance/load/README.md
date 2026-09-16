@@ -42,7 +42,7 @@ Its canonical detail IDs are Festival/Artist/Host `1`. Override them with `FESTI
 
 ## Search corpus
 
-The 20-entry corpus advances by the ordinal of the search request, not its absolute iteration. This keeps rotation correct even though the mixed cycle interleaves endpoints; no random source or changing seed is used.
+The 20-entry corpus advances by the ordinal of the search request, not its absolute iteration. A standalone `search` scenario uses its own iteration ordinal; `mixed` converts only its interleaved search slots to a search ordinal. This keeps both modes deterministic without a random source or changing seed.
 
 | Bucket | Slots | Ratio | Examples | API `type` |
 | --- | ---: | ---: | --- | --- |
@@ -117,7 +117,7 @@ The cleanup command affects only the `festa-load-smoke` compose project and its 
 
 Every request has an `endpoint` tag; search additionally has `search_bucket` and `search_type`. The saved summary separates endpoint request `{ count, rps }`, latency p50/p95/p99, HTTP error rate, and response-check failure count. If any threshold fails, `failedThresholds` records the metric and expression in the JSON summary and its count is printed to stdout. k6 also exposes VU gauges.
 
-When an endpoint has multiple tag series, its request count, RPS, HTTP error rate, response-check failures, and average latency are aggregated across those series. k6 does not provide the underlying histogram to `handleSummary`, so p50/p95/p99 are `null` for such an aggregate rather than presenting an inexact percentile. Single-series endpoints retain their exact k6 percentiles.
+k6 provides an exact `{endpoint:X}` submetric in addition to more-specific tag series. Endpoint summaries use that aggregate directly, preserving its count, RPS, average latency, and p50/p95/p99. Search bucket/type summaries remain separate leaf-series aggregates; a percentile is `null` there only if multiple series would need an inexact reconstruction.
 
 The defined thresholds are deliberately only safety/contract guards:
 
@@ -131,11 +131,11 @@ They are not final performance acceptance criteria. Final reports must show actu
 
 Before final measurement:
 
-1. Merge PR #184 and PR #185, then build the current `develop` image.
-2. Record temporary VM hardware, OS, Docker/container limits, JVM settings, PostgreSQL settings, disk/volume size, and k6 runner/network location.
-3. Recreate the Issue #154 fixture in a separate PostgreSQL volume and use `FIXTURE=performance`. Its generator is deliberately not copied into this lightweight tool branch; use the reviewed source tracked with [Issue #154](https://github.com/greedy-team/festa-backend/issues/154), not the local smoke seed.
-4. Before merging #184/#185, retain one isolated pre-change baseline with the same fixture, image settings, warm-up rule, stage, and runner location. After they merge, repeat that run from current `develop`; compare only matching runs.
+1. Record temporary VM hardware, OS, Docker/container limits, JVM settings, PostgreSQL settings, disk/volume size, and k6 runner/network location.
+2. Recreate the Issue #154 fixture in a separate PostgreSQL volume and use `FIXTURE=performance`. Its generator is deliberately not copied into this lightweight tool branch; use the reviewed source tracked with [Issue #154](https://github.com/greedy-team/festa-backend/issues/154), not the local smoke seed. After seeding, verify and record that every `SEARCH_CORPUS` query/type pair returns at least one result.
+3. Build and measure the BEFORE image from baseline commit `b43c872` with this fixture. If #184/#185 have already merged by the time of measurement, reproduce it explicitly from that commit (for example with a detached worktree), rather than substituting a later image.
+4. Merge PR #184 and PR #185, build the latest `develop` image, then repeat the same AFTER measurement. Keep fixture, image/container settings other than the compared changes, warm-up rule, stage, runner location, and network conditions fixed.
 5. During every measured run, collect app/PostgreSQL CPU and memory, DB connection count, and available JVM/GC/Hikari observations at a fixed interval into that run's directory. Record the container names, SQL command, sampling interval, and runner/network location beside the k6 metadata.
-6. Run smoke, then baseline → normal → stress → saturation. Repeat stable stages and retain the result directories outside Git.
+6. For both BEFORE and AFTER, run smoke, then baseline → normal → stress → saturation. Warm up every measured baseline/normal/stress/saturation profile first, repeat stable stages, and retain result directories outside Git.
 
 Do not treat this branch's local smoke as the final API-level proof of the #184/#185 optimizations.

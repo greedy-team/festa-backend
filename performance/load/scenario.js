@@ -108,8 +108,8 @@ function artistDetail() {
   getJson(apiUrl(baseUrl, `/api/artists/${id}`), ENDPOINTS.artistDetail);
 }
 
-function search() {
-  const item = searchCase(searchIteration(currentIteration()));
+function search(searchRequestOrdinal = currentIteration()) {
+  const item = searchCase(searchRequestOrdinal);
   getJson(apiUrl(baseUrl, '/api/search', { q: item.query, type: item.type }), ENDPOINTS.search, {
     search_bucket: item.bucket,
     search_type: item.type,
@@ -121,7 +121,7 @@ function hostDetail() {
   getJson(apiUrl(baseUrl, `/api/hosts/${id}`), ENDPOINTS.hostDetail);
 }
 
-const mixedHandlers = { upcoming, recent, festivals, festivalDetail, artists, artistDetail, search };
+const mixedHandlers = { upcoming, recent, festivals, festivalDetail, artists, artistDetail };
 const mixedWeights = {
   upcoming: 12,
   recent: 10,
@@ -147,16 +147,30 @@ function smoothWeightedCycle(weights) {
 
 const mixedCycle = smoothWeightedCycle(mixedWeights);
 const searchesPerCycle = mixedWeights.search;
+const mixedSearchOrdinals = [];
+let searchesSeen = 0;
+mixedCycle.forEach((name, slot) => {
+  if (name === 'search') {
+    mixedSearchOrdinals[slot] = searchesSeen;
+    searchesSeen += 1;
+  }
+});
 
-function searchIteration(iteration) {
+function mixedSearchIteration(iteration) {
   const slot = iteration % mixedCycle.length;
   const completedCycles = Math.floor(iteration / mixedCycle.length);
-  const searchesBeforeSlot = mixedCycle.slice(0, slot).filter((name) => name === 'search').length;
-  return (completedCycles * searchesPerCycle) + searchesBeforeSlot;
+  return (completedCycles * searchesPerCycle) + mixedSearchOrdinals[slot];
 }
 
 export function mixed() {
-  mixedHandlers[mixedCycle[currentIteration() % mixedCycle.length]]();
+  const iteration = currentIteration();
+  const slot = iteration % mixedCycle.length;
+  const scenario = mixedCycle[slot];
+  if (scenario === 'search') {
+    search(mixedSearchIteration(iteration));
+    return;
+  }
+  mixedHandlers[scenario]();
 }
 
 // k6 resolves named scenario executors from exported functions, so keep the names explicit.

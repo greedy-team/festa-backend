@@ -20,6 +20,17 @@ function metricSeries(metrics, metricName, endpoint) {
   return metricSeriesWithTags(metrics, metricName, [`endpoint:${endpoint}`]);
 }
 
+function exactMetricSeries(metrics, metricName, requiredTags) {
+  const required = new Set(requiredTags);
+  return Object.entries(metrics)
+    .filter(([name]) => name.startsWith(`${metricName}{`))
+    .map(([name, metric]) => ({ tags: metricTags(name), values: metric.values || {} }))
+    .filter(({ tags }) => {
+      const actual = tagSet(tags);
+      return actual.size === required.size && [...required].every((tag) => actual.has(tag));
+    });
+}
+
 function metricSeriesWithTags(metrics, metricName, requiredTags) {
   const series = Object.entries(metrics)
     .filter(([name]) => name.startsWith(`${metricName}{`)
@@ -65,21 +76,33 @@ function requestSummary(series) {
 
 export function buildEndpointSummary(metrics) {
   return Object.values(ENDPOINTS).map((endpoint) => {
-    const requestSeries = metricSeries(metrics, 'http_reqs', endpoint);
-    const requestCountsByTags = new Map(requestSeries.map(({ tags, values }) => [tags, values.count || 0]));
-    const failures = metricSeries(metrics, 'http_req_failed', endpoint);
+    const endpointTags = [`endpoint:${endpoint}`];
+    // k6 maintains an exact submetric for {endpoint:x} in addition to the
+    // more-specific search tag series. Prefer it so endpoint percentiles are
+    // preserved; leaf series remain necessary for search bucket/type summaries.
+    const requestSeries = exactMetricSeries(metrics, 'http_reqs', endpointTags);
+    const effectiveRequestSeries = requestSeries.length > 0
+      ? requestSeries : metricSeries(metrics, 'http_reqs', endpoint);
+    const durationSeries = exactMetricSeries(metrics, 'http_req_duration', endpointTags);
+    const effectiveDurationSeries = durationSeries.length > 0
+      ? durationSeries : metricSeries(metrics, 'http_req_duration', endpoint);
+    const failureSeries = exactMetricSeries(metrics, 'http_req_failed', endpointTags);
+    const checkFailureSeries = exactMetricSeries(metrics, 'response_check_failures', endpointTags);
+    const requestCountsByTags = new Map(effectiveRequestSeries.map(({ tags, values }) => [tags, values.count || 0]));
+    const failures = failureSeries.length > 0 ? failureSeries : metricSeries(metrics, 'http_req_failed', endpoint);
     const failedRequests = failures.reduce((total, { tags, values }) =>
       total + ((values.rate || 0) * [...requestCountsByTags]
         .filter(([requestTags]) => tagSet(tags).size === 0 || [...tagSet(tags)].every((tag) => tagSet(requestTags).has(tag)))
         .reduce((count, [, requestCount]) => count + requestCount, 0)), 0);
-    const requestCount = sum(requestSeries, 'count');
+    const requestCount = sum(effectiveRequestSeries, 'count');
 
     return {
       endpoint,
-      requests: requestSummary(requestSeries),
-      duration: trend(metricSeries(metrics, 'http_req_duration', endpoint)),
+      requests: requestSummary(effectiveRequestSeries),
+      duration: trend(effectiveDurationSeries),
       httpErrorRate: requestCount === 0 ? 0 : failedRequests / requestCount,
-      checkFailureCount: sum(metricSeries(metrics, 'response_check_failures', endpoint), 'count'),
+      checkFailureCount: sum(checkFailureSeries.length > 0
+        ? checkFailureSeries : metricSeries(metrics, 'response_check_failures', endpoint), 'count'),
     };
   });
 }
