@@ -40,6 +40,7 @@ services:
       start_period: 20s
 
   seed:
+    profiles: ["seed"]
     image: postgres:17-alpine
     restart: "no"
     depends_on:

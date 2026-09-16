@@ -20,7 +20,7 @@ It targets public read APIs only:
 
 ## Safety boundary
 
-Never target `https://api.every-festa.com` (production) or `https://dev-api.every-festa.com` (the shared development server). `run.ps1` rejects both hosts. Final measurement uses an isolated temporary VM and an independent fixture volume.
+Never target `https://api.every-festa.com` (production) or `https://dev-api.every-festa.com` (the shared development server). Both `run.ps1` and `scenario.js` reject these hosts after case-folding and removing trailing DNS dots, so direct `k6 run` cannot bypass the boundary. Final measurement uses an isolated temporary VM and an independent fixture volume.
 
 The local stack below is for smoke/contract validation only. It is not a TPS result, because its Docker Desktop hardware, direct-app route, and minimal data are different from the final environment.
 
@@ -42,7 +42,7 @@ Its canonical detail IDs are Festival/Artist/Host `1`. Override them with `FESTI
 
 ## Search corpus
 
-The 20-entry corpus is chosen by `iterationInTest % 20`; no random source or changing seed is used.
+The 20-entry corpus advances by the ordinal of the search request, not its absolute iteration. This keeps rotation correct even though the mixed cycle interleaves endpoints; no random source or changing seed is used.
 
 | Bucket | Slots | Ratio | Examples | API `type` |
 | --- | ---: | ---: | --- | --- |
@@ -64,7 +64,7 @@ Use `-SearchBucket rare` or `-SearchType ARTIST` through the wrapper to isolate 
 | `stress` | constant arrival rate | 30 RPS | 5 min |
 | `saturation` | constant arrival rate | 50 RPS | 5 min |
 
-The latter four values are conservative starting rates, not a fixed maximum TPS or an acceptance target. Set `RATE`, `DURATION`, `PRE_ALLOCATED_VUS`, and `MAX_VUS` only after the temporary VM's CPU/RAM/disk/network snapshot is recorded. A final sustained maximum is the highest rate that meets the agreed latency/error conditions for at least three minutes; this script does not silently declare one.
+The latter four values are conservative starting rates, not a fixed maximum TPS or an acceptance target. Set `RATE`, `DURATION`, `PRE_ALLOCATED_VUS`, and `MAX_VUS` only after the temporary VM's CPU/RAM/disk/network snapshot is recorded. Before every measured baseline/normal/stress/saturation stage, perform a separate warm-up run at the same profile for at least two minutes and discard its artifacts from the comparison. A final sustained maximum is the highest rate that meets the agreed latency/error conditions for at least three minutes; this script does not silently declare one.
 
 ## Run with installed k6
 
@@ -92,6 +92,8 @@ cd performance/load
 .\run.ps1 -Runner docker -BaseUrl 'http://host.docker.internal:18080' -Stage smoke -Scenario mixed -Fixture smoke -EnvironmentName local-smoke
 ```
 
+On Linux Docker hosts the wrapper adds `host.docker.internal:host-gateway` and first verifies that the image's non-root k6 user can write the run directory. If that check fails, fix the directory ownership or use a writable dedicated results location; do not run a measurement without its summary artifact.
+
 For an individual endpoint, for example:
 
 ```powershell
@@ -113,7 +115,7 @@ The cleanup command affects only the `festa-load-smoke` compose project and its 
 
 ## Metrics and thresholds
 
-Every request has an `endpoint` tag; search additionally has `search_bucket` and `search_type`. The saved summary separates endpoint RPS, p50, p95, p99, HTTP error rate, and response-check failure count. k6 also exposes VU gauges.
+Every request has an `endpoint` tag; search additionally has `search_bucket` and `search_type`. The saved summary separates endpoint request `{ count, rps }`, latency p50/p95/p99, HTTP error rate, and response-check failure count. If any threshold fails, `failedThresholds` records the metric and expression in the JSON summary and its count is printed to stdout. k6 also exposes VU gauges.
 
 When an endpoint has multiple tag series, its request count, RPS, HTTP error rate, response-check failures, and average latency are aggregated across those series. k6 does not provide the underlying histogram to `handleSummary`, so p50/p95/p99 are `null` for such an aggregate rather than presenting an inexact percentile. Single-series endpoints retain their exact k6 percentiles.
 
@@ -131,7 +133,9 @@ Before final measurement:
 
 1. Merge PR #184 and PR #185, then build the current `develop` image.
 2. Record temporary VM hardware, OS, Docker/container limits, JVM settings, PostgreSQL settings, disk/volume size, and k6 runner/network location.
-3. Recreate the Issue #154 fixture in a separate PostgreSQL volume and use `FIXTURE=performance`.
-4. Run smoke, then baseline → normal → stress → saturation. Repeat stable stages and retain the result directories outside Git.
+3. Recreate the Issue #154 fixture in a separate PostgreSQL volume and use `FIXTURE=performance`. Its generator is deliberately not copied into this lightweight tool branch; use the reviewed source tracked with [Issue #154](https://github.com/greedy-team/festa-backend/issues/154), not the local smoke seed.
+4. Before merging #184/#185, retain one isolated pre-change baseline with the same fixture, image settings, warm-up rule, stage, and runner location. After they merge, repeat that run from current `develop`; compare only matching runs.
+5. During every measured run, collect app/PostgreSQL CPU and memory, DB connection count, and available JVM/GC/Hikari observations at a fixed interval into that run's directory. Record the container names, SQL command, sampling interval, and runner/network location beside the k6 metadata.
+6. Run smoke, then baseline → normal → stress → saturation. Repeat stable stages and retain the result directories outside Git.
 
 Do not treat this branch's local smoke as the final API-level proof of the #184/#185 optimizations.

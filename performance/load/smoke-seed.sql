@@ -30,7 +30,11 @@ VALUES
     (900001, 900001, 'LOAD-SMOKE-SEOUL', '서울 축제 1', CURRENT_DATE + 7, CURRENT_DATE + 9, now(), 'MANUAL', now(), now()),
     (900002, 900002, 'LOAD-SMOKE-SPRING', 'Spring Campus Festival 1', CURRENT_DATE + 10, CURRENT_DATE + 12, now(), 'MANUAL', now(), now()),
     (900003, 900001, 'LOAD-SMOKE-RARE', '희귀 검색 축제 20000', CURRENT_DATE - 30, CURRENT_DATE - 28, now(), 'MANUAL', now(), now())
-ON CONFLICT (id) DO UPDATE SET updated_at = EXCLUDED.updated_at, published_at = EXCLUDED.published_at;
+ON CONFLICT (id) DO UPDATE SET
+    start_date = EXCLUDED.start_date,
+    end_date = EXCLUDED.end_date,
+    updated_at = EXCLUDED.updated_at,
+    published_at = EXCLUDED.published_at;
 
 INSERT INTO lineup (id, festival_id, artist_id, day, display_order)
 OVERRIDING SYSTEM VALUE

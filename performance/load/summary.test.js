@@ -1,5 +1,5 @@
-import { fail } from 'k6';
-import { buildEndpointSummary } from './summary.js';
+import exec from 'k6/execution';
+import { buildEndpointSummary, buildSearchTagSummary } from './summary.js';
 
 export const options = { vus: 1, iterations: 1 };
 
@@ -13,7 +13,7 @@ function endpoint(summary, name) {
 
 function assert(condition, message) {
   if (!condition) {
-    fail(message);
+    exec.test.abort(message);
   }
 }
 
@@ -41,6 +41,7 @@ export default function () {
 
   assert(search.requests.count === 9, 'search request counts must include every tag series');
   assert(search.requests.rps === 3, 'search RPS must sum every tag series');
+  assert(Object.keys(search.requests).length === 2, 'request summaries must contain only count and RPS');
   assert(search.httpErrorRate === 1 / 9, 'search error rate must be weighted by request count');
   assert(search.checkFailureCount === 1, 'search check failures must sum every tag series');
   assert(search.duration.avg === 40, 'search average latency must be weighted by request count');
@@ -49,4 +50,12 @@ export default function () {
   assert(upcoming.requests.count === 12 && upcoming.duration.p95 === 8
     && upcoming.duration.latencyPercentilesExact,
   'a single-series endpoint must keep its exact latency summary');
+
+  const searchTags = buildSearchTagSummary({
+    ...metrics,
+    'http_reqs{endpoint:search,search_bucket:common_10,search_type:ALL}': metric({ count: 99, rate: 33 }),
+  });
+  const commonOne = searchTags.find((item) => item.searchBucket === 'common_1' && item.searchType === 'ALL');
+  assert(commonOne.requests.count === 6 && commonOne.requests.rps === 2,
+    'exact tag matching must not include similarly named buckets');
 }

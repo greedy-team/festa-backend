@@ -30,13 +30,17 @@ if (-not $BaseUrl) {
     throw 'BASE_URL is required. Pass -BaseUrl or set BASE_URL explicitly.'
 }
 $uri = [Uri]$BaseUrl
-if ($uri.Host -in @('api.every-festa.com', 'dev-api.every-festa.com')) {
+if (-not $uri.IsAbsoluteUri) {
+    throw 'BASE_URL must be an absolute URL.'
+}
+$normalizedHost = $uri.Host.TrimEnd('.').ToLowerInvariant()
+if ($normalizedHost -in @('api.every-festa.com', 'dev-api.every-festa.com')) {
     throw 'Refusing to load test production or the shared development server. Use a dedicated local or temporary load-test stack.'
 }
 
 $loadRoot = $PSScriptRoot
 $repositoryRoot = (Resolve-Path (Join-Path $loadRoot '..\..')).Path
-$runId = if ($RunId) { $RunId } else { "$(Get-Date -AsUTC -Format 'yyyyMMddTHHmmssZ')-$Stage-$Scenario" }
+$runId = if ($RunId) { $RunId } else { "$(Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')-$Stage-$Scenario" }
 $resultDirectory = Join-Path $loadRoot "results\$runId"
 New-Item -ItemType Directory -Force -Path $resultDirectory | Out-Null
 
@@ -92,7 +96,11 @@ if ($Runner -eq 'native') {
 } else {
     $containerResultDirectory = "/scripts/results/$runId"
     $environmentArguments += @('-e', "RESULTS_DIR=$containerResultDirectory")
-    & docker run --rm -i -v "${loadRoot}:/scripts" -w /scripts grafana/k6:0.54.0 run @environmentArguments /scripts/scenario.js
+    & docker run --rm --entrypoint sh -v "${resultDirectory}:/results" grafana/k6:0.54.0 -c 'test -w /results'
+    if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+        throw 'The Docker k6 user cannot write the result directory. Fix its ownership/permissions before running the load test.'
+    }
+    & docker run --rm -i --add-host host.docker.internal:host-gateway -v "${loadRoot}:/scripts" -w /scripts grafana/k6:0.54.0 run @environmentArguments /scripts/scenario.js
 }
 
 $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }

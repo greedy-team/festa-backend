@@ -4,6 +4,13 @@ function value(metrics, name, key) {
   return metrics[name]?.values?.[key];
 }
 
+function failedThresholds(metrics) {
+  return Object.entries(metrics).flatMap(([metric, details]) =>
+    Object.entries(details.thresholds || {})
+      .filter(([, threshold]) => threshold.ok === false)
+      .map(([threshold]) => ({ metric, threshold })));
+}
+
 export function handleSummary(data) {
   const artifact = {
     schemaVersion: 1,
@@ -28,12 +35,14 @@ export function handleSummary(data) {
     },
     endpoints: buildEndpointSummary(data.metrics),
     searchTags: buildSearchTagSummary(data.metrics),
+    failedThresholds: failedThresholds(data.metrics),
   };
 
   const destination = __ENV.RESULTS_DIR;
   const lines = [
     `run=${artifact.run.runId} stage=${artifact.run.stage} scenario=${artifact.run.scenario}`,
     `http_reqs=${artifact.overall.requestsPerSecond} p95=${artifact.overall.p95} p99=${artifact.overall.p99} error_rate=${artifact.overall.httpErrorRate}`,
+    `failed_thresholds=${artifact.failedThresholds.length}`,
   ];
   const output = { stdout: `${lines.join('\n')}\n` };
   if (destination) {

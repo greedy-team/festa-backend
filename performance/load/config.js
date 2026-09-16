@@ -1,6 +1,6 @@
 import { check, fail } from 'k6';
 import http from 'k6/http';
-import { Counter, Rate } from 'k6/metrics';
+import { Counter } from 'k6/metrics';
 
 export const FIXTURES = {
   performance: {
@@ -54,14 +54,29 @@ export const SEARCH_CORPUS = [
 ];
 
 export const responseCheckFailures = new Counter('response_check_failures');
-export const responseErrorRate = new Rate('response_error_rate');
+
+const forbiddenHosts = new Set(['api.every-festa.com', 'dev-api.every-festa.com']);
+
+export function assertSafeTarget(url) {
+  let host;
+  try {
+    host = new URL(url).hostname.toLowerCase().replace(/\.+$/, '');
+  } catch (_) {
+    fail(`BASE_URL must be an absolute URL: '${url}'`);
+  }
+  if (forbiddenHosts.has(host)) {
+    fail('Refusing to load test production or the shared development server. Use a dedicated local or temporary load-test stack.');
+  }
+}
 
 export function requiredEnv(name) {
   const value = __ENV[name];
   if (!value) {
     fail(`${name} is required. Refusing to choose a target URL implicitly.`);
   }
-  return value.replace(/\/$/, '');
+  const normalized = value.replace(/\/$/, '');
+  assertSafeTarget(normalized);
+  return normalized;
 }
 
 export function selectedFixture() {
@@ -98,7 +113,6 @@ export function getJson(url, endpoint, extraTags = {}) {
   }, tags);
 
   responseCheckFailures.add(passed ? 0 : 1, tags);
-  responseErrorRate.add(response.status !== 200, tags);
   return response;
 }
 

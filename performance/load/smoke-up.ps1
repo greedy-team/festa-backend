@@ -65,5 +65,5 @@ try {
 $env:LOAD_SMOKE_APP_IMAGE = $imageName
 & docker compose --project-name festa-load-smoke --file (Join-Path $loadRoot 'smoke-compose.yaml') up --detach --wait
 if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& docker compose --project-name festa-load-smoke --file (Join-Path $loadRoot 'smoke-compose.yaml') wait seed
+& docker compose --project-name festa-load-smoke --file (Join-Path $loadRoot 'smoke-compose.yaml') --profile seed run --rm seed
 exit $(if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE })

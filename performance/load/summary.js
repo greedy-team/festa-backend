@@ -5,10 +5,6 @@ function metricTags(name) {
   return start === -1 ? '' : name.slice(start + 1, -1);
 }
 
-function hasEndpoint(name, endpoint) {
-  return metricTags(name).split(',').includes(`endpoint:${endpoint}`);
-}
-
 function tagSet(tags) {
   return new Set(tags ? tags.split(',') : []);
 }
@@ -21,8 +17,13 @@ function isStrictTagSubset(candidate, other) {
 }
 
 function metricSeries(metrics, metricName, endpoint) {
+  return metricSeriesWithTags(metrics, metricName, [`endpoint:${endpoint}`]);
+}
+
+function metricSeriesWithTags(metrics, metricName, requiredTags) {
   const series = Object.entries(metrics)
-    .filter(([name]) => name.startsWith(`${metricName}{`) && hasEndpoint(name, endpoint))
+    .filter(([name]) => name.startsWith(`${metricName}{`)
+      && requiredTags.every((tag) => tagSet(metricTags(name)).has(tag)))
     .map(([name, metric]) => ({ tags: metricTags(name), values: metric.values || {} }));
   // Threshold submetrics can include both {endpoint:x} and more-specific
   // {endpoint:x,other-tag:y} series. Keep only leaf series to avoid counting
@@ -58,26 +59,24 @@ function trend(series) {
   };
 }
 
-function metricWithTags(metrics, metricName, tags) {
-  const key = Object.keys(metrics).find((name) =>
-    name.startsWith(metricName) && tags.every((tag) => name.includes(tag)));
-  return key ? metrics[key]?.values : undefined;
+function requestSummary(series) {
+  return { count: sum(series, 'count'), rps: sum(series, 'rate') };
 }
 
 export function buildEndpointSummary(metrics) {
   return Object.values(ENDPOINTS).map((endpoint) => {
-    const requests = metricSeries(metrics, 'http_reqs', endpoint);
-    const requestCountsByTags = new Map(requests.map(({ tags, values }) => [tags, values.count || 0]));
+    const requestSeries = metricSeries(metrics, 'http_reqs', endpoint);
+    const requestCountsByTags = new Map(requestSeries.map(({ tags, values }) => [tags, values.count || 0]));
     const failures = metricSeries(metrics, 'http_req_failed', endpoint);
     const failedRequests = failures.reduce((total, { tags, values }) =>
       total + ((values.rate || 0) * [...requestCountsByTags]
         .filter(([requestTags]) => tagSet(tags).size === 0 || [...tagSet(tags)].every((tag) => tagSet(requestTags).has(tag)))
         .reduce((count, [, requestCount]) => count + requestCount, 0)), 0);
-    const requestCount = sum(requests, 'count');
+    const requestCount = sum(requestSeries, 'count');
 
     return {
       endpoint,
-      requests: trend(requests),
+      requests: requestSummary(requestSeries),
       duration: trend(metricSeries(metrics, 'http_req_duration', endpoint)),
       httpErrorRate: requestCount === 0 ? 0 : failedRequests / requestCount,
       checkFailureCount: sum(metricSeries(metrics, 'response_check_failures', endpoint), 'count'),
@@ -94,9 +93,9 @@ export function buildSearchTagSummary(metrics) {
     return {
       searchBucket: bucket,
       searchType: type,
-      requests: trend(metricWithTags(metrics, 'http_reqs', tags) ? [{ values: metricWithTags(metrics, 'http_reqs', tags) }] : []),
-      duration: trend(metricWithTags(metrics, 'http_req_duration', tags) ? [{ values: metricWithTags(metrics, 'http_req_duration', tags) }] : []),
-      checkFailureCount: metricWithTags(metrics, 'response_check_failures', tags)?.count,
+      requests: requestSummary(metricSeriesWithTags(metrics, 'http_reqs', tags)),
+      duration: trend(metricSeriesWithTags(metrics, 'http_req_duration', tags)),
+      checkFailureCount: sum(metricSeriesWithTags(metrics, 'response_check_failures', tags), 'count'),
     };
   });
 }
