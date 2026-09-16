@@ -8,15 +8,13 @@ import java.util.List;
 
 public record ArtistResponse(
         Long artistId, String name, List<String> otherNames, ArtistGenre genre,
-        String imageUrl, String instagramUrl, Integer appearanceCount,
-        Boolean needsReview, Instant createdAt
+        String imageUrl, String instagramUrl, Integer appearanceCount, Instant createdAt
 ) {
 
     public static ArtistResponse of(Artist artist, List<String> otherNames, long appearanceCount) {
         return new ArtistResponse(
                 artist.getId(), artist.getName(), otherNames, artist.getGenre(),
-                artist.getImageUrl(), artist.getInstagramUrl(), (int) appearanceCount,
-                artist.isNeedsReview(), artist.getCreatedAt()
+                artist.getImageUrl(), artist.getInstagramUrl(), (int) appearanceCount, artist.getCreatedAt()
         );
     }
 }

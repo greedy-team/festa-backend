@@ -8,132 +8,46 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ArtistTest {
 
     @Test
-    void genre와_needsReview가_null이면_기존_값을_유지한다() {
+    void updateKeepsGenreWhenItIsNull() {
         Artist artist = artist();
 
-        artist.update("아티스트", null, null);
+        artist.update("updated artist", null);
 
-        assertThat(artist.getName()).isEqualTo("아티스트");
+        assertThat(artist.getName()).isEqualTo("updated artist");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
         assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
-        assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
-        assertThat(artist.isNeedsReview()).isTrue();
     }
 
     @Test
-    void name만_수정한다() {
+    void updateChangesOnlyNameAndGenre() {
         Artist artist = artist();
 
-        artist.update("변경된 아티스트", null, null);
+        artist.update("updated artist", ArtistGenre.HIPHOP);
+        artist.changeInstagramUrl("https://instagram.com/updated");
 
-        assertThat(artist.getName()).isEqualTo("변경된 아티스트");
-        assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
-        assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
-        assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
-        assertThat(artist.isNeedsReview()).isTrue();
-    }
-
-    @Test
-    void genre만_수정한다() {
-        Artist artist = artist();
-
-        artist.update("아티스트", ArtistGenre.HIPHOP, null);
-
-        assertThat(artist.getName()).isEqualTo("아티스트");
+        assertThat(artist.getName()).isEqualTo("updated artist");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.HIPHOP);
         assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
-        assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
-        assertThat(artist.isNeedsReview()).isTrue();
-    }
-
-    @Test
-    void instagramUrl만_수정한다() {
-        Artist artist = artist();
-
-        artist.changeInstagramUrl("https://instagram.com/updated");
-
-        assertThat(artist.getName()).isEqualTo("아티스트");
-        assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
-        assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
         assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/updated");
-        assertThat(artist.isNeedsReview()).isTrue();
     }
 
     @Test
-    void instagramUrl이_null이면_기존_값을_유지한다() {
+    void updateFromImportOverwritesOnlyImportFields() {
         Artist artist = artist();
 
-        artist.update("변경된 아티스트", null, null);
+        artist.updateFromImport(ArtistGenre.HIPHOP, "https://image.example.com/imported.jpg");
 
-        assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
-    }
-
-    @Test
-    void instagramUrl_변경_메서드는_null을_저장한다() {
-        Artist artist = artist();
-
-        artist.changeInstagramUrl(null);
-
-        assertThat(artist.getInstagramUrl()).isNull();
-    }
-
-    @Test
-    void needsReview를_true에서_false로_수정한다() {
-        Artist artist = artist();
-
-        artist.update("아티스트", null, false);
-
-        assertThat(artist.getName()).isEqualTo("아티스트");
-        assertThat(artist.getGenre()).isEqualTo(ArtistGenre.BAND);
-        assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
-        assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
-        assertThat(artist.isNeedsReview()).isFalse();
-    }
-
-    @Test
-    void 일부_필드만_수정하고_나머지는_유지한다() {
-        Artist artist = artist();
-
-        artist.update("아티스트", ArtistGenre.DANCE, null);
-        artist.changeInstagramUrl("https://instagram.com/updated");
-
-        assertThat(artist.getName()).isEqualTo("아티스트");
-        assertThat(artist.getGenre()).isEqualTo(ArtistGenre.DANCE);
-        assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
-        assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/updated");
-        assertThat(artist.isNeedsReview()).isTrue();
-    }
-
-    @Test
-    void update해도_imageUrl은_기존_값을_유지한다() {
-        Artist artist = artist();
-
-        artist.update("변경된 아티스트", ArtistGenre.HIPHOP, false);
-        artist.changeInstagramUrl("https://instagram.com/updated");
-
-        assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/original.jpg");
-    }
-
-    @Test
-    void updateFromImport_overwrites_only_import_fields() {
-        Artist artist = artist();
-
-        artist.updateFromImport(ArtistGenre.HIPHOP,
-                "https://image.example.com/imported.jpg", false);
-
-        assertThat(artist.getName()).isEqualTo("아티스트");
+        assertThat(artist.getName()).isEqualTo("artist");
         assertThat(artist.getGenre()).isEqualTo(ArtistGenre.HIPHOP);
         assertThat(artist.getImageUrl()).isEqualTo("https://image.example.com/imported.jpg");
         assertThat(artist.getInstagramUrl()).isEqualTo("https://instagram.com/original");
-        assertThat(artist.isNeedsReview()).isFalse();
     }
 
     private Artist artist() {
-        return ArtistFixture.artist("아티스트")
+        return ArtistFixture.artist("artist")
                 .genre(ArtistGenre.BAND)
                 .imageUrl("https://image.example.com/original.jpg")
                 .instagramUrl("https://instagram.com/original")
-                .needsReview(true)
                 .build();
     }
 }

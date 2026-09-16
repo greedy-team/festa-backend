@@ -32,37 +32,25 @@ public class Artist extends BaseEntity {
 
     private String instagramUrl;
 
-    @Column(nullable = false)
-    private boolean needsReview;
-
     @Builder
     private Artist(String name, ArtistGenre genre, String imageUrl,
-                   String instagramUrl, boolean needsReview) {
+                   String instagramUrl) {
         this.name = name;
         this.genre = genre;
         this.imageUrl = imageUrl;
         this.instagramUrl = instagramUrl;
-        this.needsReview = needsReview;
     }
 
-    public void updateFromImport(ArtistGenre genre, String imageUrl, boolean needsReview) {
+    public void updateFromImport(ArtistGenre genre, String imageUrl) {
         this.genre = genre;
         this.imageUrl = imageUrl;
-        this.needsReview = needsReview;
     }
 
-    public void update(String name, ArtistGenre genre, Boolean needsReview) {
+    public void update(String name, ArtistGenre genre) {
         this.name = name;
         if (genre != null) {
             this.genre = genre;
         }
-        if (needsReview != null) {
-            this.needsReview = needsReview;
-        }
-    }
-
-    public void markNeedsReview() {
-        this.needsReview = true;
     }
 
     public void changeInstagramUrl(String instagramUrl) {
