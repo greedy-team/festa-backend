@@ -30,6 +30,58 @@ PAT 값은 저장소·채팅·명령 인자에 넣지 않고 GitHub Settings의 
 `PUBLIC_BASE_URL`의 도메인은 `API_DOMAINS` 중 하나여야 하며, 어긋나면 서버에 닿기 전에 멈춘다.
 두 값을 바꿀 때는 `API_DOMAINS`에 도메인을 먼저 더하고 나서 `PUBLIC_BASE_URL`을 옮긴다.
 
+배포 순서는 Environment Variable `DEPLOY_STRATEGY`가 정한다. 값이 없으면 순차다.
+
+| Variable | development | production |
+| --- | --- | --- |
+| `DEPLOY_STRATEGY` | (없음 — 순차) | `overlap` |
+
+- **`overlap`**: 새 색을 먼저 띄우고 확인한 뒤 트래픽을 옮기고 옛 색을 멈춘다. 끊김이 없다.
+- **없음(순차)**: 옛 색을 먼저 멈추고 새 색을 띄운다. 1GB 개발 서버에 JVM을 하나만 둔다.
+  기본값이 순차라 Variable을 빠뜨려도 메모리가 두 배로 들지 않는다.
+
+## blue/green 전환
+
+앱은 `app-blue`와 `app-green` 두 서비스다. 설정 한 벌을 공유하고 이미지와 아래 둘만 다르다.
+
+| | app-blue | app-green |
+| --- | --- | --- |
+| 루프백 포트 | `127.0.0.1:8081` | `127.0.0.1:8082` |
+| 파일 로그 | `festa-blue.log` | `festa-green.log` |
+
+**트래픽을 받는 색은 서버의 `upstream/active.caddy` 한 줄이 정한다**(`reverse_proxy app-blue:8080`).
+CD는 이 파일을 덮지 않는다 — 배포 때만 바꾸고 `caddy reload`로 전환한다. 서버가 재부팅돼
+Caddy가 다시 떠도 같은 색을 본다. 이 파일이 없으면 CD가 첫 전환으로 보고 만든다.
+
+배포는 이 순서다.
+
+1. `upstream/active.caddy`를 읽어 지금 색을 알고, 반대 색을 이번 대상으로 고른다
+2. (순차) 옛 색을 멈춘다
+3. 새 색을 띄우고 **두 번 확인한다** — 서버의 루프백 포트로 한 번, Caddy 컨테이너 안에서
+   `app-<색>:8080`으로 한 번. 뒤쪽은 Caddy가 실제로 붙을 이름과 네트워크를 확인한다
+4. `upstream/active.caddy`를 새 색으로 바꾸고 `caddy reload`
+5. (겹침) 옛 색을 멈춘다. **지우지 않는다** — `switch-back.sh`가 그 컨테이너를 되살린다
+6. 외부 HTTPS 확인 → 정상 이미지 기록과 오래된 이미지 정리
+
+실패는 이렇게 갈린다.
+
+- **새 색 기동·확인 실패**: 로그를 남기고 새 색을 멈춘다. 겹침은 Caddy를 건드리기 전이라
+  트래픽이 옛 색 그대로다. 순차는 멈춰 둔 옛 색을 직전 정상 이미지로 되살린다
+- **reload 실패**: Caddy가 기존 설정을 유지한다. `active.caddy`를 되돌리고 새 색을 멈춘다
+- **HTTPS 확인 실패**: 되돌리지 않는다. TLS·443·DNS 문제는 색을 바꿔도 고쳐지지 않는다
+
+**수동 되돌리기**는 서버에서 `cd /opt/festa && bash switch-back.sh`다. 옛 색을 되살려 확인한 뒤
+트래픽을 옮기고 지금 색을 멈춘다. 옛 색 확인이 실패하면 전환하지 않는다.
+되돌릴 수 있는 것은 **직전 버전 하나**다 — 다음 배포가 그 색 자리를 새 이미지로 다시 만든다.
+
+**첫 전환**(기존 `app` → `app-blue`)은 한 번만 일어난다. `active.caddy`가 없으면 CD가 기존 `app`을
+현재 색으로 취급해 그쪽으로 트래픽을 유지한 채 blue를 띄운다. Caddy는 마운트가 바뀌어 이때 한 번
+재생성되고(443이 몇 초, 인증서는 `caddy-data` 볼륨에 남는다), 기존 `app` 컨테이너는 HTTPS 확인까지
+통과한 뒤 지운다. develop 머지로 E2가 먼저 겪고 릴리스로 A1이 뒤따른다.
+
+서버에서 상태를 볼 때 컨테이너 이름은 `festa-app-blue-1`·`festa-app-green-1`이다.
+`festa-app-1`을 보는 기존 명령(기동 시간·자원 측정 등)은 색 이름으로 바꿔야 한다.
+
 러너의 업로드는 자동 발급 `GITHUB_TOKEN`의 `packages: write`를 사용한다.
 이미지는 `ghcr.io/greedy-team/festa-backend`에 생성하며 최초 가시성은 private이다.
 기존 패키지가 있다면 private 여부, 저장소 연결 및 Actions 쓰기 권한을 먼저 확인한다.
