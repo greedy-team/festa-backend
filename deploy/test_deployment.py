@@ -36,12 +36,33 @@ docker() {
     else
       [[ "$SCENARIO" != pull_failure ]]
     fi
+  elif [[ "$*" == *'--env-file app.env config' ]]; then
+    # 실제 compose처럼 APP_IMAGE가 없으면 실패하고, 네트워크·볼륨의 들여쓴 name 줄도 함께 낸다.
+    # 프로젝트 이름은 일부러 festa가 아니다 — 코드가 이름을 읽지 않고 박아 두면 드러난다.
+    if [[ -z "${APP_IMAGE:-}" || "$SCENARIO" == *config_error ]]; then
+      echo 'required variable APP_IMAGE is missing a value' >&2
+      return 1
+    fi
+    if [[ "$SCENARIO" == *quoted_compose_project ]]; then
+      echo 'name: "festa-e2"'
+    elif [[ "$SCENARIO" != *no_compose_project ]]; then
+      echo 'name: festa-e2'
+    fi
+    printf '%s\n' 'services:' '  app-blue:' '    image: app' 'networks:' '  default:' \
+      '    name: festa-e2_default' 'volumes:' '  caddy-data:' '    name: festa-e2_caddy-data'
   elif [[ "$*" == 'image inspect '* ]]; then
     [[ "$SCENARIO" != missing_previous || "$3" != "$PREVIOUS" ]]
-  elif [[ "$*" == 'ps -q --filter'* || "$*" == 'ps -aq --filter'* ]]; then
-    # 첫 전환 전에만 기존 app 컨테이너가 남아 있다.
-    if [[ "$SCENARIO" == first_switch* ]]; then
-      echo legacy-container
+  elif [[ "$1" == ps && ( "$2" == -q || "$2" == -aq ) && "$3" == --filter ]]; then
+    # 프로젝트와 서비스 이름을 둘 다 좁힌 조회에만 기존 app이 나온다. 하나라도 빠지면
+    # 다른 프로젝트의 app이나 같은 프로젝트의 다른 서비스까지 걸린다.
+    if [[ "${*:3}" == '--filter label=com.docker.compose.project=festa-e2 --filter label=com.docker.compose.service=app' ]]; then
+      # 첫 전환 전에만 기존 app 컨테이너가 남아 있다.
+      if [[ "$SCENARIO" == first_switch* ]]; then
+        echo legacy-container
+      fi
+    else
+      echo other-project-app
+      echo same-project-postgres
     fi
   elif [[ "$1" == inspect ]]; then
     echo "$PREVIOUS"
@@ -54,17 +75,24 @@ docker() {
       [[ "$SCENARIO" != rollback_failure ]]
     fi
   elif [[ "$*" == *'exec -T caddy caddy reload'* ]]; then
+    # 실제 exec는 -T여도 stdin을 끝까지 읽는다.
+    cat >/dev/null
     [[ "$SCENARIO" != reload_failure ]]
   elif [[ "$*" == *'exec -T caddy wget'* ]]; then
+    cat >/dev/null
     [[ "$SCENARIO" != caddy_probe_failure ]]
   elif [[ "$*" == 'image ls '* ]]; then
     printf '%s\n' "$EXPECTED_IMAGE" "$PREVIOUS" "$IMAGE_NAME:old" 'festa-backend:obsolete'
   fi
 }
 curl() {
-  echo curl >> "$OCI_DEPLOY_PATH/calls"
+  printf 'curl %s\n' "$*" >> "$OCI_DEPLOY_PATH/calls"
   if [[ "$SCENARIO" == health_failure && ! -e "$OCI_DEPLOY_PATH/health-failed" ]]; then
     touch "$OCI_DEPLOY_PATH/health-failed"
+    return 1
+  fi
+  # 되살린 기존 app(8080)이 끝내 응답하지 않는 롤백 실패
+  if [[ "$SCENARIO" == *rollback_health* && "$*" == *'localhost:8080/'* ]]; then
     return 1
   fi
 }
@@ -112,8 +140,18 @@ class DeploymentTest(unittest.TestCase):
         self.env['SCENARIO'] = scenario
         source = self.path / 'script.sh'
         source.write_text(MOCKS + '\n' + script, encoding='utf-8', newline='\n')
+        # exec 대역이 stdin을 읽으므로 넘길 것이 없어도 빈 입력을 준다(부모 터미널에 매달리지 않게).
+        stdin = ''
+        if token is not None:
+            stdin = token
         return subprocess.run([BASH, str(source), *args], env=self.env,
-                              input=token, text=True, encoding='utf-8', capture_output=True)
+                              input=stdin, text=True, encoding='utf-8', capture_output=True)
+
+    def run_remote_over_ssh(self, script, scenario='success'):
+        """CD처럼 원격 스크립트를 bash -s의 stdin으로 흘려 넣는다. 파일로 돌리면 stdin을 먹는 명령이 드러나지 않는다."""
+        self.env['SCENARIO'] = scenario
+        return subprocess.run([BASH, '-s'], env=self.env, input=MOCKS + '\n' + script,
+                              text=True, encoding='utf-8', capture_output=True)
 
     def test_success_records_after_finalize_and_preserves_previous(self):
         self.assertEqual(self.run_script(REMOTE[0]).returncode, 0)
@@ -187,6 +225,105 @@ class DeploymentTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.read('.last-successful-image'), self.previous)
         self.assertNotIn('ps -q app\n', self.read('calls') + '\n')
+
+    def test_legacy_lookup_never_touches_app_of_other_compose_projects(self):
+        # 서비스 이름 라벨만으로 찾으면 다른 프로젝트의 app도, 프로젝트만으로 찾으면 같은 프로젝트의
+        # 다른 서비스도 멈추고 지운다. 멈춤·되살림·삭제 셋 다 본다.
+        (self.path / 'upstream/active.caddy').unlink()
+        (self.path / '.last-successful-image').unlink()
+        result = self.run_script(REMOTE[0], 'first_switch')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.run_script(REMOTE[1], 'first_switch').returncode, 0)
+        calls = self.read('calls')
+        self.assertIn('stop --time 40 legacy-container', calls)
+        self.assertIn('rm -f legacy-container', calls)
+
+        self.write('calls', '')
+        (self.path / 'upstream/active.caddy').unlink()
+        self.assertNotEqual(self.run_script(REMOTE[0], 'first_switch_up_failure').returncode, 0)
+        self.assertIn('start legacy-container', self.read('calls'))
+        for bystander in ('other-project-app', 'same-project-postgres'):
+            self.assertNotIn(bystander, calls + self.read('calls'))
+
+    def test_quoted_compose_project_name_is_unquoted_for_the_filter(self):
+        # compose는 숫자처럼 보이는 프로젝트 이름을 따옴표로 감싸 낸다. 따옴표째 쓰면 기존 app을 못 찾는다.
+        (self.path / 'upstream/active.caddy').unlink()
+        result = self.run_script(REMOTE[0], 'first_switch_quoted_compose_project')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('stop --time 40 legacy-container', self.read('calls'))
+
+    def test_unreadable_compose_project_stops_before_touching_containers(self):
+        for scenario in ('first_switch_no_compose_project', 'first_switch_config_error'):
+            with self.subTest(scenario=scenario):
+                self.write('calls', '')
+                (self.path / 'upstream/active.caddy').unlink(missing_ok=True)
+                result = self.run_script(REMOTE[0], scenario)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('compose 프로젝트', result.stderr)
+                calls = self.read('calls')
+                self.assertNotIn('up -d', calls)
+                self.assertNotIn('stop', calls)
+                self.assertFalse((self.path / 'upstream/active.caddy').exists())
+                self.assertFalse((self.path / '.deployment-in-progress').exists())
+
+    def test_finalize_skips_only_legacy_cleanup_when_compose_project_is_unreadable(self):
+        # 성공 기록은 HTTPS 확인 뒤라 그대로 남기고, 무엇을 지울지 모를 때는 컨테이너를 지우지 않는다.
+        # 이미지 정리는 프로젝트 이름과 무관하므로 그대로 돈다.
+        for scenario in ('first_switch_no_compose_project', 'first_switch_config_error'):
+            with self.subTest(scenario=scenario):
+                self.write('calls', '')
+                self.write('.last-successful-image', self.previous)
+                self.write('.deployment-in-progress', self.image)
+                result = self.run_script(REMOTE[1], scenario)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.read('.last-successful-image'), self.image)
+                calls = self.read('calls')
+                self.assertNotIn('rm -f', calls)
+                self.assertIn('image rm festa-backend:obsolete', calls)
+
+    def test_first_switch_rollback_waits_as_long_as_the_other_rollback_path(self):
+        # 기존 app은 docker start로 되살아나 기동을 기다려 주지 않는다. 개발 서버 기동이 128~190초라
+        # 다른 롤백 경로(up --wait-timeout 300)와 같은 시간을 curl이 기다려야 한다.
+        (self.path / 'upstream/active.caddy').unlink()
+        self.assertNotEqual(self.run_script(REMOTE[0], 'first_switch_up_failure').returncode, 0)
+        calls = self.calls()
+        start = self.call_index('start legacy-container')
+        health = next(line for line in calls[start:] if line.startswith('curl '))
+        retries = re.search(r'--retry (\d+)', health)
+        delay = re.search(r'--retry-delay (\d+)', health)
+        self.assertIsNotNone(retries, health)
+        self.assertIsNotNone(delay, health)
+        window = int(retries.group(1)) * int(delay.group(1))
+        max_time = re.search(r'--retry-max-time (\d+)', health)
+        if max_time is not None:
+            window = min(window, int(max_time.group(1)))
+        self.assertGreaterEqual(window, 300, health)
+        # --retry-max-time은 진행 중인 요청을 끊지 못한다. 요청마다 상한이 있어야 300초가 상한이 된다.
+        self.assertRegex(health, r' --max-time \d+')
+        self.assertIn('--retry-all-errors', health)
+        self.assertIn('http://localhost:8080/actuator/health', health)
+
+    def test_first_switch_rollback_that_never_becomes_healthy_keeps_failure_marker(self):
+        (self.path / 'upstream/active.caddy').unlink()
+        result = self.run_script(REMOTE[0], 'first_switch_rollback_health_up_failure')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('start legacy-container', self.read('calls'))
+        self.assertEqual(self.read('.deployment-in-progress'), self.image)
+
+    def test_remote_script_fed_through_stdin_still_switches(self):
+        # CD는 원격 스크립트를 ssh의 bash -s로 stdin에 흘려 넣는다. exec가 그 stdin을 먹으면
+        # 남은 스크립트가 사라져 전환 없이 성공(0)으로 끝난다.
+        for strategy in ('', 'overlap'):
+            with self.subTest(strategy=strategy):
+                self.write('calls', '')
+                self.active('app-blue')
+                self.env['DEPLOY_STRATEGY'] = strategy
+                result = self.run_remote_over_ssh(REMOTE[0])
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.read('upstream/active.caddy'), 'reverse_proxy app-green:8080')
+                calls = self.read('calls')
+                self.assertIn('exec -T caddy caddy reload', calls)
+                self.assertIn('stop --timeout 40 app-blue', calls)
 
     def test_up_and_health_failure_roll_back_without_pull(self):
         for scenario in ('up_failure', 'health_failure', 'caddy_probe_failure'):
@@ -353,6 +490,21 @@ ssh() { bash -c "${@: -1}"; }
         # CD는 설정 파일만 보내고 active.caddy는 서버에서 만든다.
         transfer = WORKFLOW.split('      - name: OCI 인스턴스로 설정 전송\n')[1].split('      - name:')[0]
         self.assertNotIn('active.caddy', transfer)
+
+    def test_switch_back_script_is_sent_to_the_deploy_path(self):
+        # README는 서버의 배포 경로에서 'bash switch-back.sh'를 안내한다. CD가 보내지 않으면 서버에 없다.
+        helper = '''
+ssh() { :; }
+scp() { printf 'scp %s\\n' "$*" >> "$OCI_DEPLOY_PATH/calls"; }
+'''
+        self.env.update(RUNNER_TEMP=self.path.as_posix(), OCI_PORT='22', OCI_USER='deploy', OCI_HOST='server')
+        result = self.run_script(helper + step_script('OCI 인스턴스로 설정 전송'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        sent = [line.split() for line in self.calls() if line.startswith('scp ')]
+        to_deploy_path = [args for args in sent if args[-1] == f'deploy@server:{self.path.as_posix()}/']
+        self.assertEqual(len(to_deploy_path), 1, sent)
+        self.assertIn('deploy/switch-back.sh', to_deploy_path[0])
+        self.assertIn('cd /opt/festa && bash switch-back.sh', (ROOT / 'deploy/README.md').read_text(encoding='utf-8'))
 
     def test_compose_defines_two_colors_that_do_not_share_ports_or_log_files(self):
         compose = (ROOT / 'deploy/compose.yaml').read_text(encoding='utf-8')

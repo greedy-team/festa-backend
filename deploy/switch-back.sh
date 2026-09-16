@@ -6,6 +6,10 @@
 # 되돌릴 수 있는 것은 직전 버전 하나다. 옛 색 컨테이너는 배포가 멈추기만 하고 지우지 않으므로,
 # 그 컨테이너가 남아 있는 동안에만 동작한다(다음 배포가 그 자리를 새 이미지로 다시 만든다).
 # 옛 색 확인이 실패하면 전환하지 않는다 — 지금 뜬 색이 트래픽을 그대로 받는다.
+#
+# 운영(A1, 겹침) 전용이다. 옛 색을 먼저 띄운 뒤 지금 색을 멈추므로 1GB 개발 서버(E2, 순차)에서는
+# JVM이 둘 뜨고, 개발 서버 기동(약 2분)이 아래 확인 대기(약 90초)보다 길어 확인도 실패한다.
+# 개발 서버는 직전 커밋을 다시 배포해서 되돌린다. Actions 배포가 도는 중에는 실행하지 않는다.
 set -Eeuo pipefail
 
 cd "${OCI_DEPLOY_PATH:-/opt/festa}"
@@ -50,7 +54,7 @@ if ! run_compose start "$target_service" \
   || ! curl --fail --silent --show-error --retry 30 --retry-delay 3 --retry-all-errors --retry-connrefused \
     "http://localhost:$target_port/actuator/health" \
   || ! run_compose exec -T caddy \
-    wget -q -O /dev/null "http://$target_service:8080/actuator/health"; then
+    wget -q -O /dev/null "http://$target_service:8080/actuator/health" </dev/null; then
   echo "$target_service 확인 실패. 전환하지 않습니다 — $current_service 가 계속 트래픽을 받습니다." >&2
   run_compose logs --tail=200 --no-color "$target_service" >&2 || true
   run_compose stop --timeout 40 "$target_service" || true
@@ -59,7 +63,8 @@ fi
 
 cp upstream/active.caddy .active.caddy.previous
 printf 'reverse_proxy %s:8080\n' "$target_service" > upstream/active.caddy
-if ! run_compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile; then
+# exec는 -T여도 stdin을 넘긴다. 이 스크립트를 파이프로 실행(ssh ... bash -s)해도 남은 줄을 먹지 않게 막는다.
+if ! run_compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile </dev/null; then
   echo "Caddy reload 실패. 트래픽 대상을 되돌립니다." >&2
   mv .active.caddy.previous upstream/active.caddy
   run_compose stop --timeout 40 "$target_service" || true
