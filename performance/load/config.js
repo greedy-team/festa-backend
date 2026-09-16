@@ -58,10 +58,14 @@ export const responseCheckFailures = new Counter('response_check_failures');
 const forbiddenHosts = new Set(['api.every-festa.com', 'dev-api.every-festa.com']);
 
 export function assertSafeTarget(url) {
-  let host;
-  try {
-    host = new URL(url).hostname.toLowerCase().replace(/\.+$/, '');
-  } catch (_) {
+  const authority = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]+)/i.exec(url)?.[1];
+  if (!authority) {
+    fail(`BASE_URL must be an absolute URL: '${url}'`);
+  }
+  const hostPort = authority.includes('@') ? authority.slice(authority.lastIndexOf('@') + 1) : authority;
+  const bracketedHost = /^\[([^\]]+)\]/.exec(hostPort)?.[1];
+  const host = (bracketedHost || hostPort.split(':')[0]).toLowerCase().replace(/\.+$/, '');
+  if (!host) {
     fail(`BASE_URL must be an absolute URL: '${url}'`);
   }
   if (forbiddenHosts.has(host)) {

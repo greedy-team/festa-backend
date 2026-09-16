@@ -40,7 +40,7 @@ if ($normalizedHost -in @('api.every-festa.com', 'dev-api.every-festa.com')) {
 
 $loadRoot = $PSScriptRoot
 $repositoryRoot = (Resolve-Path (Join-Path $loadRoot '..\..')).Path
-$runId = if ($RunId) { $RunId } else { "$(Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')-$Stage-$Scenario" }
+$runId = if ($RunId) { $RunId } else { "$((Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'))-$Stage-$Scenario" }
 $resultDirectory = Join-Path $loadRoot "results\$runId"
 New-Item -ItemType Directory -Force -Path $resultDirectory | Out-Null
 
@@ -100,7 +100,7 @@ if ($Runner -eq 'native') {
     if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
         throw 'The Docker k6 user cannot write the result directory. Fix its ownership/permissions before running the load test.'
     }
-    & docker run --rm -i --add-host host.docker.internal:host-gateway -v "${loadRoot}:/scripts" -w /scripts grafana/k6:0.54.0 run @environmentArguments /scripts/scenario.js
+    & docker run --rm -i --add-host host.docker.internal:host-gateway -v "${loadRoot}:/scripts" -w /scripts @environmentArguments grafana/k6:0.54.0 run /scripts/scenario.js
 }
 
 $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
