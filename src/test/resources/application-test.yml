@@ -3,6 +3,9 @@ spring:
     url: jdbc:postgresql://localhost:5432/placeholder
     username: test
     password: test
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 0
 
 app:
   jwt:
