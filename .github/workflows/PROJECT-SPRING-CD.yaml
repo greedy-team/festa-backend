@@ -265,46 +265,148 @@ jobs:
         env:
           OCI_HOST: ${{ secrets.OCI_HOST }}
           OCI_USER: ${{ secrets.OCI_USER }}
+          # 값이 overlap이면 새 색을 먼저 띄운다(운영, 끊김 없음).
+          # 비어 있으면 순차다 — 옛 색을 먼저 멈춘다. 1GB 개발 서버에 JVM이 둘 뜨지 않는다.
+          DEPLOY_STRATEGY: ${{ vars.DEPLOY_STRATEGY }}
         run: |
           ssh \
             -i "$RUNNER_TEMP/ssh/key" \
             -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
             -p "$OCI_PORT" \
             "$OCI_USER@$OCI_HOST" \
-            "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' IMAGE_TAG='$IMAGE_TAG' bash -s" <<'REMOTE'
+            "OCI_DEPLOY_PATH='$OCI_DEPLOY_PATH' IMAGE_NAME='$IMAGE_NAME' IMAGE_TAG='$IMAGE_TAG' DEPLOY_STRATEGY='$DEPLOY_STRATEGY' bash -s" <<'REMOTE'
           set -Eeuo pipefail
           cd "$OCI_DEPLOY_PATH"
           chmod 600 app.env
           docker image inspect "$IMAGE_NAME:$IMAGE_TAG" >/dev/null
+          new_image="$IMAGE_NAME:$IMAGE_TAG"
+
+          # compose.yaml이 APP_IMAGE를 필수로 선언해서, 어떤 하위 명령이든 값을 줘야 그 자리에서 죽지 않는다.
+          run_compose() { APP_IMAGE="$1" docker compose --env-file app.env "${@:2}"; }
+          port_of() { case "$1" in app-blue) echo 8081 ;; app-green) echo 8082 ;; *) echo 8080 ;; esac; }
+          stop_service() {
+            # 첫 전환 전의 기존 app은 compose.yaml에 더 이상 없다. 라벨로 찾아 직접 멈춘다.
+            if [[ "$1" == app ]]; then
+              local legacy
+              legacy="$(docker ps -q --filter 'label=com.docker.compose.service=app')"
+              if [[ -n "$legacy" ]]; then
+                docker stop --time 40 $legacy >/dev/null || true
+              fi
+            else
+              run_compose "$new_image" stop --timeout 40 "$1" || true
+            fi
+          }
+          restore_current_service() {
+            # 첫 전환 전의 기존 app은 compose.yaml에 없다. 멈춰 둔 그 컨테이너를 그대로 되살린다.
+            if [[ "$current_service" == app ]]; then
+              local legacy
+              legacy="$(docker ps -aq --filter 'label=com.docker.compose.service=app')"
+              if [[ -n "$legacy" ]]; then
+                docker start $legacy >/dev/null
+              fi
+            else
+              run_compose "$previous_image" up -d --wait --wait-timeout 300 "$current_service"
+            fi
+          }
+
+          # 트래픽을 받는 색은 CD가 덮지 않는 서버 상태다. 없으면 첫 전환이라 기존 app을 현재 색으로 취급한다.
+          mkdir -p upstream
+          if [[ ! -s upstream/active.caddy ]]; then
+            printf 'reverse_proxy app:8080\n' > upstream/active.caddy
+          fi
+          if grep -q 'app-blue' upstream/active.caddy; then
+            current_service=app-blue
+            target_service=app-green
+          elif grep -q 'app-green' upstream/active.caddy; then
+            current_service=app-green
+            target_service=app-blue
+          else
+            current_service=app
+            target_service=app-blue
+          fi
+          target_port="$(port_of "$target_service")"
+          current_port="$(port_of "$current_service")"
+          overlap=false
+          if [[ "${DEPLOY_STRATEGY:-}" == overlap ]]; then
+            overlap=true
+          fi
+
           if [[ ! -s .last-successful-image ]]; then
-            current_container="$(APP_IMAGE="$IMAGE_NAME:$IMAGE_TAG" docker compose --env-file app.env ps -q app)"
+            # 기존 app은 compose.yaml에 없으므로 compose ps로 물으면 'no such service'로 죽는다.
+            if [[ "$current_service" == app ]]; then
+              current_container="$(docker ps -q --filter 'label=com.docker.compose.service=app')"
+            else
+              current_container="$(run_compose "$new_image" ps -q "$current_service")"
+            fi
             if [[ -n "$current_container" ]]; then
               docker inspect --format '{{.Config.Image}}' "$current_container" > .last-successful-image
             fi
           fi
-          printf '%s\n' "$IMAGE_NAME:$IMAGE_TAG" > .deployment-in-progress
+          previous_image="$(cat .last-successful-image 2>/dev/null || true)"
+          printf '%s\n' "$new_image" > .deployment-in-progress
 
-          if ! APP_IMAGE="$IMAGE_NAME:$IMAGE_TAG" docker compose --env-file app.env up -d --wait --wait-timeout 300 \
+          # 앞단과 DB는 색과 무관하게 떠 있어야 한다. upstream 파일을 만든 뒤에 올린다 —
+          # Caddy는 불러올 파일이 없으면 뜨지 못한다.
+          run_compose "$new_image" up -d postgres caddy
+
+          # 순차(개발)는 JVM을 하나만 띄우려고 옛 색을 먼저 멈춘다. 겹침(운영)은 그대로 둔다.
+          if [[ "$overlap" != true ]]; then
+            stop_service "$current_service"
+          fi
+
+          # 두 번 확인한다. 서버의 루프백 포트로 한 번, Caddy 컨테이너 안에서 한 번 —
+          # 뒤쪽은 Caddy가 실제로 붙을 이름과 네트워크를 확인한다.
+          if ! run_compose "$new_image" up -d --wait --wait-timeout 300 "$target_service" \
             || ! curl --fail --silent --show-error --retry 10 --retry-delay 3 \
-              http://localhost:8080/actuator/health; then
-            # 롤백하면 실패한 컨테이너가 사라져 원인이 영영 남지 않는다. 되돌리기 전에 찍는다.
-            # APP_IMAGE를 다시 넘기는 이유는 compose.yaml이 이 값을 필수로 선언해서,
-            # 주지 않으면 logs가 그 자리에서 죽기 때문이다.
+              "http://localhost:$target_port/actuator/health" \
+            || ! run_compose "$new_image" exec -T caddy \
+              wget -q -O /dev/null "http://$target_service:8080/actuator/health"; then
+            # 되돌리면 실패한 컨테이너가 사라져 원인이 영영 남지 않는다. 멈추기 전에 찍는다.
             echo "=== 실패한 앱 컨테이너 로그 (마지막 200줄) ===" >&2
-            APP_IMAGE="$IMAGE_NAME:$IMAGE_TAG" docker compose --env-file app.env logs --tail=200 --no-color app >&2 || true
-            previous_image="$(cat .last-successful-image 2>/dev/null || true)"
+            run_compose "$new_image" logs --tail=200 --no-color "$target_service" >&2 || true
+            stop_service "$target_service"
+
+            if [[ "$overlap" == true ]]; then
+              # Caddy를 건드리기 전이라 트래픽은 옛 색 그대로다. 되돌릴 것이 없다.
+              echo "새 색 기동 실패. 트래픽은 $current_service 그대로입니다." >&2
+              rm -f .deployment-in-progress
+              exit 1
+            fi
+
             if [[ -z "$previous_image" ]] || ! docker image inspect "$previous_image" >/dev/null 2>&1; then
               echo "배포 실패: 롤백할 이전 정상 이미지가 없습니다." >&2
               rm -f .deployment-in-progress
               exit 1
             fi
-
             echo "새 이미지 배포 실패. $previous_image 로 롤백합니다." >&2
-            APP_IMAGE="$previous_image" docker compose --env-file app.env up -d --wait --wait-timeout 300
-            curl --fail --silent --show-error --retry 10 --retry-delay 3 \
-              http://localhost:8080/actuator/health
+            restore_current_service
+            # 첫 전환 롤백은 docker start라 기동을 기다리지 않는다. 앱이 뜨는 동안 포트는 열려
+            # 있어도 응답이 없어 curl이 52(empty reply)로 떨어지므로 그 오류에도 재시도한다.
+            curl --fail --silent --show-error --retry 20 --retry-delay 3 --retry-all-errors --retry-connrefused \
+              "http://localhost:$current_port/actuator/health"
             rm -f .deployment-in-progress
             exit 1
+          fi
+
+          # 전환. reload는 진행 중 연결을 끊지 않고, 설정이 틀리면 Caddy가 기존 설정을 유지한다.
+          cp upstream/active.caddy .active.caddy.previous
+          printf 'reverse_proxy %s:8080\n' "$target_service" > upstream/active.caddy
+          if ! run_compose "$new_image" exec -T caddy \
+            caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile; then
+            echo "Caddy reload 실패. 트래픽 대상을 되돌립니다." >&2
+            mv .active.caddy.previous upstream/active.caddy
+            stop_service "$target_service"
+            if [[ "$overlap" != true && -n "$previous_image" ]] && docker image inspect "$previous_image" >/dev/null 2>&1; then
+              restore_current_service
+            fi
+            rm -f .deployment-in-progress
+            exit 1
+          fi
+          rm -f .active.caddy.previous
+
+          # 겹침(운영)은 전환 뒤에 옛 색을 멈춘다. 지우지 않는다 — switch-back.sh가 그 컨테이너를 되살린다.
+          if [[ "$overlap" == true ]]; then
+            stop_service "$current_service"
           fi
           REMOTE
 
@@ -356,7 +458,18 @@ jobs:
           fi
           previous_image="$(cat .last-successful-image 2>/dev/null || true)"
           printf '%s\n' "$EXPECTED_IMAGE" > .last-successful-image
+          # switch-back.sh가 되돌릴 대상이다. 옛 색 컨테이너가 사라진 뒤에도 이름은 남는다.
+          if [[ -n "$previous_image" ]]; then
+            printf '%s\n' "$previous_image" > .previous-successful-image
+          fi
           rm -f .deployment-in-progress
+
+          # 첫 전환으로 색 서비스가 트래픽을 받은 뒤라 기존 app 컨테이너는 더 필요 없다.
+          # HTTPS 확인까지 통과한 뒤에만 여기 닿는다.
+          legacy_container="$(docker ps -aq --filter 'label=com.docker.compose.service=app')"
+          if [[ -n "$legacy_container" ]]; then
+            docker rm -f $legacy_container >/dev/null || true
+          fi
 
           while IFS= read -r image; do
             if [[ -z "$image" || "$image" == "$EXPECTED_IMAGE" || "$image" == "$previous_image" ]]; then

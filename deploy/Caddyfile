@@ -4,6 +4,11 @@
 # 인증서 발급과 갱신은 Caddy가 알아서 한다.
 # 발급받은 인증서는 compose의 caddy-data 볼륨에 남는다 — 볼륨이 없으면
 # 재배포마다 재발급을 시도해 Let's Encrypt 발급 한도에 걸린다.
+#
+# 어느 색(app-blue / app-green)으로 보낼지는 이 파일이 아니라 upstream/active.caddy가 정한다.
+# 배포는 그 파일 한 줄을 바꾸고 `caddy reload`를 부른다 — reload는 진행 중 연결을 끊지 않고,
+# 새 설정이 틀리면 Caddy가 기존 설정을 그대로 유지한다.
+# 이 파일과 compose.yaml은 CD가 덮어쓰지만 upstream/active.caddy는 건드리지 않는다.
 {$API_DOMAINS} {
-	reverse_proxy app:8080
+	import /etc/caddy/upstream/active.caddy
 }
