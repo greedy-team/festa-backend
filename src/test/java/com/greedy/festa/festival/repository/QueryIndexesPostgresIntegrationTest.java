@@ -36,8 +36,7 @@ class QueryIndexesPostgresIntegrationTest extends PostgresTestSupport {
     @Test
     @Transactional
     void coverage와_artist_lineup_실제_쿼리가_각_인덱스를_사용한다() {
-        Long hostId = jdbcTemplate.queryForObject(
-                "SELECT id FROM host ORDER BY id LIMIT 1", Long.class);
+        Long hostId = 1L;
         LocalDate yearStart = LocalDate.now().withDayOfYear(1);
         LocalDate nextYearStart = yearStart.plusYears(1);
 
