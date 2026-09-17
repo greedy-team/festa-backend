@@ -73,6 +73,6 @@ PC에 Postgres가 이미 깔려 있으면 5432가 점유돼 있습니다. 그때
 ---
 
 <!-- AUTO-VERSION-SECTION: DO NOT EDIT MANUALLY -->
-## 최신 버전 : v0.0.5 (2026-09-17)
+## 최신 버전 : v0.0.7 (2026-09-17)
 
 [전체 버전 기록 보기](CHANGELOG.md)
