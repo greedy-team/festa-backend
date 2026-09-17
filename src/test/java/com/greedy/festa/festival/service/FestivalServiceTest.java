@@ -352,6 +352,27 @@ class FestivalServiceTest extends PostgresTestSupport {
     }
 
     @Test
+    void 공개_축제_목록은_주최를_미리_조회해_N_plus_1을_막는다() {
+        // given
+        Host 주최 = 주최("목록 preload 주최");
+        Festival 첫_축제 = 축제(주최, "목록 preload 첫 축제", 날짜("2026-09-03"), 날짜("2026-09-04"), 시각("2026-08-01T00:00:00Z"));
+        Festival 둘째_축제 = 축제(주최, "목록 preload 둘째 축제", 날짜("2026-09-02"), 날짜("2026-09-03"), 시각("2026-08-01T00:00:00Z"));
+        비운다();
+
+        Statistics 통계 = emf.unwrap(SessionFactory.class).getStatistics();
+        통계.clear();
+
+        // when
+        PageResponse<FestivalListItemResponse> 결과 = festivalService.getFestivals(
+                주최.getId(), null, null, null, "목록 preload", FestivalSortType.LATEST, 0, 2);
+
+        // then
+        assertThat(결과.items()).extracting(FestivalListItemResponse::festivalId)
+                .containsExactly(첫_축제.getId(), 둘째_축제.getId());
+        assertThat(통계.getPrepareStatementCount()).isEqualTo(3);
+    }
+
+    @Test
     void 발행되지_않은_축제는_목록에서_빠진다() {
         // given
         Host 주최 = 주최("테스트_연세대학교");

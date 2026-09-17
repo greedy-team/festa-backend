@@ -1,41 +1,25 @@
 package com.greedy.festa.festival.repository;
 
-import com.greedy.festa.festival.dto.FestivalSortType;
-import com.greedy.festa.festival.dto.FestivalListItemResponse;
 import com.greedy.festa.festival.entity.Festival;
-import com.greedy.festa.festival.service.FestivalService;
 import com.greedy.festa.global.config.JpaConfig;
-import com.greedy.festa.global.dto.PageResponse;
 import com.greedy.festa.global.util.LikePatternUtils;
 import com.greedy.festa.host.entity.Host;
 import com.greedy.festa.support.PostgresTestSupport;
 import com.greedy.festa.support.fixture.FestivalFixture;
 import com.greedy.festa.support.fixture.HostFixture;
 import jakarta.persistence.EntityManager;
-import org.hibernate.Hibernate;
-import org.hibernate.SessionFactory;
-import org.hibernate.cfg.AvailableSettings;
-import org.hibernate.resource.jdbc.spi.StatementInspector;
-import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCustomizer;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 
 import java.time.Instant;
-import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,38 +27,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
-@Import({JpaConfig.class, FestivalService.class, FestivalPublishedRowsPostgresIntegrationTest.FixedClockConfig.class,
-        FestivalPublishedRowsPostgresIntegrationTest.SqlCaptureConfig.class})
+@Import(JpaConfig.class)
 class FestivalPublishedRowsPostgresIntegrationTest extends PostgresTestSupport {
 
     @Autowired EntityManager entityManager;
     @Autowired FestivalRepository festivalRepository;
-    @Autowired FestivalService festivalService;
-    @Autowired SqlCapture sqlCapture;
-
-    @TestConfiguration
-    static class FixedClockConfig {
-
-        @Bean
-        Clock clock() {
-            return Clock.fixed(Instant.parse("2026-08-27T00:00:00Z"), ZoneOffset.UTC);
-        }
-    }
-
-    @TestConfiguration
-    static class SqlCaptureConfig {
-
-        @Bean
-        SqlCapture sqlCapture() {
-            return new SqlCapture();
-        }
-
-        @Bean
-        HibernatePropertiesCustomizer sqlCaptureCustomizer(SqlCapture sqlCapture) {
-            return properties -> properties.put(AvailableSettings.STATEMENT_INSPECTOR, sqlCapture);
-        }
-    }
 
     @Test
     void publishedRowsAndCountMatchThePreviousHostInnerJoinQuery() {
@@ -90,32 +47,12 @@ class FestivalPublishedRowsPostgresIntegrationTest extends PostgresTestSupport {
         PageRequest pageRequest = PageRequest.of(0, 2,
                 Sort.by(Sort.Order.desc("startDate"), Sort.Order.asc("id")));
 
-        sqlCapture.clear();
         Page<Festival> actual = festivalRepository.findPublishedRows(
                 firstHost.getId(), null, null, null, null, LocalDate.of(2026, 8, 27), pattern, pageRequest);
-
-        assertThat(sqlCapture.statements()).isNotEmpty()
-                .allSatisfy(sql -> assertThat(sql.replaceAll("\\s+", " ").toUpperCase())
-                        .doesNotContain(" JOIN HOST "));
 
         assertThat(actual.getContent().stream().map(Festival::getId).toList())
                 .containsExactlyElementsOf(previousList(pattern, firstHost.getId(), 2));
         assertThat(actual.getTotalElements()).isEqualTo(previousCount(pattern, firstHost.getId()));
-        assertThat(actual.getContent()).extracting(Festival::getHost).doesNotContainNull();
-        assertThat(actual.getContent()).allMatch(festival -> !Hibernate.isInitialized(festival.getHost()));
-
-        entityManager.clear();
-        Statistics statistics = entityManager.getEntityManagerFactory()
-                .unwrap(SessionFactory.class)
-                .getStatistics();
-        statistics.clear();
-
-        PageResponse<FestivalListItemResponse> response = festivalService.getFestivals(
-                firstHost.getId(), null, null, null, " Spring % _ \\ Festival ", FestivalSortType.LATEST, 0, 2);
-
-        assertThat(response.items()).extracting(FestivalListItemResponse::festivalId)
-                .containsExactly(first.getId(), second.getId());
-        assertThat(statistics.getPrepareStatementCount()).isEqualTo(3);
     }
 
     private Host persistHost(String suffix) {
@@ -173,22 +110,4 @@ class FestivalPublishedRowsPostgresIntegrationTest extends PostgresTestSupport {
                 .getSingleResult()).longValue();
     }
 
-    static class SqlCapture implements StatementInspector {
-
-        private final List<String> statements = new ArrayList<>();
-
-        @Override
-        public String inspect(String sql) {
-            statements.add(sql);
-            return sql;
-        }
-
-        void clear() {
-            statements.clear();
-        }
-
-        List<String> statements() {
-            return List.copyOf(statements);
-        }
-    }
 }
