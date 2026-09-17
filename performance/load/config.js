@@ -6,10 +6,21 @@ export const FIXTURES = {
   performance: {
     description: 'Issue #154 fixture: Host 200 / Festival 20,000 / Artist 30,000 / ArtistAlias 45,000 / Lineup 300,000',
     ids: { festival: 1, artist: 1, host: 1 },
+    manifest: {
+      festivalDetailIds: [1, 5001, 10001, 15001],
+      artistDetailIds: [1, 10000, 20000, 30000],
+      hostDetailIds: [1, 7, 100, 200],
+      festivalPages: [0, 1, 100, 500],
+      artistPages: [0, 1, 100, 500],
+    },
   },
   smoke: {
     description: 'Local Docker smoke seed; the canonical search strings match the Issue #154 fixture patterns.',
     ids: { festival: 900001, artist: 900001, host: 900001 },
+    manifest: {
+      festivalDetailIds: [900001], artistDetailIds: [900001], hostDetailIds: [900001],
+      festivalPages: [0], artistPages: [0],
+    },
   },
 };
 
@@ -103,6 +114,10 @@ export function searchCase(iteration) {
     fail('SEARCH_BUCKET / SEARCH_TYPE selects no corpus entry.');
   }
   return candidates[iteration % candidates.length];
+}
+
+export function fixtureValue(values, iteration) {
+  return values[iteration % values.length];
 }
 
 export function getJson(url, endpoint, extraTags = {}) {

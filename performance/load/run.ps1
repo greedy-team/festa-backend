@@ -3,7 +3,7 @@ param(
     [string]$BaseUrl = $env:BASE_URL,
     [ValidateSet('smoke', 'baseline', 'normal', 'stress', 'saturation')]
     [string]$Stage = 'smoke',
-    [ValidateSet('mixed', 'upcoming', 'recent', 'festivals', 'festival-detail', 'artists', 'artist-detail', 'search', 'host-detail')]
+    [ValidateSet('mixed', 'upcoming', 'recent', 'festivals', 'festival-detail', 'artists', 'artist-detail', 'search', 'host-detail', 'fixture-manifest')]
     [string]$Scenario = 'mixed',
     [ValidateSet('performance', 'smoke')]
     [string]$Fixture = 'performance',
@@ -20,7 +20,11 @@ param(
     [string]$SearchBucket = '',
     [ValidateSet('', 'ALL', 'ARTIST', 'HOST', 'FESTIVAL')]
     [string]$SearchType = '',
+    [string]$FestivalHostId = '',
+    [string]$FestivalQuery = '',
+    [string]$FestivalPage = '',
     [string]$FestivalId = '',
+    [string]$ArtistPage = '',
     [string]$ArtistId = '',
     [string]$HostId = ''
 )
@@ -78,7 +82,11 @@ foreach ($setting in @{
         MAX_VUS = $MaxVUs
         SEARCH_BUCKET = $SearchBucket
         SEARCH_TYPE = $SearchType
+        FESTIVAL_HOST_ID = $FestivalHostId
+        FESTIVAL_QUERY = $FestivalQuery
+        FESTIVAL_PAGE = $FestivalPage
         FESTIVAL_ID = $FestivalId
+        ARTIST_PAGE = $ArtistPage
         ARTIST_ID = $ArtistId
         HOST_ID = $HostId
     }.GetEnumerator()) {

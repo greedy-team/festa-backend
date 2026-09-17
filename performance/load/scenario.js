@@ -1,9 +1,11 @@
 import exec from 'k6/execution';
 import { fail } from 'k6';
+import http from 'k6/http';
 import {
   ENDPOINTS,
   SEARCH_CORPUS,
   apiUrl,
+  fixtureValue,
   getJson,
   requiredEnv,
   searchCase,
@@ -45,11 +47,14 @@ if (!stageDefaults[stage]) {
   fail(`Unknown STAGE '${stage}'. Use smoke, baseline, normal, stress, or saturation.`);
 }
 
-const configured = stageDefaults[stage];
+const configured = scenarioName === 'fixture-manifest'
+  ? { executor: 'shared-iterations', vus: 1, iterations: 1, maxDuration: '2m' }
+  : stageDefaults[stage];
 const executableScenarioName = {
   'festival-detail': 'festival_detail',
   'artist-detail': 'artist_detail',
   'host-detail': 'host_detail',
+  'fixture-manifest': 'fixture_manifest',
 }[scenarioName] || scenarioName;
 const profile = {
   ...configured,
@@ -91,20 +96,27 @@ function recent() {
 }
 
 function festivals() {
-  getJson(apiUrl(baseUrl, '/api/festivals', { page: 0, size: 20, sort: 'LATEST' }), ENDPOINTS.festivals);
+  getJson(apiUrl(baseUrl, '/api/festivals', {
+    page: __ENV.FESTIVAL_PAGE || fixtureValue(fixture.manifest.festivalPages, currentIteration()),
+    size: 20,
+    sort: 'LATEST',
+    hostId: __ENV.FESTIVAL_HOST_ID,
+    q: __ENV.FESTIVAL_QUERY,
+  }), ENDPOINTS.festivals);
 }
 
 function festivalDetail() {
-  const id = __ENV.FESTIVAL_ID || fixture.ids.festival;
+  const id = __ENV.FESTIVAL_ID || fixtureValue(fixture.manifest.festivalDetailIds, currentIteration());
   getJson(apiUrl(baseUrl, `/api/festivals/${id}`), ENDPOINTS.festivalDetail);
 }
 
 function artists() {
-  getJson(apiUrl(baseUrl, '/api/artists', { page: 0, size: 20, sort: 'NAME' }), ENDPOINTS.artists);
+  const page = __ENV.ARTIST_PAGE || fixtureValue(fixture.manifest.artistPages, currentIteration());
+  getJson(apiUrl(baseUrl, '/api/artists', { page, size: 20, sort: 'NAME' }), ENDPOINTS.artists);
 }
 
 function artistDetail() {
-  const id = __ENV.ARTIST_ID || fixture.ids.artist;
+  const id = __ENV.ARTIST_ID || fixtureValue(fixture.manifest.artistDetailIds, currentIteration());
   getJson(apiUrl(baseUrl, `/api/artists/${id}`), ENDPOINTS.artistDetail);
 }
 
@@ -117,8 +129,32 @@ function search(searchRequestOrdinal = currentIteration()) {
 }
 
 function hostDetail() {
-  const id = __ENV.HOST_ID || fixture.ids.host;
+  const id = __ENV.HOST_ID || fixtureValue(fixture.manifest.hostDetailIds, currentIteration());
   getJson(apiUrl(baseUrl, `/api/hosts/${id}`), ENDPOINTS.hostDetail);
+}
+
+function fixtureManifest() {
+  const requests = [
+    ...fixture.manifest.festivalDetailIds.map((id) => ({ url: apiUrl(baseUrl, `/api/festivals/${id}`), label: `festival-detail-${id}` })),
+    ...fixture.manifest.artistDetailIds.map((id) => ({ url: apiUrl(baseUrl, `/api/artists/${id}`), label: `artist-detail-${id}` })),
+    ...fixture.manifest.hostDetailIds.map((id) => ({ url: apiUrl(baseUrl, `/api/hosts/${id}`), label: `host-detail-${id}` })),
+    ...fixture.manifest.festivalPages.map((page) => ({ url: apiUrl(baseUrl, '/api/festivals', { page, size: 20, sort: 'LATEST' }), label: `festival-page-${page}` })),
+    ...fixture.manifest.artistPages.map((page) => ({ url: apiUrl(baseUrl, '/api/artists', { page, size: 20, sort: 'NAME' }), label: `artist-page-${page}` })),
+  ];
+  requests.forEach(({ url, label }) => {
+    const response = http.get(url, { tags: { endpoint: 'fixture_manifest', manifest_target: label } });
+    check(response, { 'fixture manifest target returns 200': (res) => res.status === 200 }, { endpoint: 'fixture_manifest', manifest_target: label });
+  });
+  SEARCH_CORPUS.forEach(({ query, type, bucket }) => {
+    const response = http.get(apiUrl(baseUrl, '/api/search', { q: query, type }), {
+      tags: { endpoint: 'fixture_manifest', manifest_target: `search-${bucket}-${type}` },
+    });
+    const body = response.status === 200 ? JSON.parse(response.body) : null;
+    const count = body?.counts?.[type.toLowerCase()] ?? 0;
+    check(response, { 'fixture search corpus returns a result': () => count > 0 }, {
+      endpoint: 'fixture_manifest', manifest_target: `search-${bucket}-${type}`,
+    });
+  });
 }
 
 const mixedHandlers = { upcoming, recent, festivals, festivalDetail, artists, artistDetail };
@@ -174,4 +210,7 @@ export function mixed() {
 }
 
 // k6 resolves named scenario executors from exported functions, so keep the names explicit.
-export { upcoming, recent, festivals, festivalDetail as festival_detail, artists, artistDetail as artist_detail, search, hostDetail as host_detail };
+export {
+  upcoming, recent, festivals, festivalDetail as festival_detail, artists, artistDetail as artist_detail,
+  search, hostDetail as host_detail, fixtureManifest as fixture_manifest,
+};
