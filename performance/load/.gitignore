@@ -1,0 +1,4 @@
+# Run artifacts are reproducible from the script and must not be committed.
+results/*
+!results/.gitkeep
+.smoke-image/
