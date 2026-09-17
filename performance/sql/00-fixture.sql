@@ -24,7 +24,7 @@ SELECT
         WHEN n <= 29999 THEN format('무공백아티스트%s', n)               -- no-space counterpart
         ELSE '희귀 아티스트 30000'                                      -- known rare query
     END,
-    (ARRAY['DANCE', 'HIPHOP', 'INDIE', 'ROCK', 'BALLAD'])[1 + (n % 5)],
+    (ARRAY['DANCE', 'HIPHOP', 'BALLAD_RNB', 'BAND'])[1 + (n % 4)],
     n % 10 = 0, now(), now()
 FROM generate_series(1, 30000) AS n;
 
@@ -63,7 +63,7 @@ SELECT
         WHEN n % 3 = 1 THEN CURRENT_DATE + 2
         ELSE CURRENT_DATE - (n % 365) - 1
     END,
-    CASE WHEN n % 5 = 0 THEN NULL ELSE now() - ((n % 90) || ' days')::interval END,
+    CASE WHEN n % 5 = 0 AND n <> 20000 THEN NULL ELSE now() - ((n % 90) || ' days')::interval END,
     CASE WHEN n % 4 = 0 THEN 'MANUAL' ELSE 'CRAWLED' END,
     now(), now()
 FROM generate_series(1, 20000) AS n;

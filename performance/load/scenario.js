@@ -1,5 +1,5 @@
 import exec from 'k6/execution';
-import { fail } from 'k6';
+import { check, fail } from 'k6';
 import http from 'k6/http';
 import {
   ENDPOINTS,
@@ -72,7 +72,7 @@ if (configured.executor === 'constant-arrival-rate') {
 
 export const options = {
   scenarios: { [scenarioName]: profile },
-  discardResponseBodies: true,
+  discardResponseBodies: scenarioName !== 'fixture-manifest',
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'count', 'p(90)', 'p(95)', 'p(99)'],
   // These are safety/contract guards, not a final TPS acceptance criterion.
   thresholds: {
@@ -151,6 +151,9 @@ function fixtureManifest() {
     });
     const body = response.status === 200 ? JSON.parse(response.body) : null;
     const count = body?.counts?.[type.toLowerCase()] ?? 0;
+    if (count <= 0) {
+      console.error(`fixture search corpus empty: ${bucket}/${type}/${query}`);
+    }
     check(response, { 'fixture search corpus returns a result': () => count > 0 }, {
       endpoint: 'fixture_manifest', manifest_target: `search-${bucket}-${type}`,
     });
