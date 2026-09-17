@@ -252,13 +252,17 @@ jobs:
             -p "$OCI_PORT" \
             "$OCI_USER@$OCI_HOST" \
             "mkdir -p '$OCI_DEPLOY_PATH'"
+          # Caddyfile은 제자리가 아니라 옆에 둔다. 새 Caddyfile은 서버의 upstream 디렉터리를 불러오는데
+          # 첫 전환 전의 Caddy에는 그 마운트가 없다 — 제자리에 덮은 뒤 교체 스텝이 Caddy를 재생성하기 전에
+          # 멈추고 Caddy가 재시작되면 뜨지 못한다. 적용은 교체 스텝이 Caddy 재생성 직전에 한다.
+          cp deploy/Caddyfile "$RUNNER_TEMP/Caddyfile.next"
           scp \
             -i "$RUNNER_TEMP/ssh/key" \
             -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
             -P "$OCI_PORT" \
             "$RUNNER_TEMP/app.env" \
             deploy/compose.yaml \
-            deploy/Caddyfile \
+            "$RUNNER_TEMP/Caddyfile.next" \
             deploy/switch-back.sh \
             "$OCI_USER@$OCI_HOST:$OCI_DEPLOY_PATH/"
 
@@ -279,6 +283,12 @@ jobs:
           set -Eeuo pipefail
           cd "$OCI_DEPLOY_PATH"
           chmod 600 app.env
+          # 설정 전송 스텝이 새 Caddyfile을 옆에 둔다. 없는 채로 아래 덮어쓰기에 닿으면
+          # 리다이렉트가 먼저 돌아 살아 있는 Caddyfile을 비운다.
+          if [[ ! -s Caddyfile.next ]]; then
+            echo "Caddyfile.next가 없습니다. 컨테이너와 설정을 바꾸기 전에 멈춥니다." >&2
+            exit 1
+          fi
           docker image inspect "$IMAGE_NAME:$IMAGE_TAG" >/dev/null
           new_image="$IMAGE_NAME:$IMAGE_TAG"
 
@@ -292,7 +302,7 @@ jobs:
           # compose는 숫자처럼 보이는 이름을 따옴표로 감싸 내므로 벗긴다.
           compose_project="$(run_compose "$new_image" config | sed -n '/^name: /{s/^name: //;s/^"\(.*\)"$/\1/;p;}' || true)"
           if [[ -z "$compose_project" ]]; then
-            echo "compose 프로젝트 이름을 읽지 못했습니다. 기존 app 컨테이너를 가려낼 수 없어 컨테이너와 트래픽을 바꾸기 전에 멈춥니다(설정 파일은 이미 전송됨)." >&2
+            echo "compose 프로젝트 이름을 읽지 못했습니다. 기존 app 컨테이너를 가려낼 수 없어 컨테이너와 트래픽을 바꾸기 전에 멈춥니다(compose.yaml은 이미 전송됨, Caddyfile은 적용 전)." >&2
             exit 1
           fi
           legacy_filter=(--filter "label=com.docker.compose.project=$compose_project" --filter 'label=com.docker.compose.service=app')
@@ -360,6 +370,11 @@ jobs:
 
           # 앞단과 DB는 색과 무관하게 떠 있어야 한다. upstream 파일을 만든 뒤에 올린다 —
           # Caddy는 불러올 파일이 없으면 뜨지 못한다.
+          # 새 Caddyfile은 여기서 놓고 곧바로 Caddy를 올린다. 첫 전환 전의 Caddy에는 upstream 마운트가 없어
+          # 새 Caddyfile을 놓은 채 재시작되면 뜨지 못하므로, 사이에 실패할 수 있는 단계를 두지 않는다.
+          # mv로 바꿔치지 않는다 — Caddy는 이 파일 하나를 마운트해 원래 inode에 묶여 있어 reload가 옛 내용을 읽는다.
+          cat Caddyfile.next > Caddyfile
+          rm -f Caddyfile.next
           run_compose "$new_image" up -d postgres caddy
 
           # 순차(개발)는 JVM을 하나만 띄우려고 옛 색을 먼저 멈춘다. 겹침(운영)은 그대로 둔다.

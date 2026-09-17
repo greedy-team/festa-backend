@@ -85,7 +85,13 @@ Actions 배포가 도는 중에는 실행하지 않는다.
 기존 `app`은 compose.yaml에 없어 라벨로 찾는데, **이 배포 경로의 compose 프로젝트로 좁혀서** 찾는다
 (`docker compose config`의 `name`). 같은 서버의 다른 프로젝트에 서비스 이름이 `app`인 컨테이너가 있어도
 멈추거나 지우지 않는다. 프로젝트 이름을 못 읽으면 배포는 컨테이너와 트래픽을 바꾸기 전에 멈춘다
-(설정 파일은 앞 스텝에서 이미 전송된 뒤다).
+(`compose.yaml`은 앞 스텝에서 이미 전송됐지만 `Caddyfile`은 아직 적용 전이다).
+
+**`Caddyfile`은 제자리에 바로 덮지 않는다.** CD는 `Caddyfile.next`로 옆에 보내고, 교체 스텝이
+`active.caddy`를 준비한 뒤 **Caddy를 올리기 직전에** 덮어쓴다. 새 Caddyfile은 `upstream/`을 불러오는데
+첫 전환 전의 Caddy에는 그 마운트가 없어, 새 Caddyfile만 놓인 채 재시작되면 뜨지 못한다.
+덮어쓸 때 `mv`를 쓰지 않는다 — Caddy는 이 파일 하나를 마운트해 원래 inode에 묶여 있어,
+바꿔친 파일은 서버에선 새 내용으로 보여도 `caddy reload`가 옛 내용을 읽는다.
 
 원격 스크립트는 `ssh ... bash -s`로 **stdin에서 읽힌다.** `docker compose exec`는 `-T`여도 stdin을
 컨테이너로 넘기므로, 원격 스크립트 안의 `exec`에는 반드시 `</dev/null`을 붙인다. 없으면 `exec`가 남은

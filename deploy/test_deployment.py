@@ -50,6 +50,10 @@ docker() {
     fi
     printf '%s\n' 'services:' '  app-blue:' '    image: app' 'networks:' '  default:' \
       '    name: festa-e2_default' 'volumes:' '  caddy-data:' '    name: festa-e2_caddy-data'
+  elif [[ "$*" == *'up -d postgres caddy' ]]; then
+    # Caddy가 (재)생성되는 순간 서버에 놓인 설정을 찍는다.
+    printf 'caddy-up Caddyfile=%s active=%s\n' "$(cat "$OCI_DEPLOY_PATH/Caddyfile")" \
+      "$(cat "$OCI_DEPLOY_PATH/upstream/active.caddy")" >> "$OCI_DEPLOY_PATH/calls"
   elif [[ "$*" == 'image inspect '* ]]; then
     [[ "$SCENARIO" != missing_previous || "$3" != "$PREVIOUS" ]]
   elif [[ "$1" == ps && ( "$2" == -q || "$2" == -aq ) && "$3" == --filter ]]; then
@@ -115,6 +119,12 @@ class DeploymentTest(unittest.TestCase):
         (self.path / 'app.env').touch()
         self.write('.last-successful-image', self.previous)
         self.active('app-blue')
+        self.write('Caddyfile', 'old caddyfile')
+        self.transferred()
+
+    def transferred(self):
+        """설정 전송 스텝이 새 Caddyfile을 살아 있는 파일 옆에 놓은 상태를 만든다."""
+        self.write('Caddyfile.next', 'new caddyfile')
 
     def write(self, name, value):
         (self.path / name).write_text(value + '\n', encoding='utf-8')
@@ -240,6 +250,7 @@ class DeploymentTest(unittest.TestCase):
 
         self.write('calls', '')
         (self.path / 'upstream/active.caddy').unlink()
+        self.transferred()
         self.assertNotEqual(self.run_script(REMOTE[0], 'first_switch_up_failure').returncode, 0)
         self.assertIn('start legacy-container', self.read('calls'))
         for bystander in ('other-project-app', 'same-project-postgres'):
@@ -265,6 +276,51 @@ class DeploymentTest(unittest.TestCase):
                 self.assertNotIn('stop', calls)
                 self.assertFalse((self.path / 'upstream/active.caddy').exists())
                 self.assertFalse((self.path / '.deployment-in-progress').exists())
+                # 여기서 멈춘 채 옛 Caddy가 재시작돼도 뜰 수 있게, 살아 있는 Caddyfile은 그대로다.
+                self.assertEqual(self.read('Caddyfile'), 'old caddyfile')
+
+    def test_caddy_is_brought_up_only_after_new_caddyfile_and_upstream_are_in_place(self):
+        # 첫 전환 전의 Caddy에는 upstream 마운트가 없다. 새 Caddyfile을 놓았으면 곧바로 재생성해야
+        # 재시작돼도 import 대상을 찾는다.
+        for scenario in ('first_switch', 'success'):
+            with self.subTest(scenario=scenario):
+                self.write('calls', '')
+                self.write('Caddyfile', 'old caddyfile')
+                self.transferred()
+                if scenario == 'first_switch':
+                    (self.path / 'upstream/active.caddy').unlink()
+                    upstream = 'reverse_proxy app:8080'
+                else:
+                    self.active('app-blue')
+                    upstream = 'reverse_proxy app-blue:8080'
+                result = self.run_script(REMOTE[0], scenario)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(f'caddy-up Caddyfile=new caddyfile active={upstream}', self.read('calls'))
+                self.assertFalse((self.path / 'Caddyfile.next').exists())
+
+    def test_caddyfile_is_overwritten_in_place_for_the_single_file_bind_mount(self):
+        # Caddy는 Caddyfile을 파일 하나로 마운트해 원래 inode에 묶인다. mv로 바꿔치면
+        # 서버엔 새 내용이 보여도 caddy reload는 옛 내용을 읽는다.
+        before = os.stat(self.path / 'Caddyfile').st_ino
+        result = self.run_script(REMOTE[0])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.read('Caddyfile'), 'new caddyfile')
+        self.assertEqual(os.stat(self.path / 'Caddyfile').st_ino, before)
+
+    def test_missing_new_caddyfile_stops_before_touching_anything(self):
+        # 없는 채로 덮어쓰면 리다이렉트가 먼저 돌아 살아 있는 Caddyfile을 비운다.
+        (self.path / 'upstream/active.caddy').unlink()
+        (self.path / 'Caddyfile.next').unlink()
+        self.write('calls', '')
+        result = self.run_script(REMOTE[0], 'first_switch')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Caddyfile.next', result.stderr)
+        self.assertEqual(self.read('Caddyfile'), 'old caddyfile')
+        calls = self.read('calls')
+        self.assertNotIn('up -d', calls)
+        self.assertNotIn('stop', calls)
+        self.assertFalse((self.path / 'upstream/active.caddy').exists())
+        self.assertFalse((self.path / '.deployment-in-progress').exists())
 
     def test_finalize_skips_only_legacy_cleanup_when_compose_project_is_unreadable(self):
         # 성공 기록은 HTTPS 확인 뒤라 그대로 남기고, 무엇을 지울지 모를 때는 컨테이너를 지우지 않는다.
@@ -317,6 +373,7 @@ class DeploymentTest(unittest.TestCase):
             with self.subTest(strategy=strategy):
                 self.write('calls', '')
                 self.active('app-blue')
+                self.transferred()
                 self.env['DEPLOY_STRATEGY'] = strategy
                 result = self.run_remote_over_ssh(REMOTE[0])
                 self.assertEqual(result.returncode, 0, result.stderr)
@@ -330,6 +387,7 @@ class DeploymentTest(unittest.TestCase):
             with self.subTest(scenario=scenario):
                 self.write('calls', '')
                 self.active('app-blue')
+                self.transferred()
                 self.assertNotEqual(self.run_script(REMOTE[0], scenario).returncode, 0)
                 self.assertEqual(self.read('.last-successful-image'), self.previous)
                 self.assertFalse((self.path / '.deployment-in-progress').exists())
@@ -505,6 +563,30 @@ scp() { printf 'scp %s\\n' "$*" >> "$OCI_DEPLOY_PATH/calls"; }
         self.assertEqual(len(to_deploy_path), 1, sent)
         self.assertIn('deploy/switch-back.sh', to_deploy_path[0])
         self.assertIn('cd /opt/festa && bash switch-back.sh', (ROOT / 'deploy/README.md').read_text(encoding='utf-8'))
+
+    def test_caddyfile_is_sent_beside_the_live_one_not_over_it(self):
+        # 제자리에 덮으면, 교체 스텝이 Caddy를 재생성하기 전에 멈춘 뒤 옛 Caddy가 재시작될 때
+        # upstream 마운트 없이 새 Caddyfile의 import를 못 찾아 뜨지 못한다. 적용은 교체 스텝이 한다.
+        runner = self.path / 'runner'
+        runner.mkdir()
+        (runner / 'app.env').touch()
+        helper = '''
+ssh() { :; }
+scp() {
+  local args=()
+  while (($#)); do
+    case "$1" in -i|-o|-P) shift 2 ;; *) args+=("$1"); shift ;; esac
+  done
+  cp "${args[@]:0:${#args[@]}-1}" "${args[-1]#*:}"
+}
+'''
+        self.env.update(RUNNER_TEMP=runner.as_posix(), OCI_PORT='22', OCI_USER='deploy', OCI_HOST='server')
+        result = self.run_script(helper + step_script('OCI 인스턴스로 설정 전송'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.read('Caddyfile'), 'old caddyfile')
+        for sent, source in (('Caddyfile.next', 'deploy/Caddyfile'), ('compose.yaml', 'deploy/compose.yaml')):
+            self.assertEqual((self.path / sent).read_text(encoding='utf-8'),
+                             (ROOT / source).read_text(encoding='utf-8'))
 
     def test_compose_defines_two_colors_that_do_not_share_ports_or_log_files(self):
         compose = (ROOT / 'deploy/compose.yaml').read_text(encoding='utf-8')
