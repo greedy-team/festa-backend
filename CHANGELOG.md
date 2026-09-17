@@ -1,7 +1,23 @@
 # Changelog
 
-**현재 버전:** 0.0.6  
-**마지막 업데이트:** 2026-09-17T02:16:16Z  
+**현재 버전:** 0.0.7  
+**마지막 업데이트:** 2026-09-17T02:31:58Z  
+
+---
+
+## [0.0.7] - 2026-09-17
+
+**PR:** #197  
+
+**기타**
+- Merge pull request from greedy-team/chore_195_v0_0_6_릴리스에서_빠진_changelog와_develop_버전을_맞춘다
+- chore : v0.0.6 릴리스 기록과 develop 버전을 맞춘다
+- Merge pull request from greedy-team/chore_180_운영_배포를_blue_green으로_바꿔_배포_중_끊김을_없앤다
+- fix : 새 Caddyfile을 Caddy 재생성 직전에 적용한다
+- fix : blue/green 배포 스크립트의 결함 4건을 고친다
+- docs : blue/green 전환 절차와 DB 스키마 호환 규칙을 적는다
+- chore : 직전 색으로 되돌리는 switch-back 스크립트를 추가한다
+- chore : 운영 배포를 blue/green 색 전환으로 바꾼다
 
 ---
 
