@@ -31,6 +31,13 @@ class QueryIndexesPostgresIntegrationTest extends PostgresTestSupport {
                 .contains("WHERE (PUBLISHED_AT IS NOT NULL)");
         assertThat(indexDefinition("lineup", "idx_lineup_artist_id"))
                 .contains("ON " + currentSchema().toUpperCase(Locale.ROOT) + ".LINEUP USING BTREE (ARTIST_ID)");
+        assertThat(indexDefinition("artist_alias", "idx_artist_alias_artist_id"))
+                .contains("ON " + currentSchema().toUpperCase(Locale.ROOT) + ".ARTIST_ALIAS USING BTREE (ARTIST_ID)");
+        assertThat(indexDefinition("festival", "idx_festival_host_id"))
+                .contains("ON " + currentSchema().toUpperCase(Locale.ROOT) + ".FESTIVAL USING BTREE (HOST_ID)");
+        assertThat(indexDefinition("festival", "idx_festival_published_at_id_desc"))
+                .contains("(PUBLISHED_AT DESC, ID DESC)")
+                .contains("WHERE (PUBLISHED_AT IS NOT NULL)");
     }
 
     @Test
@@ -63,6 +70,16 @@ class QueryIndexesPostgresIntegrationTest extends PostgresTestSupport {
                 """, hostId, yearStart, nextYearStart, LocalDate.now()), "idx_festival_host_start_id_published");
         assertUsesIndex(explain("SELECT count(*) FROM lineup WHERE artist_id = ?", 1L),
                 "idx_lineup_artist_id");
+        assertUsesIndex(explain("SELECT id FROM artist_alias WHERE artist_id = ?", 1L),
+                "idx_artist_alias_artist_id");
+        assertUsesIndex(explain("SELECT count(*) FROM festival WHERE host_id = ?", hostId),
+                "idx_festival_host_id");
+        assertUsesIndex(explain("""
+                SELECT id FROM festival
+                WHERE published_at IS NOT NULL
+                ORDER BY published_at DESC, id DESC
+                LIMIT 10
+                """), "idx_festival_published_at_id_desc");
     }
 
     private String indexDefinition(String tableName, String indexName) {
