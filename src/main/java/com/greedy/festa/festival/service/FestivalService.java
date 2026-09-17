@@ -97,13 +97,13 @@ public class FestivalService {
                 PageRequest.of(page, size, sort.toSort())
         );
 
+        // findPublishedRows excludes null hosts; reading a proxy ID does not initialize it.
         List<Long> hostIds = festivals.getContent().stream()
                 .map(festival -> festival.getHost().getId())
                 .distinct()
                 .toList();
-        if (!hostIds.isEmpty()) {
-            hostRepository.findAllById(hostIds);
-        }
+        // Preload the hosts into the persistence context before DTO mapping to avoid N+1 queries.
+        hostRepository.findAllById(hostIds);
 
         return PageResponse.from(festivals.map(FestivalListItemResponse::from));
     }
