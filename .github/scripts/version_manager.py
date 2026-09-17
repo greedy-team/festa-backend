@@ -150,6 +150,8 @@ class Config:
         p = get_type_path(self.primary)
         t = self.primary
         if t == "spring":
+            if (Path(p) / "build.gradle.kts").is_file():
+                return f"{p}/build.gradle.kts"
             return f"{p}/build.gradle"
         if t == "flutter":
             return f"{p}/pubspec.yaml"
@@ -313,8 +315,12 @@ def sync_for_type(t: str, new_version: str):
 
     if t == "spring":
         if base.is_dir():
-            # find -maxdepth 2 -name build.gradle 등가
-            candidates = sorted(set(base.glob("build.gradle")) | set(base.glob("*/build.gradle")))
+            # 루트와 바로 아래 모듈의 Groovy/Kotlin DSL 버전 파일을 함께 갱신한다.
+            candidates = sorted({
+                gradle
+                for pattern in ("build.gradle", "*/build.gradle", "build.gradle.kts", "*/build.gradle.kts")
+                for gradle in base.glob(pattern)
+            })
             for gradle in candidates:
                 changed = sub_file(gradle, r"version = '[^']*'", f"version = '{new_version}'")
                 changed |= sub_file(gradle, r'version = "[^"]*"', f'version = "{new_version}"')

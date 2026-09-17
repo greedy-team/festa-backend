@@ -41,6 +41,13 @@ services:
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:?ADMIN_JWT_SECRET is required}
       ADMIN_INITIAL_USERNAME: ${ADMIN_INITIAL_USERNAME:-}
       ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+      # 텔레메트리 스위치. LOGGING_FILE_NAME처럼 서버에서만 켠다 — 로컬과 CI는 compose를 쓰지 않는다.
+      # 끌 때는 "false"로 바꾼다. URL 줄을 비우지 않는다. 빈 문자열은 기본값 true로 바인딩된다.
+      MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED: "true"
+      MANAGEMENT_OTLP_METRICS_EXPORT_URL: https://otlp-gateway-prod-ap-northeast-0.grafana.net/otlp/v1/metrics
+      # 텔레메트리는 앱이 뜨는 데 필요한 값이 아니라 선택값이다 (ISS-0013 규칙: :? 는 앱이 못 뜨는 값에만).
+      # :? 로 두면 프로덕션 첫 배포와 롤백 분기가 관측 비밀 하나 때문에 막힌다 (#47 함정).
+      GRAFANA_OTLP_AUTH: ${GRAFANA_OTLP_AUTH:-}
       # 파일 로그를 켜는 스위치이자 그 경로다. 아래 app-logs 볼륨이 붙는 자리와 같아야 한다.
       # 비밀이 아니라 배포 구조라서 app.env를 거치지 않고 리터럴로 둔다.
       # 이 값이 없으면 앱은 화면으로만 로그를 내보낸다 — 로컬과 CI가 그 상태다.
