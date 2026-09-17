@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.greedy"
-version = "0.0.1-SNAPSHOT"
+version = "0.0.6"
 
 java {
     toolchain {
