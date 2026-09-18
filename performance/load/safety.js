@@ -1,6 +1,8 @@
 export const A1_PRODUCTION_LOAD_APPROVAL = 'A1_READ_ONLY_LOAD_TEST';
-export const A1_ALLOWED_RATES = [1, 3, 5, 10];
-export const A1_MAX_DURATION_SECONDS = 180;
+export const A1_ALLOWED_RATES = [1, 5, 10, 25, 50, 100, 150];
+export const A1_STEP_MAX_DURATION_SECONDS = 180;
+export const A1_DEPLOYMENT_EXPERIMENT_RATE = 50;
+export const A1_DEPLOYMENT_EXPERIMENT_DURATION_SECONDS = 300;
 export const A1_MANIFEST_STAGE = 'a1-manifest';
 export const A1_HTTP_FAILURE_ABORT_DELAY = '120s';
 
@@ -48,7 +50,11 @@ function durationSeconds(value) {
   return Number(match[1]) * (match[2] === 'm' ? 60 : 1);
 }
 
-export function assertA1ProductionProfile({ scenario, stage, fixture, rate, duration, preAllocatedVUs, maxVUs }) {
+export function a1MixedVUs(rate) {
+  return { preAllocatedVUs: rate, maxVUs: rate * 10 };
+}
+
+export function assertA1ProductionProfile({ scenario, stage, profile, fixture, rate, duration, preAllocatedVUs, maxVUs }) {
   if (scenario === 'fixture-manifest') {
     if (stage !== A1_MANIFEST_STAGE || fixture !== 'a1') {
       throw new Error('A1 manifest validation requires the a1-manifest stage and the A1-only manifest.');
@@ -58,20 +64,26 @@ export function assertA1ProductionProfile({ scenario, stage, fixture, rate, dura
     }
     return;
   }
-  if (scenario !== 'mixed' || fixture !== 'a1') {
+  if (scenario !== 'mixed' || fixture !== 'a1' || !['step', 'deployment-experiment'].includes(profile)) {
     throw new Error('A1 production load tests allow only mixed with the separately validated A1 manifest.');
   }
   if (stage !== 'baseline') {
     throw new Error('A1 production load tests must use the baseline stage.');
   }
-  if (!A1_ALLOWED_RATES.includes(rate)) {
-    throw new Error(`A1 production load rate must be one of ${A1_ALLOWED_RATES.join(', ')} RPS.`);
+  const seconds = durationSeconds(duration);
+  if (profile === 'step') {
+    if (!A1_ALLOWED_RATES.includes(rate)) {
+      throw new Error(`A1 production load rate must be one of ${A1_ALLOWED_RATES.join(', ')} RPS.`);
+    }
+    if (seconds > A1_STEP_MAX_DURATION_SECONDS) {
+      throw new Error(`A1 step duration must not exceed ${A1_STEP_MAX_DURATION_SECONDS} seconds.`);
+    }
+  } else if (rate !== A1_DEPLOYMENT_EXPERIMENT_RATE || seconds !== A1_DEPLOYMENT_EXPERIMENT_DURATION_SECONDS) {
+    throw new Error('A1 deployment experiment requires exactly 50 RPS for 5 minutes.');
   }
-  if (durationSeconds(duration) > A1_MAX_DURATION_SECONDS) {
-    throw new Error(`A1 production load duration must not exceed ${A1_MAX_DURATION_SECONDS} seconds.`);
-  }
-  if (preAllocatedVUs > 10 || maxVUs > 10) {
-    throw new Error('A1 production load tests must not configure more than 10 VUs.');
+  const expectedVUs = a1MixedVUs(rate);
+  if (preAllocatedVUs !== expectedVUs.preAllocatedVUs || maxVUs !== expectedVUs.maxVUs) {
+    throw new Error(`A1 ${profile} VUs must be preAllocated=${expectedVUs.preAllocatedVUs}, max=${expectedVUs.maxVUs}.`);
   }
 }
 

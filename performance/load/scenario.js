@@ -24,6 +24,7 @@ const fixture = selectedFixture();
 const searchCorpus = fixture.searchCorpus;
 const scenarioName = __ENV.SCENARIO || 'mixed';
 const stage = __ENV.STAGE || __ENV.PROFILE || 'smoke';
+const a1Profile = __ENV.A1_PROFILE || '';
 
 const stageDefaults = {
   smoke: { executor: 'shared-iterations', vus: 1, iterations: 100, maxDuration: '2m' },
@@ -66,7 +67,7 @@ const executableScenarioName = {
 const profile = {
   ...configured,
   exec: executableScenarioName,
-  tags: { stage, scenario: scenarioName, fixture: fixture.name },
+  tags: { stage, scenario: scenarioName, fixture: fixture.name, a1_profile: a1Profile },
 };
 
 if (configured.executor === 'constant-arrival-rate') {
@@ -81,6 +82,7 @@ if (isA1ProductionTarget(baseUrl)) {
   assertA1ProductionProfile({
     scenario: scenarioName,
     stage,
+    profile: a1Profile,
     fixture: fixture.name,
     rate: Number(__ENV.RATE),
     duration: __ENV.DURATION,
