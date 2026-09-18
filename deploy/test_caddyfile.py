@@ -1,0 +1,113 @@
+"""deploy/Caddyfile을 실물 Caddy로 검증한다.
+
+python -m unittest discover -s deploy -p 'test_*.py'
+
+test_deployment.py는 CD의 원격 Bash를 도커 스텁으로 검증한다. 여기는 반대로
+Caddyfile 자체가 Caddy에서 실제로 뜨는지와, 막기로 한 경로가 정말 막히는지를 본다.
+
+실물로 도는 이유: Caddyfile 문법 오류는 곧 서비스 중단이다. CD는 Caddyfile을 바꾼 뒤
+`up -d caddy`로 컨테이너를 **재생성**하므로, `caddy reload`가 가진 "새 설정이 틀리면
+기존 설정을 그대로 유지한다"는 안전망이 그 경로에는 없다.
+
+도커가 없는 환경(개발자 윈도우 등)에서는 통째로 건너뛴다. CI(우분투 러너)에서 돈다.
+"""
+import shutil
+import subprocess
+import tempfile
+import time
+import unittest
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+CADDYFILE = ROOT / 'deploy/Caddyfile'
+IMAGE = 'caddy:2-alpine'
+CONTAINER = 'festa-caddyfile-test'
+# 사이트 주소를 http://로 못박아 자동 HTTPS를 끈다. 테스트에서 인증서를 받을 이유가 없다.
+SITE_PORT = 8080
+HOST_PORT = 8099
+
+
+def docker_missing():
+    if shutil.which('docker') is None:
+        return 'docker 없음'
+    if subprocess.run(['docker', 'info'], capture_output=True).returncode != 0:
+        return 'docker 데몬 없음'
+    return None
+
+
+SKIP_REASON = docker_missing()
+
+
+@unittest.skipIf(SKIP_REASON, SKIP_REASON or '')
+class CaddyfileTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        upstream = Path(self.temp.name) / 'upstream'
+        upstream.mkdir()
+        # 서버 상태를 그대로 흉내 낸다. 이 색은 실제로 뜨지 않는데, 막히지 않은 경로가
+        # 프록시까지 갔다는 것을 502로 확인하기 때문에 오히려 그래야 한다.
+        (upstream / 'active.caddy').write_text('reverse_proxy app-blue:8080\n', encoding='utf-8')
+        self.upstream = upstream
+
+    def docker_run(self, *args):
+        return subprocess.run(
+            ['docker', 'run', '--rm',
+             '-v', f'{CADDYFILE.as_posix()}:/etc/caddy/Caddyfile:ro',
+             '-v', f'{self.upstream.as_posix()}:/etc/caddy/upstream:ro',
+             '-e', f'API_DOMAINS=http://localhost:{SITE_PORT}',
+             *args],
+            capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=180)
+
+    def test_caddyfile_is_valid(self):
+        """CD가 caddy를 재생성해도 뜨는 설정인가."""
+        result = self.docker_run(IMAGE, 'caddy', 'validate', '--config', '/etc/caddy/Caddyfile')
+        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+
+    def test_prometheus_is_404_and_health_still_proxies(self):
+        """관측 엔드포인트만 막고 나머지는 그대로 앞단을 통과하는가.
+
+        health가 502인 것이 통과의 증거다 — 막혔다면 404가 나온다.
+        """
+        subprocess.run(['docker', 'rm', '-f', CONTAINER], capture_output=True)
+        self.addCleanup(subprocess.run, ['docker', 'rm', '-f', CONTAINER], capture_output=True)
+
+        started = self.docker_run('-d', '--name', CONTAINER,
+                                  '-p', f'127.0.0.1:{HOST_PORT}:{SITE_PORT}', IMAGE)
+        self.assertEqual(started.returncode, 0, started.stderr)
+        self.wait_until_serving()
+
+        self.assertEqual(self.status('/actuator/prometheus'), 404)
+        self.assertEqual(self.status('/actuator/prometheus/'), 404)
+        # 하위 경로도 같은 규칙에 걸린다.
+        self.assertEqual(self.status('/actuator/prometheus/anything'), 404)
+        # 합성 체크가 보는 경로. 막히지 않았으므로 프록시로 가서 백엔드 부재로 502다.
+        self.assertEqual(self.status('/actuator/health'), 502)
+        # 평범한 API 경로도 그대로 간다.
+        self.assertEqual(self.status('/api/festivals'), 502)
+
+    def wait_until_serving(self, attempts=60):
+        for _ in range(attempts):
+            try:
+                # 응답이 오기만 하면(502여도) 리스닝이 시작된 것으로 본다.
+                self.status('/actuator/health')
+                return
+            except (urllib.error.URLError, OSError):
+                time.sleep(0.5)
+        logs = subprocess.run(['docker', 'logs', CONTAINER],
+                              capture_output=True, text=True, errors='replace')
+        self.fail(f'Caddy가 뜨지 않았다\n{logs.stdout}\n{logs.stderr}')
+
+    def status(self, path):
+        url = f'http://127.0.0.1:{HOST_PORT}{path}'
+        try:
+            with urllib.request.urlopen(url, timeout=5) as response:
+                return response.status
+        except urllib.error.HTTPError as error:
+            return error.code
+
+
+if __name__ == '__main__':
+    unittest.main()
