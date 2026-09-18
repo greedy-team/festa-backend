@@ -77,9 +77,15 @@ if ($ImageSha) {
 }
 foreach ($setting in @{
         RATE = $Rate
-        DURATION = $Duration
         PRE_ALLOCATED_VUS = $PreAllocatedVUs
         MAX_VUS = $MaxVUs
+    }.GetEnumerator()) {
+    if ($setting.Value -ne 0) {
+        $environmentArguments += @('-e', "$($setting.Key)=$($setting.Value)")
+    }
+}
+foreach ($setting in @{
+        DURATION = $Duration
         SEARCH_BUCKET = $SearchBucket
         SEARCH_TYPE = $SearchType
         FESTIVAL_HOST_ID = $FestivalHostId
@@ -90,7 +96,7 @@ foreach ($setting in @{
         ARTIST_ID = $ArtistId
         HOST_ID = $HostId
     }.GetEnumerator()) {
-    if ($setting.Value -ne 0 -and $setting.Value -ne '') {
+    if ($setting.Value -ne '') {
         $environmentArguments += @('-e', "$($setting.Key)=$($setting.Value)")
     }
 }

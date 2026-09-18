@@ -95,9 +95,9 @@ function recent() {
   getJson(apiUrl(baseUrl, '/api/festivals/recent', { limit: 10 }), ENDPOINTS.recent);
 }
 
-function festivals() {
+function festivals(iteration = currentIteration()) {
   getJson(apiUrl(baseUrl, '/api/festivals', {
-    page: __ENV.FESTIVAL_PAGE || fixtureValue(fixture.manifest.festivalPages, currentIteration()),
+    page: __ENV.FESTIVAL_PAGE || fixtureValue(fixture.manifest.festivalPages, iteration),
     size: 20,
     sort: 'LATEST',
     hostId: __ENV.FESTIVAL_HOST_ID,
@@ -105,18 +105,18 @@ function festivals() {
   }), ENDPOINTS.festivals);
 }
 
-function festivalDetail() {
-  const id = __ENV.FESTIVAL_ID || fixtureValue(fixture.manifest.festivalDetailIds, currentIteration());
+function festivalDetail(iteration = currentIteration()) {
+  const id = __ENV.FESTIVAL_ID || fixtureValue(fixture.manifest.festivalDetailIds, iteration);
   getJson(apiUrl(baseUrl, `/api/festivals/${id}`), ENDPOINTS.festivalDetail);
 }
 
-function artists() {
-  const page = __ENV.ARTIST_PAGE || fixtureValue(fixture.manifest.artistPages, currentIteration());
+function artists(iteration = currentIteration()) {
+  const page = __ENV.ARTIST_PAGE || fixtureValue(fixture.manifest.artistPages, iteration);
   getJson(apiUrl(baseUrl, '/api/artists', { page, size: 20, sort: 'NAME' }), ENDPOINTS.artists);
 }
 
-function artistDetail() {
-  const id = __ENV.ARTIST_ID || fixtureValue(fixture.manifest.artistDetailIds, currentIteration());
+function artistDetail(iteration = currentIteration()) {
+  const id = __ENV.ARTIST_ID || fixtureValue(fixture.manifest.artistDetailIds, iteration);
   getJson(apiUrl(baseUrl, `/api/artists/${id}`), ENDPOINTS.artistDetail);
 }
 
@@ -143,7 +143,10 @@ function fixtureManifest() {
   ];
   requests.forEach(({ url, label }) => {
     const response = http.get(url, { tags: { endpoint: 'fixture_manifest', manifest_target: label } });
-    check(response, { 'fixture manifest target returns 200': (res) => res.status === 200 }, { endpoint: 'fixture_manifest', manifest_target: label });
+    const body = response.status === 200 ? JSON.parse(response.body) : null;
+    const isPage = label.includes('-page-');
+    const hasResult = !isPage || (Array.isArray(body?.content) && body.content.length > 0);
+    check(response, { 'fixture manifest target returns a result': (res) => res.status === 200 && hasResult }, { endpoint: 'fixture_manifest', manifest_target: label });
   });
   SEARCH_CORPUS.forEach(({ query, type, bucket }) => {
     const response = http.get(apiUrl(baseUrl, '/api/search', { q: query, type }), {
@@ -185,31 +188,26 @@ function smoothWeightedCycle(weights) {
 }
 
 const mixedCycle = smoothWeightedCycle(mixedWeights);
-const searchesPerCycle = mixedWeights.search;
-const mixedSearchOrdinals = [];
-let searchesSeen = 0;
+const mixedRequestCounts = Object.fromEntries(Object.keys(mixedWeights).map((name) => [name, 0]));
+const mixedRequestOrdinals = Object.fromEntries(Object.keys(mixedWeights).map((name) => [name, []]));
 mixedCycle.forEach((name, slot) => {
-  if (name === 'search') {
-    mixedSearchOrdinals[slot] = searchesSeen;
-    searchesSeen += 1;
-  }
+  mixedRequestOrdinals[name][slot] = mixedRequestCounts[name];
+  mixedRequestCounts[name] += 1;
 });
 
-function mixedSearchIteration(iteration) {
+function mixedRequestIteration(name, iteration) {
   const slot = iteration % mixedCycle.length;
   const completedCycles = Math.floor(iteration / mixedCycle.length);
-  return (completedCycles * searchesPerCycle) + mixedSearchOrdinals[slot];
+  return (completedCycles * mixedRequestCounts[name]) + mixedRequestOrdinals[name][slot];
 }
 
 export function mixed() {
   const iteration = currentIteration();
   const slot = iteration % mixedCycle.length;
   const scenario = mixedCycle[slot];
-  if (scenario === 'search') {
-    search(mixedSearchIteration(iteration));
-    return;
-  }
-  mixedHandlers[scenario]();
+  const requestIteration = mixedRequestIteration(scenario, iteration);
+  if (scenario === 'search') return search(requestIteration);
+  mixedHandlers[scenario](requestIteration);
 }
 
 // k6 resolves named scenario executors from exported functions, so keep the names explicit.

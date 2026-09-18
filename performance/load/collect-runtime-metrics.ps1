@@ -19,7 +19,7 @@ $output = Join-Path $ResultDirectory 'runtime-metrics.csv'
 $deadline = (Get-Date).ToUniversalTime().AddSeconds($DurationSeconds)
 while ((Get-Date).ToUniversalTime() -lt $deadline) {
     $timestamp = (Get-Date).ToUniversalTime().ToString('o')
-    $connections = (& docker exec $PostgresContainer psql -tAc 'SELECT count(*) FROM pg_stat_activity' 2>$null).Trim()
+    $connections = (& docker exec $PostgresContainer psql -U festa_perf -d festa_perf -tAc 'SELECT count(*) FROM pg_stat_activity' 2>$null).Trim()
     foreach ($line in (& docker stats --no-stream --format '{{.Name}},{{.CPUPerc}},{{.MemUsage}},{{.NetIO}},{{.BlockIO}}' $AppContainer $PostgresContainer)) {
         "$timestamp,$line,$connections" | Add-Content -Encoding utf8 $output
     }

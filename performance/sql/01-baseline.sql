@@ -93,8 +93,8 @@ EXPLAIN (ANALYZE, BUFFERS, SETTINGS) EXECUTE host_search_count('성');
 EXPLAIN (ANALYZE, BUFFERS, SETTINGS) EXECUTE host_search('성능');
 EXPLAIN (ANALYZE, BUFFERS, SETTINGS) EXECUTE host_search_count('성능');
 \echo A8 host rare
-EXPLAIN (ANALYZE, BUFFERS, SETTINGS) EXECUTE host_search('PERF171');
-EXPLAIN (ANALYZE, BUFFERS, SETTINGS) EXECUTE host_search_count('PERF171');
+EXPLAIN (ANALYZE, BUFFERS, SETTINGS) EXECUTE host_search(lower('PERF171'));
+EXPLAIN (ANALYZE, BUFFERS, SETTINGS) EXECUTE host_search_count(lower('PERF171'));
 \echo A9 host spaced
 EXPLAIN (ANALYZE, BUFFERS, SETTINGS) EXECUTE host_search('성능대학교');
 EXPLAIN (ANALYZE, BUFFERS, SETTINGS) EXECUTE host_search_count('성능대학교');
@@ -131,19 +131,19 @@ EXPLAIN (ANALYZE, BUFFERS, SETTINGS) EXECUTE public_festival_search_count('서�
 \echo B3 public festival combined host/year/status/artist and count
 EXPLAIN (ANALYZE, BUFFERS, SETTINGS)
 SELECT f.id FROM festival f JOIN host h ON h.id = f.host_id
-WHERE f.published_at IS NOT NULL AND h.id = 7
+WHERE f.published_at IS NOT NULL AND h.id = 1
   AND f.start_date >= date_trunc('year', CURRENT_DATE)::date
   AND f.start_date < (date_trunc('year', CURRENT_DATE) + interval '1 year')::date
   AND f.start_date > CURRENT_DATE
-  AND EXISTS (SELECT 1 FROM lineup l WHERE l.festival_id = f.id AND l.artist_id = 38)
+  AND EXISTS (SELECT 1 FROM lineup l WHERE l.festival_id = f.id AND l.artist_id = 21038)
 ORDER BY f.start_date ASC, f.id ASC LIMIT 20;
 EXPLAIN (ANALYZE, BUFFERS, SETTINGS)
 SELECT count(*) FROM festival f JOIN host h ON h.id = f.host_id
-WHERE f.published_at IS NOT NULL AND h.id = 7
+WHERE f.published_at IS NOT NULL AND h.id = 1
   AND f.start_date >= date_trunc('year', CURRENT_DATE)::date
   AND f.start_date < (date_trunc('year', CURRENT_DATE) + interval '1 year')::date
   AND f.start_date > CURRENT_DATE
-  AND EXISTS (SELECT 1 FROM lineup l WHERE l.festival_id = f.id AND l.artist_id = 38);
+  AND EXISTS (SELECT 1 FROM lineup l WHERE l.festival_id = f.id AND l.artist_id = 21038);
 
 -- C. Public artist list: name order, appearance order, and alias search.
 \echo C1 public artist name order and count

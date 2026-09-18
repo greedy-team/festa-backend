@@ -12,8 +12,10 @@ the application image for AFTER. Do not run `down -v` between the two series.
 ## Run
 
 ```powershell
+git worktree add ../festa-backend-perf-baseline 9ace799
+$baselineMigrations = Join-Path (Resolve-Path ../festa-backend-perf-baseline) 'src/main/resources/db/migration'
 cd performance
-$env:PERF_MIGRATIONS_DIR = 'C:\Users\Haeun\festa-brain\festa-backend\festa-backend-perf-baseline\src\main\resources\db\migration'
+$env:PERF_MIGRATIONS_DIR = $baselineMigrations
 docker compose up -d --wait
 .\run-baseline.ps1
 ```
@@ -21,6 +23,26 @@ docker compose up -d --wait
 The first `up` applies that worktree's migration files to the isolated database,
 then runs `sql/00-fixture.sql`. The fixture intentionally preserves the real host
 seed and adds synthetic data only in `festa_perf`.
+
+## Connect the application to the fixture
+
+`bootstrap.sh` intentionally applies the baseline migration files with `psql`, so it
+does not create `flyway_schema_history`. Start the application that serves the API
+series with Flyway disabled and Hibernate validation left enabled. For an application
+running on the host, use the loopback JDBC URL; for an application container, replace
+`127.0.0.1` with the Docker-reachable PostgreSQL host.
+
+```powershell
+$env:DB_URL = 'jdbc:postgresql://127.0.0.1:55432/festa_perf'
+$env:DB_USERNAME = 'festa_perf'
+$env:DB_PASSWORD = 'festa-perf-local-only'
+$env:SPRING_FLYWAY_ENABLED = 'false'
+$env:SPRING_JPA_HIBERNATE_DDL_AUTO = 'validate'
+```
+
+Use the same environment values for the BEFORE and AFTER application images. Do not
+let an application with Flyway enabled attach to this pre-initialized volume: it has
+no Flyway history by design.
 
 To recreate the deterministic fixture, remove only this environment's volume:
 

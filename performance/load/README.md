@@ -17,7 +17,7 @@ It targets public read APIs only:
 | `fixture-manifest` | fixture detail IDs, list pages, and every search corpus query/type verification |
 | `mixed` | Fixed 100-slot public browse/search cycle |
 
-`mixed` is deterministic: upcoming 12%, recent 10%, Festival list 18%, Festival detail 12%, Artist list 18%, Artist detail 10%, and search 20%. It intentionally does not include a write or administrator endpoint.
+`mixed` is deterministic: upcoming 12%, recent 10%, Festival list 18%, Festival detail 12%, Artist list 18%, Artist detail 10%, and search 20%. Each endpoint has its own mixed request ordinal, so every manifest detail ID and page cycles independently even when the 100-slot mixed cycle shares a divisor with a manifest length. It intentionally does not include a write or administrator endpoint.
 
 ## Safety boundary
 

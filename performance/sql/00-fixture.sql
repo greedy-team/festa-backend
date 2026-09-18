@@ -79,6 +79,31 @@ FROM generate_series(1, 300000) AS n;
 
 ANALYZE;
 
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM host h
+        WHERE lower(replace(h.short_name, ' ', '')) LIKE '%' || lower('PERF171') || '%'
+    ) THEN
+        RAISE EXCEPTION 'fixture rare host search must return a result';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM festival f
+        JOIN host h ON h.id = f.host_id
+        WHERE f.published_at IS NOT NULL
+          AND h.id = 1
+          AND f.start_date >= date_trunc('year', CURRENT_DATE)::date
+          AND f.start_date < (date_trunc('year', CURRENT_DATE) + interval '1 year')::date
+          AND f.start_date > CURRENT_DATE
+          AND EXISTS (SELECT 1 FROM lineup l WHERE l.festival_id = f.id AND l.artist_id = 21038)
+    ) THEN
+        RAISE EXCEPTION 'fixture combined host/artist filter must return a result';
+    END IF;
+END $$;
+
 SELECT 'fixture_counts' AS label,
        (SELECT count(*) FROM host) AS hosts,
        (SELECT count(*) FROM festival) AS festivals,
