@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/images/logo.jpg" width="180" alt="FESTA logo" />
+
 #  FESTA
 
 ### 전국 대학 축제 정보를 한곳에서
@@ -64,7 +66,7 @@
 
 | **홍의민** | **이규형** |
 | :---: | :---: |
-| <!-- 홍의민 사진을 여기에 추가 --> | <!-- 이규형 사진을 여기에 추가 --> |
+| <img src="docs/images/uimin.jpg" width="120" height="120" alt="홍의민" /> | <img src="docs/images/gyuhyeong.jpg" width="120" height="120" alt="이규형" /> |
 | FE Developer | FE Developer |
 | 컴퓨터공학과 | 컴퓨터공학과 |
 
@@ -74,7 +76,7 @@
 
 | **김하은** | **정명준** |
 | :---: | :---: |
-| <!-- 김하은 사진을 여기에 추가 --> | <!-- 정명준 사진을 여기에 추가 --> |
+| <img src="docs/images/haeun.png" width="120" height="120" alt="김하은" /> | <img src="docs/images/myeongjun.jpg" width="120" height="120" alt="정명준" /> |
 | BE Developer | BE Developer |
 | 영어영문학과 | 컴퓨터공학과 |
 
