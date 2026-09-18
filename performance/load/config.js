@@ -1,6 +1,7 @@
 import { check, fail } from 'k6';
 import http from 'k6/http';
 import { Counter } from 'k6/metrics';
+import { assertSafeTarget as assertApprovedTarget, targetEnvironment } from './safety.js';
 
 export const FIXTURES = {
   performance: {
@@ -62,23 +63,49 @@ export const SEARCH_CORPUS = [
   { bucket: 'english', query: 'spring', type: 'FESTIVAL' },
 ];
 
+function requiredNonEmptyArray(manifest, name) {
+  if (!Array.isArray(manifest[name]) || manifest[name].length === 0) {
+    fail(`A1 manifest '${name}' must be a non-empty array.`);
+  }
+  return manifest[name];
+}
+
+function a1Fixture() {
+  if (!__ENV.A1_MANIFEST_FILE) {
+    fail('A1_MANIFEST_FILE is required when FIXTURE=a1. Run through run.ps1 with -A1ManifestFile.');
+  }
+  let manifest;
+  try {
+    manifest = JSON.parse(open(__ENV.A1_MANIFEST_FILE));
+  } catch (_) {
+    fail('A1_MANIFEST_FILE must contain valid JSON.');
+  }
+  const normalized = {
+    festivalDetailIds: requiredNonEmptyArray(manifest, 'festivalDetailIds'),
+    artistDetailIds: requiredNonEmptyArray(manifest, 'artistDetailIds'),
+    hostDetailIds: requiredNonEmptyArray(manifest, 'hostDetailIds'),
+    festivalPages: requiredNonEmptyArray(manifest, 'festivalPages'),
+    artistPages: requiredNonEmptyArray(manifest, 'artistPages'),
+  };
+  const searchCorpus = requiredNonEmptyArray(manifest, 'searchCorpus');
+  if (!searchCorpus.every((entry) => entry && entry.bucket && entry.query && entry.type)) {
+    fail('Every A1 manifest searchCorpus entry requires bucket, query, and type.');
+  }
+  return {
+    name: 'a1',
+    description: 'Team-maintained A1 production targets; never use the local performance fixture values.',
+    manifest: normalized,
+    searchCorpus,
+  };
+}
+
 export const responseCheckFailures = new Counter('response_check_failures');
 
-const forbiddenHosts = new Set(['api.every-festa.com', 'dev-api.every-festa.com']);
-
 export function assertSafeTarget(url) {
-  const authority = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]+)/i.exec(url)?.[1];
-  if (!authority) {
-    fail(`BASE_URL must be an absolute URL: '${url}'`);
-  }
-  const hostPort = authority.includes('@') ? authority.slice(authority.lastIndexOf('@') + 1) : authority;
-  const bracketedHost = /^\[([^\]]+)\]/.exec(hostPort)?.[1];
-  const host = (bracketedHost || hostPort.split(':')[0]).toLowerCase().replace(/\.+$/, '');
-  if (!host) {
-    fail(`BASE_URL must be an absolute URL: '${url}'`);
-  }
-  if (forbiddenHosts.has(host)) {
-    fail('Refusing to load test production or the shared development server. Use a dedicated local or temporary load-test stack.');
+  try {
+    return assertApprovedTarget(url, __ENV.A1_PRODUCTION_LOAD_APPROVAL);
+  } catch (error) {
+    fail(error.message);
   }
 }
 
@@ -92,19 +119,24 @@ export function requiredEnv(name) {
   return normalized;
 }
 
+export { targetEnvironment };
+
 export function selectedFixture() {
   const name = __ENV.FIXTURE || 'performance';
+  if (name === 'a1') {
+    return a1Fixture();
+  }
   const fixture = FIXTURES[name];
   if (!fixture) {
     fail(`Unknown FIXTURE '${name}'. Use one of: ${Object.keys(FIXTURES).join(', ')}`);
   }
-  return { name, ...fixture };
+  return { name, ...fixture, searchCorpus: SEARCH_CORPUS };
 }
 
-export function searchCase(iteration) {
+export function searchCase(iteration, corpus = SEARCH_CORPUS) {
   const requestedBucket = __ENV.SEARCH_BUCKET;
   const requestedType = __ENV.SEARCH_TYPE;
-  const candidates = SEARCH_CORPUS.filter((entry) =>
+  const candidates = corpus.filter((entry) =>
     (!requestedBucket || entry.bucket === requestedBucket)
     && (!requestedType || entry.type === requestedType));
 

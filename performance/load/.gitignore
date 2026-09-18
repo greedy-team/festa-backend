@@ -2,3 +2,4 @@
 results/*
 !results/.gitkeep
 .smoke-image/
+a1-manifest.json

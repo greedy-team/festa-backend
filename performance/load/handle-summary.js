@@ -1,4 +1,5 @@
 import { buildEndpointSummary, buildSearchTagSummary } from './summary.js';
+import { A1_PRODUCTION_LOAD_APPROVAL, targetEnvironment } from './safety.js';
 
 function value(metrics, name, key) {
   return metrics[name]?.values?.[key];
@@ -19,7 +20,13 @@ export function handleSummary(data) {
       stage: __ENV.STAGE || __ENV.PROFILE || 'smoke',
       scenario: __ENV.SCENARIO || 'mixed',
       fixture: __ENV.FIXTURE || 'performance',
+      a1Profile: __ENV.A1_PROFILE || null,
+      rate: Number(__ENV.RATE || 0),
+      duration: __ENV.DURATION || null,
       baseUrl: __ENV.BASE_URL,
+      targetEnvironment: targetEnvironment(__ENV.BASE_URL),
+      productionOptIn: targetEnvironment(__ENV.BASE_URL) === 'a1-production'
+        && __ENV.A1_PRODUCTION_LOAD_APPROVAL === A1_PRODUCTION_LOAD_APPROVAL,
       gitSha: __ENV.GIT_SHA || null,
       imageSha: __ENV.IMAGE_SHA || null,
       generatedAt: new Date().toISOString(),
