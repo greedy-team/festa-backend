@@ -1,10 +1,9 @@
 {
-  "uid": "festa-load-test",
-  "title": "부하 테스트 — 앱 · 호스트 · DB",
-  "description": "부하 테스트 중 한 화면으로 보기 위한 대시보드 (#215). 커뮤니티 대시보드 1860·12485는 패널이 많아 부하 구간에 탭을 옮겨 다니게 된다.",
+  "uid": "festa-overview",
+  "title": "서비스 상태 — 앱 · 호스트 · DB",
+  "description": "운영 중인 festa를 한 화면에서 본다. 살아 있나 · 느린가 · 왜 느린가 · 무엇이 먼저 포화되나 (DOC-0013의 3줄 구성을 잇는다). 커뮤니티 대시보드 1860·12485는 패널이 많아 사건이 벌어지는 동안 탭을 옮겨 다니게 된다.",
   "tags": [
-    "festa",
-    "load-test"
+    "festa"
   ],
   "timezone": "browser",
   "schemaVersion": 41,
@@ -76,7 +75,7 @@
     {
       "type": "stat",
       "title": "전체 RPS",
-      "description": "",
+      "description": "actuator는 뺐다 — /actuator/health는 Caddy 헬스체크와 합성 체크가 상수로 때려서 섞이면 실제 API 트래픽이 가려진다. 수집은 그대로라 Explore에서는 볼 수 있다.",
       "id": 3,
       "datasource": {
         "type": "prometheus",
@@ -108,7 +107,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"festa\"}[1m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"festa\",uri!~\"/actuator.*\"}[1m]))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -120,7 +119,7 @@
     {
       "type": "stat",
       "title": "에러율",
-      "description": "0으로 나누면 화면이 비므로 분모에 하한을 둔다.",
+      "description": "에러가 하나도 없으면 분자가 빈 집합이 되어 화면이 No data가 된다 — sum(빈 집합)은 0이 아니다. or vector(0)으로 0을 만들어 둔다. 분모는 요청이 없을 때 0으로 나누지 않도록 하한을 둔다.\n\nactuator는 뺐다 — /actuator/health는 Caddy 헬스체크와 합성 체크가 상수로 때려서 섞이면 실제 API 트래픽이 가려진다. 수집은 그대로라 Explore에서는 볼 수 있다.",
       "id": 4,
       "datasource": {
         "type": "prometheus",
@@ -152,7 +151,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"festa\",outcome!=\"SUCCESS\"}[1m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"festa\"}[1m])), 1e-9)",
+          "expr": "(sum(rate(http_server_requests_seconds_count{job=\"festa\",uri!~\"/actuator.*\",outcome!=\"SUCCESS\"}[1m])) or vector(0)) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"festa\",uri!~\"/actuator.*\"}[1m])), 1e-9)",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -309,7 +308,7 @@
     {
       "type": "timeseries",
       "title": "엔드포인트별 RPS",
-      "description": "",
+      "description": "actuator는 뺐다 — /actuator/health는 Caddy 헬스체크와 합성 체크가 상수로 때려서 섞이면 실제 API 트래픽이 가려진다. 수집은 그대로라 Explore에서는 볼 수 있다.",
       "id": 9,
       "datasource": {
         "type": "prometheus",
@@ -346,7 +345,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (uri) (rate(http_server_requests_seconds_count{job=\"festa\"}[1m]))",
+          "expr": "sum by (uri) (rate(http_server_requests_seconds_count{job=\"festa\",uri!~\"/actuator.*\"}[1m]))",
           "legendFormat": "{{uri}}",
           "refId": "A",
           "datasource": {
@@ -359,7 +358,7 @@
     {
       "type": "timeseries",
       "title": "엔드포인트별 평균 응답시간",
-      "description": "합/횟수라서 평균이다. 백분위(p95)는 없다 — DEC-0184가 percentiles-histogram을 금지해서 버킷이 없기 때문이다. p95는 k6 출력에서 본다.",
+      "description": "합/횟수라서 평균이다. 백분위(p95)는 없다 — DEC-0184가 percentiles-histogram을 금지해서 버킷이 없기 때문이다. p95는 k6 출력에서 본다.\n\nactuator는 뺐다 — /actuator/health는 Caddy 헬스체크와 합성 체크가 상수로 때려서 섞이면 실제 API 트래픽이 가려진다. 수집은 그대로라 Explore에서는 볼 수 있다.",
       "id": 10,
       "datasource": {
         "type": "prometheus",
@@ -396,7 +395,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (uri) (rate(http_server_requests_seconds_sum{job=\"festa\"}[1m])) / clamp_min(sum by (uri) (rate(http_server_requests_seconds_count{job=\"festa\"}[1m])), 1e-9)",
+          "expr": "sum by (uri) (rate(http_server_requests_seconds_sum{job=\"festa\",uri!~\"/actuator.*\"}[1m])) / clamp_min(sum by (uri) (rate(http_server_requests_seconds_count{job=\"festa\",uri!~\"/actuator.*\"}[1m])), 1e-9)",
           "legendFormat": "{{uri}}",
           "refId": "A",
           "datasource": {
@@ -409,7 +408,7 @@
     {
       "type": "timeseries",
       "title": "엔드포인트별 최대 응답시간",
-      "description": "Micrometer가 슬라이딩 윈도 안의 최댓값을 직접 낸다. 평균이 감추는 튐을 여기서 본다.",
+      "description": "Micrometer가 슬라이딩 윈도 안의 최댓값을 직접 낸다. 평균이 감추는 튐을 여기서 본다.\n\nactuator는 뺐다 — /actuator/health는 Caddy 헬스체크와 합성 체크가 상수로 때려서 섞이면 실제 API 트래픽이 가려진다. 수집은 그대로라 Explore에서는 볼 수 있다.",
       "id": 11,
       "datasource": {
         "type": "prometheus",
@@ -446,7 +445,7 @@
       },
       "targets": [
         {
-          "expr": "max by (uri) (http_server_requests_seconds_max{job=\"festa\"})",
+          "expr": "max by (uri) (http_server_requests_seconds_max{job=\"festa\",uri!~\"/actuator.*\"})",
           "legendFormat": "{{uri}}",
           "refId": "A",
           "datasource": {
@@ -459,7 +458,7 @@
     {
       "type": "timeseries",
       "title": "상태코드별 요청",
-      "description": "",
+      "description": "actuator는 뺐다 — /actuator/health는 Caddy 헬스체크와 합성 체크가 상수로 때려서 섞이면 실제 API 트래픽이 가려진다. 수집은 그대로라 Explore에서는 볼 수 있다.",
       "id": 12,
       "datasource": {
         "type": "prometheus",
@@ -496,7 +495,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (status) (rate(http_server_requests_seconds_count{job=\"festa\"}[1m]))",
+          "expr": "sum by (status) (rate(http_server_requests_seconds_count{job=\"festa\",uri!~\"/actuator.*\"}[1m]))",
           "legendFormat": "{{status}}",
           "refId": "A",
           "datasource": {
@@ -572,7 +571,7 @@
     {
       "type": "timeseries",
       "title": "GC 정지 시간",
-      "description": "초당 GC에 멈춘 시간. 이게 오르는데 CPU가 놀면 힙이 부족한 것.",
+      "description": "초당 GC에 멈춘 시간. 이게 오르는데 CPU가 놀면 힙이 부족한 것.\n\n첫 GC가 일어나기 전에는 비어 있다 — Micrometer가 GC 이벤트를 받고 나서야 이 타이머를 등록하기 때문이다. 결함이 아니다.",
       "id": 15,
       "datasource": {
         "type": "prometheus",
