@@ -24,9 +24,15 @@ ROOT = Path(__file__).resolve().parents[1]
 CADDYFILE = ROOT / 'deploy/Caddyfile'
 IMAGE = 'caddy:2-alpine'
 CONTAINER = 'festa-caddyfile-test'
-# 사이트 주소를 http://로 못박아 자동 HTTPS를 끈다. 테스트에서 인증서를 받을 이유가 없다.
 SITE_PORT = 8080
 HOST_PORT = 8099
+# 사이트 주소를 호스트 없이 포트만으로 준다. 이유가 둘이다.
+#   1. 호스트 이름이 없으면 자동 HTTPS가 꺼진다 — 테스트에서 인증서를 받을 이유가 없다.
+#   2. 어떤 Host 헤더로 와도 이 사이트에 매칭된다. `http://localhost:8080`으로 두면
+#      127.0.0.1로 들어온 요청이 어느 사이트에도 안 걸리고, 그때 Caddy는 빈 200을
+#      돌려주므로 경로 규칙을 보기도 전에 테스트가 무의미해진다.
+# 운영은 실제 도메인이지만 경로 매칭은 호스트와 무관하므로 검증 내용은 같다.
+SITE_ADDRESS = f':{SITE_PORT}'
 
 
 def docker_missing():
@@ -57,7 +63,7 @@ class CaddyfileTest(unittest.TestCase):
             ['docker', 'run', '--rm',
              '-v', f'{CADDYFILE.as_posix()}:/etc/caddy/Caddyfile:ro',
              '-v', f'{self.upstream.as_posix()}:/etc/caddy/upstream:ro',
-             '-e', f'API_DOMAINS=http://localhost:{SITE_PORT}',
+             '-e', f'API_DOMAINS={SITE_ADDRESS}',
              *args],
             capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=180)
 
@@ -89,16 +95,25 @@ class CaddyfileTest(unittest.TestCase):
         self.assertEqual(self.status('/api/festivals'), 502)
 
     def wait_until_serving(self, attempts=60):
+        """프록시까지 닿는 상태가 될 때까지 기다린다.
+
+        아무 응답이나 준비 신호로 보면 안 된다. 사이트 매칭에 실패하면 Caddy는 빈 200을
+        돌려주는데, 그 상태로 진행하면 경로 규칙을 보지도 않은 채 단언이 갈린다.
+        백엔드가 없으므로 502가 "설정이 실려서 프록시까지 갔다"는 신호다.
+        """
+        last = None
         for _ in range(attempts):
             try:
-                # 응답이 오기만 하면(502여도) 리스닝이 시작된 것으로 본다.
-                self.status('/actuator/health')
-                return
+                last = self.status('/actuator/health')
+                if last == 502:
+                    return
             except (urllib.error.URLError, OSError):
-                time.sleep(0.5)
+                pass
+            time.sleep(0.5)
         logs = subprocess.run(['docker', 'logs', CONTAINER],
                               capture_output=True, text=True, errors='replace')
-        self.fail(f'Caddy가 뜨지 않았다\n{logs.stdout}\n{logs.stderr}')
+        self.fail(f'Caddy가 프록시까지 닿는 상태가 되지 않았다 (마지막 응답 {last})\n'
+                  f'{logs.stdout}\n{logs.stderr}')
 
     def status(self, path):
         url = f'http://127.0.0.1:{HOST_PORT}{path}'
