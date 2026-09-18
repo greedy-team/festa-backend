@@ -355,11 +355,20 @@ public class ImportPreviewService {
         List<PreviewProblem> warnings = new ArrayList<>();
         String name = trim(payload.get("name"));
         required(name, "name", errors);
-        ArtistMatch match = artistMatch(name, lookup);
+        List<String> inputAliases = pipeValues(payload.get("other_names"));
+        LinkedHashSet<String> candidateNames = new LinkedHashSet<>();
+        candidateNames.add(name);
+        candidateNames.addAll(inputAliases);
+        ArtistMatch match = artistMatch(candidateNames, lookup);
+        boolean matchedViaAlias = match.status() == ArtistMatchStatus.MATCHED
+                && !Objects.equals(name, match.artist().getName());
         if (match.status() == ArtistMatchStatus.UNRESOLVED) {
             errors.add(blocker("ARTIST_UNRESOLVED", "Artist.name과 ArtistAlias.name 매칭이 모호합니다"));
         } else if (match.status() == ArtistMatchStatus.NEW) {
             warnings.add(warning("ARTIST_WILL_BE_CREATED", "후속 commit에서 신규 Artist 생성이 필요합니다"));
+        } else if (matchedViaAlias) {
+            warnings.add(warning("ARTIST_MATCHED_VIA_ALIAS",
+                    "별칭 경유로 자동 매칭되어 검수가 필요합니다"));
         }
         if (conflictingLines.contains(row.line())) {
             errors.add(blocker("ARTIST_DUPLICATE_NAME",
@@ -369,26 +378,15 @@ public class ImportPreviewService {
         booleanValue(payload.get("needs_review"), "needs_review", true, errors);
         url(payload.get("image_url"), "image_url", errors);
 
-        List<String> inputAliases = pipeValues(payload.get("other_names"));
         Long matchedArtistId = match.artist() == null ? null : match.artist().getId();
-        if (claimsExistingAliasAsRepresentative(name, inputAliases, match, lookup)) {
-            errors.add(blocker("ARTIST_DUPLICATE_NAME",
-                    "Artist 대표명이 기존 Artist의 별칭과 중복됩니다"));
-        }
-        for (String alias : inputAliases) {
-            if (ownedByAnotherArtist(alias, matchedArtistId, lookup)) {
-                errors.add(blocker("ARTIST_DUPLICATE_NAME",
-                        "Artist 별칭이 다른 Artist의 대표명 또는 별칭과 중복됩니다"));
-                break;
-            }
-        }
+        String representativeName = match.artist() == null ? name : match.artist().getName();
         LinkedHashSet<String> mergedAliases = new LinkedHashSet<>();
-        if (match.artist() != null && match.artist().getId() != null) {
-            mergedAliases.addAll(lookup.aliasesByArtist()
-                    .getOrDefault(match.artist().getId(), List.of()));
+        if (matchedArtistId != null) {
+            mergedAliases.addAll(lookup.aliasesByArtist().getOrDefault(matchedArtistId, List.of()));
         }
+        mergedAliases.add(name);
         mergedAliases.addAll(inputAliases);
-        mergedAliases.remove(name);
+        mergedAliases.remove(representativeName);
 
         ImportPreviewAction action;
         String skipReason = null;
@@ -405,17 +403,18 @@ public class ImportPreviewService {
         Map<String, Object> normalized = new LinkedHashMap<>();
         normalized.put("name", name);
         normalized.put("otherNames", List.copyOf(mergedAliases));
+        normalized.put("inputOtherNames", inputAliases);
         normalized.put("genre", keepExisting(trim(payload.get("genre")),
                 match.artist() == null || match.artist().getGenre() == null
                         ? null : match.artist().getGenre().name()));
         normalized.put("imageUrl", keepExisting(trim(payload.get("image_url")),
                 match.artist() == null ? null : match.artist().getImageUrl()));
-        normalized.put("needsReview", match.status() == ArtistMatchStatus.NEW
+        normalized.put("needsReview", match.status() == ArtistMatchStatus.NEW || matchedViaAlias
                 ? true
                 : booleanValue(payload.get("needs_review"),
                 "needs_review", false, new ArrayList<>()));
         return stored(ImportSection.ARTISTS, row, name, action, normalized, policy, null,
-                match.artist() == null ? null : match.artist().getId(), null, match.status(),
+                matchedArtistId, null, match.status(),
                 errors, warnings, skipReason, null, List.of(), null);
     }
 
@@ -458,22 +457,34 @@ public class ImportPreviewService {
                     "같은 import_key, day, order 조합이 중복되었습니다"));
         }
         Boolean revealed = booleanValue(payload.get("revealed"), "revealed", true, errors);
+        String artistRaw = trim(payload.get("artist_raw"));
         String artistName = firstNonBlank(payload.get("artist_canonical"), payload.get("artist_raw"));
         ArtistMatch match;
+        boolean rawFallbackUsed = false;
         if (Boolean.FALSE.equals(revealed)) {
             match = new ArtistMatch(ArtistMatchStatus.NEW, null);
         } else {
             required(artistName, "artist_canonical", errors);
             match = artistMatch(artistName, lookup);
+            if (match.status() == ArtistMatchStatus.NEW
+                    && !artistRaw.isEmpty() && !artistRaw.equals(artistName)) {
+                match = artistMatch(artistRaw, lookup);
+                rawFallbackUsed = true;
+            }
             if (match.status() == ArtistMatchStatus.UNRESOLVED) {
                 errors.add(blocker("ARTIST_UNRESOLVED", "Artist 매칭이 모호합니다"));
             }
         }
-        List<PreviewProblem> warnings = Boolean.TRUE.equals(revealed)
-                && match.status() == ArtistMatchStatus.NEW
-                ? List.of(warning("ARTIST_WILL_BE_CREATED",
-                        "후속 commit에서 신규 Artist 생성이 필요합니다"))
-                : List.of();
+        List<PreviewProblem> warnings;
+        if (Boolean.TRUE.equals(revealed) && match.status() == ArtistMatchStatus.NEW) {
+            warnings = List.of(warning("ARTIST_WILL_BE_CREATED",
+                    "후속 commit에서 신규 Artist 생성이 필요합니다"));
+        } else if (rawFallbackUsed && match.status() == ArtistMatchStatus.MATCHED) {
+            warnings = List.of(warning("ARTIST_MATCHED_VIA_RAW_FALLBACK",
+                    "artist_canonical 대신 artist_raw로 매칭되어 확인이 필요합니다"));
+        } else {
+            warnings = List.of();
+        }
         Map<String, Object> normalized = new LinkedHashMap<>();
         normalized.put("importKey", importKey);
         normalized.put("day", day);
@@ -522,48 +533,33 @@ public class ImportPreviewService {
     }
 
     private ArtistMatch artistMatch(String input, Lookup lookup) {
-        String name = trim(input);
-        if (name.isEmpty()) {
-            return new ArtistMatch(ArtistMatchStatus.NEW, null);
+        return artistMatch(List.of(input), lookup);
+    }
+
+    private ArtistMatch artistMatch(Collection<String> inputs, Lookup lookup) {
+        Map<Long, Artist> candidates = new LinkedHashMap<>();
+        for (String input : inputs) {
+            String name = trim(input);
+            if (name.isEmpty()) {
+                continue;
+            }
+            lookup.artists().getOrDefault(name, List.of()).forEach(artist -> {
+                if (artist.getId() != null) {
+                    candidates.put(artist.getId(), artist);
+                }
+            });
+            lookup.aliases().getOrDefault(name, List.of()).forEach(artist -> {
+                if (artist.getId() != null) {
+                    candidates.put(artist.getId(), artist);
+                }
+            });
         }
-        List<Artist> direct = lookup.artists().getOrDefault(name, List.of());
-        List<Artist> alias = lookup.aliases().getOrDefault(name, List.of());
-        Set<Long> candidateIds = new LinkedHashSet<>();
-        direct.stream().map(Artist::getId).forEach(candidateIds::add);
-        alias.stream().map(Artist::getId).forEach(candidateIds::add);
-        if (candidateIds.size() > 1 || direct.size() > 1 || alias.size() > 1) {
+        if (candidates.size() > 1) {
             return new ArtistMatch(ArtistMatchStatus.UNRESOLVED, null);
         }
-        Artist matched = !direct.isEmpty() ? direct.getFirst() : alias.isEmpty() ? null : alias.getFirst();
-        return matched == null
+        return candidates.isEmpty()
                 ? new ArtistMatch(ArtistMatchStatus.NEW, null)
-                : new ArtistMatch(ArtistMatchStatus.MATCHED, matched);
-    }
-
-    private boolean ownedByAnotherArtist(String name, Long expectedArtistId, Lookup lookup) {
-        return lookup.artists().getOrDefault(name, List.of()).stream()
-                .map(Artist::getId)
-                .anyMatch(id -> expectedArtistId == null || !Objects.equals(id, expectedArtistId))
-                || lookup.aliases().getOrDefault(name, List.of()).stream()
-                .map(Artist::getId)
-                .anyMatch(id -> expectedArtistId == null || !Objects.equals(id, expectedArtistId));
-    }
-
-    private boolean claimsExistingAliasAsRepresentative(
-            String name, List<String> inputAliases, ArtistMatch match, Lookup lookup
-    ) {
-        if (match.status() != ArtistMatchStatus.MATCHED || match.artist() == null) {
-            return false;
-        }
-        Long matchedArtistId = match.artist().getId();
-        boolean matchesRepresentative = lookup.artists().getOrDefault(name, List.of()).stream()
-                .anyMatch(artist -> Objects.equals(artist.getId(), matchedArtistId));
-        if (matchesRepresentative) {
-            return false;
-        }
-        boolean matchesAlias = lookup.aliases().getOrDefault(name, List.of()).stream()
-                .anyMatch(artist -> Objects.equals(artist.getId(), matchedArtistId));
-        return matchesAlias && !inputAliases.contains(match.artist().getName());
+                : new ArtistMatch(ArtistMatchStatus.MATCHED, candidates.values().iterator().next());
     }
 
     private Set<Integer> conflictingArtistLines(List<ParsedCsvRow> rows) {

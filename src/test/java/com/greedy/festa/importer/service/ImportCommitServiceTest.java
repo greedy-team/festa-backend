@@ -347,6 +347,45 @@ class ImportCommitServiceTest {
     }
 
     @Test
+    void 별칭_경유로_MATCHED된_Artist는_대표명이_CSV_name과_달라도_stale로_보지_않는다() {
+        Artist existing = artist(85L, "엔사인");
+        StoredPreviewRow update = row(ImportSection.ARTISTS, 1, "n.SSign",
+                ImportPreviewAction.UPDATE,
+                Map.of("name", "n.SSign", "otherNames", List.of("엔싸인"),
+                        "inputOtherNames", List.of("엔사인", "엔싸인"), "needsReview", true),
+                null, 85L, null, ArtistMatchStatus.MATCHED, List.of(), false);
+        prepare(preview(update));
+        given(artistRepository.findAllById(anyCollection())).willReturn(List.of(existing));
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(existing));
+
+        var response = service.commit(39L, null);
+
+        assertThat(response.result().artists().updated()).isOne();
+        assertThat(response.result().artists().failed()).isZero();
+    }
+
+    @Test
+    void Lineup은_artist_canonical이_현재_DB와_다르면_artist_raw로_재검증한다() {
+        Artist artist = artist(20L, "엔사인");
+        Host host = host(1L, "university");
+        Festival festival = festivalEntity(30L, host, false);
+        StoredPreviewRow lineup = row(ImportSection.LINEUPS, 1, "university-main-campus-2026",
+                ImportPreviewAction.CREATE,
+                Map.of("day", 1, "order", 1, "artistRaw", "엔사인",
+                        "artistCanonical", "n.SSign", "revealed", true),
+                null, 20L, 30L, ArtistMatchStatus.MATCHED, List.of(), true);
+        prepare(preview(lineup));
+        given(artistRepository.findAllById(anyCollection())).willReturn(List.of(artist));
+        given(artistRepository.findAllByNameIn(anyCollection())).willReturn(List.of(artist));
+        given(festivalRepository.findAllByImportKeyIn(anyCollection())).willReturn(List.of(festival));
+
+        var response = service.commit(39L, null);
+
+        assertThat(response.result().lineups().created()).isOne();
+        assertThat(response.result().lineups().failed()).isZero();
+    }
+
+    @Test
     void 선택된_두_Artist가_같은_alias를_주장하면_insert_전에_거부한다() {
         StoredPreviewRow first = artistRow(1, ImportPreviewAction.CREATE, null);
         StoredPreviewRow second = row(ImportSection.ARTISTS, 2, "other artist",
@@ -358,6 +397,23 @@ class ImportCommitServiceTest {
 
         assertError(() -> service.commit(39L, null), ImportErrorCode.IMPORT_UNCOMMITTABLE);
         verify(artistRepository, never()).save(any());
+    }
+
+    @Test
+    void 서로_다른_이름의_두_Artist_행이_같은_기존_Artist로_수렴하면_commit_전에_거부한다() {
+        StoredPreviewRow first = row(ImportSection.ARTISTS, 1, "다듀",
+                ImportPreviewAction.UPDATE,
+                Map.of("name", "다듀", "otherNames", List.of(), "needsReview", true),
+                null, 10L, null, ArtistMatchStatus.MATCHED, List.of(), false);
+        StoredPreviewRow second = row(ImportSection.ARTISTS, 2, "다이나믹 듀오",
+                ImportPreviewAction.UPDATE,
+                Map.of("name", "다이나믹 듀오", "otherNames", List.of("새별칭"), "needsReview", false),
+                null, 10L, null, ArtistMatchStatus.MATCHED, List.of(), false);
+        prepare(preview(first, second));
+
+        assertError(() -> service.commit(39L, null), ImportErrorCode.IMPORT_UNCOMMITTABLE);
+        verify(artistRepository, never()).save(any());
+        verify(auditRepository, never()).saveAll(any());
     }
 
     @Test
