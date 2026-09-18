@@ -133,7 +133,15 @@ services:
       - --storage.tsdb.retention.size=12GB
       - --web.enable-lifecycle
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # 파일 하나가 아니라 디렉터리를 붙인다. 단일 파일 bind mount는 inode를 묶어서,
+      # CD의 tar가 파일을 교체하면 컨테이너가 옛 inode를 계속 본다 — 설정을 보내고
+      # SIGHUP까지 보내도 다시 읽는 내용이 옛것이라 반영되지 않는다.
+      # 2026-09-18 운영에서 실제로 겪었다: reloadConfigSuccess=true인데 job이 안 늘었다.
+      # 같은 배포의 ./grafana/dashboards는 디렉터리라 곧바로 반영됐다 — 그 대조가 증거다.
+      # ISS-0154가 Caddyfile에서 겪은 것과 같은 함정이다.
+      # 이미지의 /etc/prometheus에는 prometheus.yml 하나뿐이라 가려지는 것이 없다(실측).
+      # 4단계에서 알림 규칙 파일이 늘어도 이 마운트 하나로 따라온다.
+      - ./prometheus:/etc/prometheus:ro
       - prometheus-data:/prometheus
     logging:
       driver: "json-file"
