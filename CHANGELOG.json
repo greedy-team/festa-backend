@@ -1,14 +1,57 @@
 {
   "metadata": {
-    "lastUpdated": "2026-09-18T12:37:47Z",
-    "currentVersion": "0.0.9",
+    "lastUpdated": "2026-09-18T14:31:35Z",
+    "currentVersion": "0.0.10",
     "projectType": "spring",
     "projectTypes": [
       "spring"
     ],
-    "totalReleases": 8
+    "totalReleases": 9
   },
   "releases": [
+    {
+      "version": "0.0.10",
+      "project_type": "spring",
+      "project_types": [
+        "spring"
+      ],
+      "date": "2026-09-18",
+      "pr_number": 222,
+      "raw_summary": "## Summary by CodeRabbit\n\n## 릴리스 노트\n\n* **새 기능**\n  * optimize upcoming festival query\n  * add verified query indexes\n\n* **문서**\n  * 5차 데모데이 README 피드백 반영\n  * 공개 API BEFORE/AFTER 최종 구현 리포트\n\n* **기타**\n  * Merge pull request from greedy-team/chore_219_관측_설정이_배포로_반영되지_않고_에러율_패널이_빈다\n  * Merge pull request from greedy-team/docs_5차_데모데이_github_서비스_레포_readme_작성\n  * chore : 관측 설정이 배포로 반영되게 하고 에러율 패널을 고친다\n  * Merge branch 'develop' into docs_5차_데모데이_github_서비스_레포_readme_작성\n  * Merge pull request from greedy-team/docs_192_public_api_before_after_final_report\n  * Merge pull request from greedy-team/docs_193_api_tps_측정_완료_리포트\n  * Merge pull request from greedy-team/feat_154_조회_쿼리_인덱스_검증\n  * docs : README 디자인과 주요 기능 이미지 적용\n  * docs : README 로고와 팀원 사진 연결\n  * docs : GitHub 서비스 레포 README.md 작성\n  * docs : API TPS 측정 완료 리포트",
+      "parsed_changes": {
+        "새_기능": {
+          "title": "새 기능",
+          "items": [
+            "optimize upcoming festival query",
+            "add verified query indexes"
+          ]
+        },
+        "문서": {
+          "title": "문서",
+          "items": [
+            "5차 데모데이 README 피드백 반영",
+            "공개 API BEFORE/AFTER 최종 구현 리포트"
+          ]
+        },
+        "기타": {
+          "title": "기타",
+          "items": [
+            "Merge pull request from greedy-team/chore_219_관측_설정이_배포로_반영되지_않고_에러율_패널이_빈다",
+            "Merge pull request from greedy-team/docs_5차_데모데이_github_서비스_레포_readme_작성",
+            "chore : 관측 설정이 배포로 반영되게 하고 에러율 패널을 고친다",
+            "Merge branch 'develop' into docs_5차_데모데이_github_서비스_레포_readme_작성",
+            "Merge pull request from greedy-team/docs_192_public_api_before_after_final_report",
+            "Merge pull request from greedy-team/docs_193_api_tps_측정_완료_리포트",
+            "Merge pull request from greedy-team/feat_154_조회_쿼리_인덱스_검증",
+            "docs : README 디자인과 주요 기능 이미지 적용",
+            "docs : README 로고와 팀원 사진 연결",
+            "docs : GitHub 서비스 레포 README.md 작성",
+            "docs : API TPS 측정 완료 리포트"
+          ]
+        }
+      },
+      "parse_method": "markdown"
+    },
     {
       "version": "0.0.9",
       "project_type": "spring",
