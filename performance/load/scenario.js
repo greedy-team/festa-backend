@@ -11,6 +11,7 @@ import {
   searchCase,
   selectedFixture,
 } from './config.js';
+import { assertA1ProductionProfile, isA1ProductionTarget } from './safety.js';
 export { handleSummary } from './handle-summary.js';
 
 const baseUrl = requiredEnv('BASE_URL');
@@ -68,6 +69,17 @@ if (configured.executor === 'constant-arrival-rate') {
   profile.duration = __ENV.DURATION || configured.duration;
   profile.preAllocatedVUs = Number(__ENV.PRE_ALLOCATED_VUS || configured.preAllocatedVUs);
   profile.maxVUs = Number(__ENV.MAX_VUS || configured.maxVUs);
+}
+
+if (isA1ProductionTarget(baseUrl)) {
+  assertA1ProductionProfile({
+    scenario: scenarioName,
+    stage,
+    rate: Number(__ENV.RATE),
+    duration: __ENV.DURATION,
+    preAllocatedVUs: Number(__ENV.PRE_ALLOCATED_VUS || configured.preAllocatedVUs),
+    maxVUs: Number(__ENV.MAX_VUS || configured.maxVUs),
+  });
 }
 
 export const options = {

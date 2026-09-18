@@ -12,6 +12,9 @@ param(
     [string]$RunId,
     [string]$ImageSha = '',
     [string]$EnvironmentName = 'local',
+    [ValidateSet('', 'A1_READ_ONLY_LOAD_TEST')]
+    [string]$A1ProductionLoadApproval = '',
+    [switch]$ValidateOnly,
     [int]$Rate = 0,
     [string]$Duration = '',
     [int]$PreAllocatedVUs = 0,
@@ -38,8 +41,37 @@ if (-not $uri.IsAbsoluteUri) {
     throw 'BASE_URL must be an absolute URL.'
 }
 $normalizedHost = $uri.Host.TrimEnd('.').ToLowerInvariant()
-if ($normalizedHost -in @('api.every-festa.com', 'dev-api.every-festa.com')) {
-    throw 'Refusing to load test production or the shared development server. Use a dedicated local or temporary load-test stack.'
+$isA1Production = $normalizedHost -eq 'api.every-festa.com'
+if ($normalizedHost -eq 'dev-api.every-festa.com') {
+    throw 'Refusing to load test the shared development server.'
+}
+if ($isA1Production) {
+    if (-not $PSBoundParameters.ContainsKey('BaseUrl')) {
+        throw 'A1 production load tests require -BaseUrl explicitly; BASE_URL alone is not accepted.'
+    }
+    if ($A1ProductionLoadApproval -ne 'A1_READ_ONLY_LOAD_TEST') {
+        throw 'Refusing to load test production without A1_READ_ONLY_LOAD_TEST approval.'
+    }
+    if ($Scenario -ne 'mixed' -or $Stage -ne 'baseline') {
+        throw 'A1 production load tests allow only the mixed scenario at the baseline stage.'
+    }
+    if ($Rate -notin @(1, 3, 5, 10)) {
+        throw 'A1 production load rate must be one of 1, 3, 5, 10 RPS.'
+    }
+    if ($Duration -notmatch '^(\d+)([sm])$' -or [int]$Matches[1] -le 0) {
+        throw 'A1 production load duration must use a positive whole-second or whole-minute value.'
+    }
+    $durationSeconds = [int]$Matches[1] * $(if ($Matches[2] -eq 'm') { 60 } else { 1 })
+    if ($durationSeconds -gt 180) {
+        throw 'A1 production load duration must not exceed 180 seconds.'
+    }
+    if ($PreAllocatedVUs -gt 10 -or $MaxVUs -gt 10) {
+        throw 'A1 production load tests must not configure more than 10 VUs.'
+    }
+}
+if ($ValidateOnly) {
+    Write-Host "Validation passed for $($BaseUrl.TrimEnd('/')) (targetEnvironment=$(if ($isA1Production) { 'a1-production' } else { $EnvironmentName }), productionOptIn=$isA1Production)."
+    exit 0
 }
 
 $loadRoot = $PSScriptRoot
@@ -58,6 +90,8 @@ $metadata = [ordered]@{
     scenario = $Scenario
     fixture = $Fixture
     environment = $EnvironmentName
+    targetEnvironment = if ($isA1Production) { 'a1-production' } else { $EnvironmentName }
+    productionOptIn = $isA1Production
     gitSha = $gitSha
     imageSha = if ($ImageSha) { $ImageSha } else { $null }
     runner = $Runner
@@ -72,6 +106,9 @@ $environmentArguments = @(
     '-e', "RUN_ID=$runId",
     '-e', "GIT_SHA=$gitSha"
 )
+if ($isA1Production) {
+    $environmentArguments += @('-e', "A1_PRODUCTION_LOAD_APPROVAL=$A1ProductionLoadApproval")
+}
 if ($ImageSha) {
     $environmentArguments += @('-e', "IMAGE_SHA=$ImageSha")
 }

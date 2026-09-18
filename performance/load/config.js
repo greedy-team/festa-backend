@@ -1,6 +1,7 @@
 import { check, fail } from 'k6';
 import http from 'k6/http';
 import { Counter } from 'k6/metrics';
+import { assertSafeTarget as assertApprovedTarget, targetEnvironment } from './safety.js';
 
 export const FIXTURES = {
   performance: {
@@ -64,21 +65,11 @@ export const SEARCH_CORPUS = [
 
 export const responseCheckFailures = new Counter('response_check_failures');
 
-const forbiddenHosts = new Set(['api.every-festa.com', 'dev-api.every-festa.com']);
-
 export function assertSafeTarget(url) {
-  const authority = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]+)/i.exec(url)?.[1];
-  if (!authority) {
-    fail(`BASE_URL must be an absolute URL: '${url}'`);
-  }
-  const hostPort = authority.includes('@') ? authority.slice(authority.lastIndexOf('@') + 1) : authority;
-  const bracketedHost = /^\[([^\]]+)\]/.exec(hostPort)?.[1];
-  const host = (bracketedHost || hostPort.split(':')[0]).toLowerCase().replace(/\.+$/, '');
-  if (!host) {
-    fail(`BASE_URL must be an absolute URL: '${url}'`);
-  }
-  if (forbiddenHosts.has(host)) {
-    fail('Refusing to load test production or the shared development server. Use a dedicated local or temporary load-test stack.');
+  try {
+    return assertApprovedTarget(url, __ENV.A1_PRODUCTION_LOAD_APPROVAL);
+  } catch (error) {
+    fail(error.message);
   }
 }
 
@@ -91,6 +82,8 @@ export function requiredEnv(name) {
   assertSafeTarget(normalized);
   return normalized;
 }
+
+export { targetEnvironment };
 
 export function selectedFixture() {
   const name = __ENV.FIXTURE || 'performance';

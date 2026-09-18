@@ -21,7 +21,21 @@ It targets public read APIs only:
 
 ## Safety boundary
 
-Never target `https://api.every-festa.com` (production) or `https://dev-api.every-festa.com` (the shared development server). Both `run.ps1` and `scenario.js` reject these hosts after case-folding and removing trailing DNS dots, so direct `k6 run` cannot bypass the boundary. Final measurement uses an isolated temporary VM and an independent fixture volume.
+`https://dev-api.every-festa.com` (the shared development server) is always blocked. `https://api.every-festa.com` (A1 production) is also blocked by default in both `run.ps1` and `scenario.js`; the only exception is the explicit `A1_READ_ONLY_LOAD_TEST` approval combined with the bounded profile below. The duplicate checks mean direct `k6 run` cannot bypass the boundary.
+
+### A1 production controlled run
+
+A1 production is limited to the existing read-only `mixed` scenario at the `baseline` stage, exactly one manually started run at a time. The permitted rates are **1, 3, 5, and 10 RPS**, duration must be supplied explicitly and may not exceed **3 minutes**, and configured VUs may not exceed 10. There is no command that advances to the next rate automatically.
+
+Use `-BaseUrl` explicitly (an inherited `BASE_URL` is not accepted for A1), then inspect Grafana and the completed summary before a person chooses the next command:
+
+```powershell
+.\run.ps1 -Runner docker -BaseUrl 'https://api.every-festa.com' -A1ProductionLoadApproval A1_READ_ONLY_LOAD_TEST `
+  -Stage baseline -Scenario mixed -Fixture performance -EnvironmentName a1-grafana -Rate 1 -Duration 3m `
+  -PreAllocatedVUs 2 -MaxVUs 10
+```
+
+Repeat the command separately with `-Rate 3`, then `5`, then `10` only after the prior run has ended and the team has reviewed Grafana. The run metadata and k6 summary record `targetEnvironment: a1-production` and `productionOptIn: true`; the approval token itself is not recorded.
 
 The local stack below is for smoke/contract validation only. It is not a TPS result, because its Docker Desktop hardware, direct-app route, and minimal data are different from the final environment.
 
