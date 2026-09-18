@@ -29,7 +29,7 @@
       },
       "id": 18,
       "panels": [],
-      "title": "Global Statistics",
+      "title": "전체 통계",
       "type": "row"
     },
     {
@@ -110,7 +110,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "PostgreSQL Version",
+      "title": "PostgreSQL 버전",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -192,7 +192,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "max(pg_replication_lag{instance=\"$Instance\"})",
+          "expr": "max(pg_replication_lag_seconds{instance=\"$Instance\"})",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -201,7 +201,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Max Replication Lag",
+      "title": "최대 복제 지연",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -290,7 +290,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Active clients",
+      "title": "실행 중인 클라이언트",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -370,7 +370,7 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Shared Buffer Hits",
+      "title": "공유 버퍼 적중률",
       "type": "gauge"
     },
     {
@@ -441,7 +441,7 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Connections used",
+      "title": "커넥션 사용률",
       "type": "gauge"
     },
     {
@@ -512,7 +512,7 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Commit Ratio",
+      "title": "커밋 비율",
       "type": "gauge"
     },
     {
@@ -526,7 +526,7 @@
       ],
       "datasource": null,
       "decimals": 1,
-      "description": "Source: pg_postmaster_start_time()",
+      "description": "Source: pg_postmaster_start_time()\n\n지금은 빈다. pg_postmaster_start_time_seconds를 내는 postmaster 컬렉터가 기본 비활성이다(활성 15개 목록에 없음). postgres_exporter에 플래그를 줘야 채워진다.",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -583,7 +583,7 @@
         "ymax": null,
         "ymin": null
       },
-      "tableColumn": "{instance=\"db01vp-nbg6a.obs.noris.net:9187\", job=\"postgres-exporter\", server=\"213.95.132.73:5432\"}",
+      "tableColumn": "",
       "targets": [
         {
           "expr": "time()-(pg_postmaster_start_time_seconds{instance=\"$Instance\"})",
@@ -594,7 +594,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "PostgreSQL Uptime",
+      "title": "PostgreSQL 가동 시간",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -685,7 +685,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Transaction rate",
+      "title": "초당 트랜잭션",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -707,7 +707,7 @@
         "#d44a3a"
       ],
       "datasource": null,
-      "description": "Statements executed per Minute.\n\nSource: pg_stat_statements.calls",
+      "description": "Statements executed per Minute.\n\nSource: pg_stat_statements.calls\n\n지금은 빈다. pg_stat_statements 확장이 설치돼 있지 않다. shared_preload_libraries 수정과 PostgreSQL 재시작이 필요하다.",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -776,7 +776,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Query rate",
+      "title": "초당 쿼리",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -799,7 +799,7 @@
       ],
       "datasource": null,
       "decimals": 2,
-      "description": "Size of all databases in $Instance.\n\nSource: pg_database_size()",
+      "description": "Size of all databases in $Instance.\n\nSource: pg_database_size_bytes()",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -859,14 +859,14 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(pg_database_size{instance=\"$Instance\"})",
+          "expr": "sum(pg_database_size_bytes{instance=\"$Instance\"})",
           "refId": "A"
         }
       ],
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Total database size",
+      "title": "전체 DB 용량",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -888,7 +888,7 @@
         "#d44a3a"
       ],
       "datasource": null,
-      "description": "Source: pg_stat_statements.total_time / pg_stat_statements.calls",
+      "description": "Source: pg_stat_statements.total_time / pg_stat_statements.calls\n\n지금은 빈다. pg_stat_statements 확장이 설치돼 있지 않다. shared_preload_libraries 수정과 PostgreSQL 재시작이 필요하다.",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -957,7 +957,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Average query runtime",
+      "title": "평균 쿼리 실행 시간",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -1037,7 +1037,7 @@
         "ymax": null,
         "ymin": null
       },
-      "tableColumn": "pg_settings_shared_buffers_bytes{instance=\"db01vp-nbg6a.obs.noris.net:9187\", job=\"postgres-exporter\", server=\"213.95.132.73:5432\"}",
+      "tableColumn": "",
       "targets": [
         {
           "expr": "pg_settings_shared_buffers_bytes{instance=\"$Instance\"}",
@@ -1047,7 +1047,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Shared Buffers",
+      "title": "공유 버퍼 크기",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -1126,7 +1126,7 @@
         "ymax": null,
         "ymin": null
       },
-      "tableColumn": "pg_settings_max_connections{instance=\"db01vp-nbg6a.obs.noris.net:9187\", job=\"postgres-exporter\", server=\"213.95.132.73:5432\"}",
+      "tableColumn": "",
       "targets": [
         {
           "expr": "pg_settings_max_connections{instance=\"$Instance\"}",
@@ -1136,7 +1136,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Max Connections",
+      "title": "최대 커넥션 수",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -1218,7 +1218,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Connections by state (stacked)",
+      "title": "상태별 커넥션",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1327,7 +1327,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Connections by database (stacked)",
+      "title": "DB별 커넥션",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1437,7 +1437,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Transactions",
+      "title": "트랜잭션 (커밋 · 롤백)",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1546,7 +1546,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Tuples inserts/updates/deletes",
+      "title": "튜플 삽입 · 수정 · 삭제",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1648,7 +1648,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "I/O Read/Write time",
+      "title": "디스크 읽기 · 쓰기 시간",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1751,7 +1751,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Tuples fetched/returned",
+      "title": "튜플 조회 · 반환",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1852,7 +1852,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Locks by state",
+      "title": "상태별 락",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1956,7 +1956,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Deadlocks by database",
+      "title": "DB별 데드락",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -2060,7 +2060,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Temporary files by database",
+      "title": "DB별 임시 파일",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -2148,7 +2148,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "max(pg_replication_lag{instance=\"$Instance\"})",
+          "expr": "max(pg_replication_lag_seconds{instance=\"$Instance\"})",
           "instant": false,
           "intervalFactor": 1,
           "legendFormat": "lag ",
@@ -2159,7 +2159,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Replication lag ",
+      "title": "복제 지연",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -2280,7 +2280,7 @@
             "ymax": null,
             "ymin": null
           },
-          "tableColumn": "pg_stat_activity_count{datname=\"grafana\", instance=\"db01vp-nbg6a.obs.noris.net:9187\", job=\"postgres-exporter\", server=\"213.95.132.73:5432\", state=\"active\"}",
+          "tableColumn": "",
           "targets": [
             {
               "expr": "pg_stat_activity_count{state=\"active\",instance=\"$Instance\",datname=~\"$Database\"}",
@@ -2290,7 +2290,7 @@
           "thresholds": "",
           "timeFrom": null,
           "timeShift": null,
-          "title": "Active clients",
+          "title": "실행 중인 클라이언트",
           "type": "singlestat",
           "valueFontSize": "80%",
           "valueMaps": [
@@ -2376,17 +2376,17 @@
             "ymax": null,
             "ymin": null
           },
-          "tableColumn": "pg_database_size{datname=\"grafana\", instance=\"db01vp-nbg6a.obs.noris.net:9187\", job=\"postgres-exporter\", server=\"213.95.132.73:5432\"}",
+          "tableColumn": "",
           "targets": [
             {
-              "expr": "pg_database_size{instance=\"$Instance\",datname=\"$Database\"}",
+              "expr": "pg_database_size_bytes{instance=\"$Instance\",datname=\"$Database\"}",
               "refId": "A"
             }
           ],
           "thresholds": "",
           "timeFrom": null,
           "timeShift": null,
-          "title": "Database size",
+          "title": "DB 용량",
           "type": "singlestat",
           "valueFontSize": "80%",
           "valueMaps": [
@@ -2473,7 +2473,7 @@
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Shared Buffer Hits",
+          "title": "공유 버퍼 적중률",
           "type": "gauge"
         },
         {
@@ -2551,7 +2551,7 @@
           ],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Commit Ratio",
+          "title": "커밋 비율",
           "type": "gauge"
         },
         {
@@ -2640,7 +2640,7 @@
           "thresholds": "",
           "timeFrom": null,
           "timeShift": null,
-          "title": "Transaction rate",
+          "title": "초당 트랜잭션",
           "type": "singlestat",
           "valueFontSize": "80%",
           "valueMaps": [
@@ -2729,7 +2729,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Connections by state (stacked)",
+          "title": "상태별 커넥션",
           "tooltip": {
             "shared": true,
             "sort": 0,
@@ -2846,7 +2846,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Transactions",
+          "title": "트랜잭션 (커밋 · 롤백)",
           "tooltip": {
             "shared": true,
             "sort": 0,
@@ -2962,7 +2962,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Tuples inserts/updates/deletes",
+          "title": "튜플 삽입 · 수정 · 삭제",
           "tooltip": {
             "shared": true,
             "sort": 0,
@@ -3072,7 +3072,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Tuples fetched/returned",
+          "title": "튜플 조회 · 반환",
           "tooltip": {
             "shared": true,
             "sort": 0,
@@ -3180,7 +3180,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Locks by state",
+          "title": "상태별 락",
           "tooltip": {
             "shared": true,
             "sort": 0,
@@ -3291,7 +3291,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Deadlocks by database",
+          "title": "DB별 데드락",
           "tooltip": {
             "shared": true,
             "sort": 0,
@@ -3402,7 +3402,7 @@
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Temporary files by database",
+          "title": "DB별 임시 파일",
           "tooltip": {
             "shared": true,
             "sort": 0,
@@ -3441,7 +3441,7 @@
         }
       ],
       "repeat": "Database",
-      "title": "Database: $Database",
+      "title": "데이터베이스: $Database",
       "type": "row"
     }
   ],

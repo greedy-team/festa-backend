@@ -1,7 +1,21 @@
 # Changelog
 
-**현재 버전:** 0.0.8  
-**마지막 업데이트:** 2026-09-18T10:47:49Z  
+**현재 버전:** 0.0.9  
+**마지막 업데이트:** 2026-09-18T12:37:47Z  
+
+---
+
+## [0.0.9] - 2026-09-18
+
+**PR:** #217  
+
+**기타**
+- Merge pull request from greedy-team/chore_215_앱_메트릭을_a1_prometheus가_직접_스크랩하게_한다
+- chore : 배포가 Prometheus에 설정을 다시 읽힌다
+- chore : 패널 제목에서 설명을 빼고 description으로 옮긴다
+- chore : 커뮤니티 대시보드의 N/A를 고치고 보이는 제목을 한국어로 바꾼다
+- chore : Prometheus가 두 색을 스크랩하고 부하 테스트 대시보드를 둔다
+- chore : 앱에 /actuator/prometheus를 노출한다
 
 ---
 

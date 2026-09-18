@@ -1,14 +1,38 @@
 {
   "metadata": {
-    "lastUpdated": "2026-09-18T10:47:49Z",
-    "currentVersion": "0.0.8",
+    "lastUpdated": "2026-09-18T12:37:47Z",
+    "currentVersion": "0.0.9",
     "projectType": "spring",
     "projectTypes": [
       "spring"
     ],
-    "totalReleases": 7
+    "totalReleases": 8
   },
   "releases": [
+    {
+      "version": "0.0.9",
+      "project_type": "spring",
+      "project_types": [
+        "spring"
+      ],
+      "date": "2026-09-18",
+      "pr_number": 217,
+      "raw_summary": "## Summary by CodeRabbit\n\n## 릴리스 노트\n\n* **기타**\n  * Merge pull request from greedy-team/chore_215_앱_메트릭을_a1_prometheus가_직접_스크랩하게_한다\n  * chore : 배포가 Prometheus에 설정을 다시 읽힌다\n  * chore : 패널 제목에서 설명을 빼고 description으로 옮긴다\n  * chore : 커뮤니티 대시보드의 N/A를 고치고 보이는 제목을 한국어로 바꾼다\n  * chore : Prometheus가 두 색을 스크랩하고 부하 테스트 대시보드를 둔다\n  * chore : 앱에 /actuator/prometheus를 노출한다",
+      "parsed_changes": {
+        "기타": {
+          "title": "기타",
+          "items": [
+            "Merge pull request from greedy-team/chore_215_앱_메트릭을_a1_prometheus가_직접_스크랩하게_한다",
+            "chore : 배포가 Prometheus에 설정을 다시 읽힌다",
+            "chore : 패널 제목에서 설명을 빼고 description으로 옮긴다",
+            "chore : 커뮤니티 대시보드의 N/A를 고치고 보이는 제목을 한국어로 바꾼다",
+            "chore : Prometheus가 두 색을 스크랩하고 부하 테스트 대시보드를 둔다",
+            "chore : 앱에 /actuator/prometheus를 노출한다"
+          ]
+        }
+      },
+      "parse_method": "markdown"
+    },
     {
       "version": "0.0.8",
       "project_type": "spring",

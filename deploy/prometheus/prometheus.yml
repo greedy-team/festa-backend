@@ -1,8 +1,9 @@
 # 관측 스택의 수집 설정 (DEC-0211 / DEC-0213).
 # 이 파일이 원본이다 — Prometheus UI가 아니라 저장소가 스크랩 대상을 소유한다.
 #
-# 1단계에서는 앱을 스크랩하지 않는다. 앱은 지금도 OTLP로 Grafana Cloud에 push하고 있고,
-# /actuator/prometheus 노출과 앱 스크랩은 Caddy 차단(DEC-0214)이 먼저 머지된 뒤 별도 이슈로 한다.
+# 앱 스크랩은 3단계에서 들어왔다 (#215). Caddy 차단(DEC-0214)이 v0.0.8로 운영에 먼저 반영된
+# 뒤에 노출했다. 앱의 OTLP push는 그대로 둔다 — Grafana Cloud의 합성 체크와 Discord 알림이
+# 거기 살아 있고(DEC-0212), 중단 시점은 DOC-0018 열린 질문 ⑥으로 3단계 검증 후에 정한다.
 global:
   # 현행 OTLP push의 60초보다 4배 촘촘하다. blue/green 전환처럼 수십 초 만에 끝나는
   # 사건을 보려면 60초로는 부족하다.
@@ -31,3 +32,17 @@ scrape_configs:
   - job_name: postgres-exporter
     static_configs:
       - targets: ["postgres-exporter:9187"]
+
+  # 앱. job 이름은 OTLP 경로가 쓰던 festa를 그대로 이어받는다 (DEC-0184).
+  #
+  # 두 색을 다 적는다. 스크랩이 instance="app-blue:8080" / "app-green:8080"을 붙여 주므로
+  # 어느 색이 낸 값인지 공짜로 갈린다 — OTLP 경로에는 instance 라벨이 아예 없었다.
+  #
+  # ⚠️ 비활성 색은 항상 down이다. blue/green은 한 번에 한 색만 살아 있고 CD가 옛 색 컨테이너를
+  # 지우므로, 그쪽 타깃은 DNS부터 실패한다. 이것은 결함이 아니라 설계된 상태다.
+  # 따라서 알림을 붙일 때 up{job="festa"} == 0 을 쓰면 안 된다 — 평시에도 늘 참이다.
+  # 「앱이 죽었다」는 sum(up{job="festa"}) == 0 으로 써야 한다. 전환 중에는 잠깐 둘 다 1이다.
+  - job_name: festa
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["app-blue:8080", "app-green:8080"]
