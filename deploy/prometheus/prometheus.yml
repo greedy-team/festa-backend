@@ -25,6 +25,9 @@ scrape_configs:
     static_configs:
       - targets: ["node-exporter:9100"]
 
-  - job_name: postgres
+  # 이름을 postgres-exporter로 맞춘다. 커뮤니티 대시보드 12485가
+  # job="postgres-exporter"를 하드코딩해 조회하므로, 다르면 Instance 변수가 비어
+  # 대시보드가 통째로 빈다. 1860(node)은 job 변수를 동적으로 읽어 이름에 구애받지 않는다.
+  - job_name: postgres-exporter
     static_configs:
       - targets: ["postgres-exporter:9187"]
