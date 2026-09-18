@@ -294,6 +294,164 @@
     },
     {
       "type": "row",
+      "title": "배포 · 재시작 — 의도치 않게 죽었나",
+      "id": 21,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "앱 가동 시간",
+      "description": "앱이 켜진 뒤 흐른 시간. **0으로 떨어지면 재시작한 것이다.**\n\n배포하지 않았는데 떨어졌다면 크래시를 의심하고, 그 시각 전후의 로그를 찾는다. blue/green이라 색마다 따로 그려진다 — 배포 중에는 새 색의 선이 0에서 시작한다.",
+      "id": 22,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "festa-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 8,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "time() - process_start_time_seconds{job=\"festa\"}",
+          "legendFormat": "{{instance}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "festa-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "기동 소요 시간",
+      "description": "앱이 요청을 받을 수 있게 되기까지 걸린 시간. 배포마다 느려지는 추세인지 본다.\n\n무중단 배포에서는 새 색이 뜨기를 기다리는 시간이기도 하다 — 이 값이 길수록 두 색이 함께 도는 구간이 길어지고, 2코어에서는 그동안 CPU가 나뉜다.",
+      "id": 23,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "festa-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 8,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "application_ready_time_seconds{job=\"festa\"}",
+          "legendFormat": "{{instance}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "festa-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "마지막 재시작",
+      "id": 24,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "festa-prometheus"
+      },
+      "description": "마지막으로 앱이 켜진 시각. 배포 기록에 없는 시각이면 크래시를 의심한다.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "expr": "process_start_time_seconds{job=\"festa\"} * 1000",
+          "legendFormat": "{{instance}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "festa-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
       "title": "요청 — 어느 API가 느린가",
       "id": 8,
       "collapsed": false,
@@ -301,7 +459,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 5
+        "y": 14
       },
       "panels": []
     },
@@ -318,7 +476,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 6
+        "y": 15
       },
       "fieldConfig": {
         "defaults": {
@@ -368,7 +526,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 6
+        "y": 15
       },
       "fieldConfig": {
         "defaults": {
@@ -418,7 +576,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 14
+        "y": 23
       },
       "fieldConfig": {
         "defaults": {
@@ -468,7 +626,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 14
+        "y": 23
       },
       "fieldConfig": {
         "defaults": {
@@ -514,7 +672,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 31
       },
       "panels": []
     },
@@ -531,7 +689,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 23
+        "y": 32
       },
       "fieldConfig": {
         "defaults": {
@@ -581,7 +739,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 23
+        "y": 32
       },
       "fieldConfig": {
         "defaults": {
@@ -631,7 +789,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 23
+        "y": 32
       },
       "fieldConfig": {
         "defaults": {
@@ -695,7 +853,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 40
       },
       "panels": []
     },
@@ -712,7 +870,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 32
+        "y": 41
       },
       "fieldConfig": {
         "defaults": {
@@ -764,7 +922,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 32
+        "y": 41
       },
       "fieldConfig": {
         "defaults": {
@@ -814,7 +972,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 32
+        "y": 41
       },
       "fieldConfig": {
         "defaults": {
