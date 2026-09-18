@@ -122,6 +122,10 @@ jobs:
           ADMIN_INITIAL_USERNAME: ${{ secrets.ADMIN_INITIAL_USERNAME }}
           ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
           GRAFANA_OTLP_AUTH: ${{ secrets.GRAFANA_OTLP_AUTH }}
+          # 관측 스택(monitoring 프로파일)이 쓰는 값이다. 서버에서 손으로 넣으면 이 스텝이
+          # app.env를 새로 만들어 덮어쓰므로 다음 배포에 사라진다 — 여기서 실어 보낸다.
+          PG_EXPORTER_DSN: ${{ secrets.PG_EXPORTER_DSN }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           API_DOMAINS: ${{ vars.API_DOMAINS }}
           PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
         run: |
@@ -221,6 +225,10 @@ jobs:
             write_env GRAFANA_OTLP_AUTH "$GRAFANA_OTLP_AUTH"
             write_env ADMIN_INITIAL_USERNAME "$ADMIN_INITIAL_USERNAME"
             write_env ADMIN_INITIAL_PASSWORD "$ADMIN_INITIAL_PASSWORD"
+            # compose가 둘 다 ${...:-} 로 선언해 값이 없어도 배포는 죽지 않는다(DEC-0185).
+            # 비면 postgres-exporter가 못 뜨고 Grafana는 admin/admin으로 뜬다.
+            write_env PG_EXPORTER_DSN "$PG_EXPORTER_DSN"
+            write_env GRAFANA_ADMIN_PASSWORD "$GRAFANA_ADMIN_PASSWORD"
             write_env API_DOMAINS "$API_DOMAINS"
           } > "$RUNNER_TEMP/app.env"
 
