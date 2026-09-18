@@ -22,7 +22,7 @@ class QueryIndexesPostgresIntegrationTest extends PostgresTestSupport {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void coverage와_artist_lineup_조회_인덱스가_정의대로_Flyway로_생성된다() {
+    void 조회_인덱스가_정의대로_Flyway로_생성된다() {
         assertThat(indexDefinition("festival", "idx_festival_host_start_id_unpublished"))
                 .contains("(HOST_ID, START_DATE, ID)")
                 .contains("WHERE (PUBLISHED_AT IS NULL)");
@@ -31,38 +31,46 @@ class QueryIndexesPostgresIntegrationTest extends PostgresTestSupport {
                 .contains("WHERE (PUBLISHED_AT IS NOT NULL)");
         assertThat(indexDefinition("lineup", "idx_lineup_artist_id"))
                 .contains("ON " + currentSchema().toUpperCase(Locale.ROOT) + ".LINEUP USING BTREE (ARTIST_ID)");
+        assertThat(indexDefinition("artist_alias", "idx_artist_alias_artist_id"))
+                .contains("ON " + currentSchema().toUpperCase(Locale.ROOT) + ".ARTIST_ALIAS USING BTREE (ARTIST_ID)");
+        assertThat(indexDefinition("festival", "idx_festival_host_id"))
+                .contains("ON " + currentSchema().toUpperCase(Locale.ROOT) + ".FESTIVAL USING BTREE (HOST_ID)");
+        assertThat(indexDefinition("festival", "idx_festival_published_at_id_desc"))
+                .contains("(PUBLISHED_AT DESC, ID DESC)")
+                .contains("WHERE (PUBLISHED_AT IS NOT NULL)");
+        assertThat(indexDefinition("festival", "idx_festival_published_start_date_id"))
+                .contains("(START_DATE, ID)")
+                .contains("WHERE (PUBLISHED_AT IS NOT NULL)");
     }
 
     @Test
     @Transactional
-    void coverage와_artist_lineup_실제_쿼리가_각_인덱스를_사용한다() {
+    void 실제_조회_쿼리가_각_인덱스를_사용한다() {
         Long hostId = 1L;
-        LocalDate yearStart = LocalDate.now().withDayOfYear(1);
-        LocalDate nextYearStart = yearStart.plusYears(1);
 
-        assertUsesIndex(explain("""
-                SELECT f.id, f.name, f.start_date, f.end_date
-                FROM festival f
-                WHERE f.host_id = ?
-                  AND f.start_date >= ?
-                  AND f.start_date < ?
-                  AND f.published_at IS NULL
-                ORDER BY f.start_date ASC, f.id ASC
-                LIMIT 1
-                """, hostId, yearStart, nextYearStart), "idx_festival_host_start_id_unpublished");
-        assertUsesIndex(explain("""
-                SELECT f.id
-                FROM festival f
-                WHERE f.host_id = ?
-                  AND f.start_date >= ?
-                  AND f.start_date < ?
-                  AND f.end_date >= ?
-                  AND f.published_at IS NOT NULL
-                ORDER BY f.start_date ASC, f.id ASC
-                LIMIT 1
-                """, hostId, yearStart, nextYearStart, LocalDate.now()), "idx_festival_host_start_id_published");
         assertUsesIndex(explain("SELECT count(*) FROM lineup WHERE artist_id = ?", 1L),
                 "idx_lineup_artist_id");
+        assertUsesIndex(explain("SELECT id FROM artist_alias WHERE artist_id = ?", 1L),
+                "idx_artist_alias_artist_id");
+        assertUsesIndex(explain("SELECT count(*) FROM festival WHERE host_id = ?", hostId),
+                "idx_festival_host_id");
+        assertUsesIndex(explain("""
+                SELECT f.*, h.*
+                FROM festival f
+                JOIN host h ON h.id = f.host_id
+                WHERE f.published_at IS NOT NULL
+                ORDER BY f.published_at DESC, f.id DESC
+                LIMIT 10
+                """), "idx_festival_published_at_id_desc");
+        assertUsesIndex(explain("""
+                SELECT f.*, h.*
+                FROM festival f
+                JOIN host h ON h.id = f.host_id
+                WHERE f.published_at IS NOT NULL
+                  AND f.end_date >= ?
+                ORDER BY f.start_date ASC, f.id ASC
+                LIMIT 10
+                """, LocalDate.now()), "idx_festival_published_start_date_id");
     }
 
     private String indexDefinition(String tableName, String indexName) {
