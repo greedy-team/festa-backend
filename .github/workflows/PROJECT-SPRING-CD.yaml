@@ -265,6 +265,18 @@ jobs:
             "$RUNNER_TEMP/Caddyfile.next" \
             deploy/switch-back.sh \
             "$OCI_USER@$OCI_HOST:$OCI_DEPLOY_PATH/"
+          # 모니터링 설정은 파일이 아니라 디렉터리다. compose의 monitoring 프로파일이
+          # ./prometheus와 ./grafana를 bind mount하므로, 이것들이 없으면 서버에서 프로파일을
+          # 켜도 컨테이너가 뜨지 못한다.
+          # scp -r는 대상 디렉터리가 이미 있으면 그 안에 한 겹 더 만든다. tar로 보내면
+          # 덮어쓰기가 결정적이고 몇 번을 보내도 같은 결과다.
+          tar -cz -C deploy prometheus grafana \
+            | ssh \
+              -i "$RUNNER_TEMP/ssh/key" \
+              -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+              -p "$OCI_PORT" \
+              "$OCI_USER@$OCI_HOST" \
+              "tar -xz -C '$OCI_DEPLOY_PATH'"
 
       - name: 컨테이너 재기동
         env:

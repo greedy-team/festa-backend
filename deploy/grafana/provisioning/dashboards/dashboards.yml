@@ -1,0 +1,16 @@
+# deploy/grafana/dashboards/*.json 을 기동할 때 읽어 들인다 (DEC-0213).
+apiVersion: 1
+
+providers:
+  - name: festa
+    orgId: 1
+    folder: festa
+    type: file
+    # 파일에서 지우면 Grafana에서도 사라진다. 저장소가 원본이라는 뜻이다.
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    # UI 편집으로 원본을 덮어쓰지 못하게 한다. 실험은 사본을 떠서 한다.
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
