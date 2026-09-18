@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.greedy"
-version = "0.0.7"
+version = "0.0.9"
 
 java {
     toolchain {
@@ -43,6 +43,11 @@ dependencies {
     // OtlpMetricsExportAutoConfiguration이 OpenTelemetryProperties 클래스를 조건으로 요구한다.
     // starter를 쓰면 tracing·OkHttp·kotlin-stdlib까지 딸려 와 기동 비용이 는다 (DEC-0163 예산).
     implementation("org.springframework.boot:spring-boot-opentelemetry")
+
+    // A1의 Prometheus가 /actuator/prometheus를 직접 스크랩한다 (DEC-0211, DOC-0018 3단계).
+    // 위의 OTLP push와 공존한다 — Micrometer는 레지스트리를 동시에 여러 개 든다.
+    // 개발(E2)은 1GB라 스택이 안 들어가 계속 Cloud로만 보낸다.
+    implementation("io.micrometer:micrometer-registry-prometheus")
 
     // API 문서 자동 생성. Boot BOM이 관리하지 않는 의존성이라 버전을 직접 적는다.
     // 2.x는 Boot 3 전용이고, 3.1.0이 Boot 4.1.0을 대상으로 올라온 버전이다.

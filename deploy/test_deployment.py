@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import tarfile
 import tempfile
 import textwrap
 import unittest
@@ -475,9 +476,28 @@ ssh() { bash -c "${@: -1}"; }
                         ADMIN_JWT_SECRET='test-admin-secret', ADMIN_INITIAL_USERNAME='',
                         ADMIN_INITIAL_PASSWORD='',
                         API_DOMAINS='api.every-festa.com, dev-api.every-festa.com',
-                        PUBLIC_BASE_URL='https://api.every-festa.com')
+                        PUBLIC_BASE_URL='https://api.every-festa.com',
+                        PG_EXPORTER_DSN='', GRAFANA_ADMIN_PASSWORD='')
         self.env.update(overrides)
         return self.run_script(step_script('SSH와 실행 환경 준비'))
+
+    def test_monitoring_secrets_are_written_to_app_env(self):
+        # 서버에서 손으로 넣으면 이 스텝이 app.env를 새로 만들어 덮으므로 다음 배포에 사라진다.
+        result = self.run_prepare_step(PG_EXPORTER_DSN='postgresql://m:p@postgres:5432/festa',
+                                       GRAFANA_ADMIN_PASSWORD='s3cret')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        app_env = (self.path / 'app.env').read_text(encoding='utf-8')
+        self.assertIn("PG_EXPORTER_DSN='postgresql://m:p@postgres:5432/festa'", app_env)
+        self.assertIn("GRAFANA_ADMIN_PASSWORD='s3cret'", app_env)
+
+    def test_missing_monitoring_secrets_do_not_stop_the_deploy(self):
+        # compose가 둘 다 ${...:-} 로 선언한다(DEC-0185). 비면 해당 컨테이너만 못 뜨고
+        # 배포 전체는 계속돼야 한다 — 관측 비밀 하나로 앱 배포가 막히면 안 된다.
+        result = self.run_prepare_step()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        app_env = (self.path / 'app.env').read_text(encoding='utf-8')
+        self.assertIn("PG_EXPORTER_DSN=''", app_env)
+        self.assertIn("GRAFANA_ADMIN_PASSWORD=''", app_env)
 
     def test_api_domains_is_written_to_app_env(self):
         result = self.run_prepare_step()
@@ -563,6 +583,117 @@ scp() { printf 'scp %s\\n' "$*" >> "$OCI_DEPLOY_PATH/calls"; }
         self.assertEqual(len(to_deploy_path), 1, sent)
         self.assertIn('deploy/switch-back.sh', to_deploy_path[0])
         self.assertIn('cd /opt/festa && bash switch-back.sh', (ROOT / 'deploy/README.md').read_text(encoding='utf-8'))
+
+    def test_monitoring_config_directories_are_sent(self):
+        # compose의 monitoring 프로파일이 ./prometheus와 ./grafana를 bind mount한다.
+        # CD가 보내지 않으면 서버에서 프로파일을 켜도 컨테이너가 뜨지 못한다.
+        # scp는 파일만 보내므로 디렉터리는 tar로 간다 — 받는 쪽 ssh만 골라 stdin을 받는다.
+        helper = '''
+scp() { :; }
+ssh() {
+  case "$*" in
+    *"tar -xz"*) cat > "$OCI_DEPLOY_PATH/sent.tar.gz" ;;
+    *) : ;;
+  esac
+}
+'''
+        self.env.update(RUNNER_TEMP=self.path.as_posix(), OCI_PORT='22', OCI_USER='deploy', OCI_HOST='server')
+        result = self.run_script(helper + step_script('OCI 인스턴스로 설정 전송'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with tarfile.open(self.path / 'sent.tar.gz') as sent:
+            names = sent.getnames()
+        for expected in ('prometheus/prometheus.yml',
+                         'grafana/provisioning/datasources/prometheus.yml',
+                         'grafana/provisioning/dashboards/dashboards.yml'):
+            self.assertIn(expected, names)
+        self.assertTrue([n for n in names
+                         if n.startswith('grafana/dashboards/') and n.endswith('.json')], names)
+
+    def test_prometheus_rereads_the_config_after_it_is_sent(self):
+        # 파일만 보내면 Prometheus는 읽지 않는다 — 기동할 때 한 번 읽고 그 뒤로는 SIGHUP
+        # 때만 다시 읽는다. CD는 관측 스택을 재기동하지 않으므로(profiles: [monitoring])
+        # 여기서 읽히지 않으면 새 스크랩 대상이 영원히 반영되지 않는다. 배포는 성공하고
+        # 에러도 없이 화면만 조용히 빈다 — #207에서 잡힌 job 이름 불일치와 같은 종류다.
+        helper = '''
+scp() { :; }
+docker() {
+  printf '%s
+' "$*" >> "$OCI_DEPLOY_PATH/docker-calls"
+  case "$*" in
+    *'ps -q prometheus') printf '%s' "${PROM_CID:-}" ;;
+  esac
+}
+ssh() {
+  case "$*" in
+    *"tar -xz"*) cat > /dev/null ;;
+    *"docker compose"*) ( eval "${!#}" ) ;;
+    *) : ;;
+  esac
+}
+'''
+        self.env.update(RUNNER_TEMP=self.path.as_posix(), OCI_PORT='22', OCI_USER='deploy',
+                        OCI_HOST='server', PROM_CID='prom-123')
+        result = self.run_script(helper + step_script('OCI 인스턴스로 설정 전송'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = (self.path / 'docker-calls').read_text(encoding='utf-8')
+        self.assertIn('kill -s HUP prom-123', calls)
+
+    def test_prometheus_is_found_through_compose_not_by_service_label_alone(self):
+        # 서비스 이름만으로 좁히면 다른 compose 프로젝트의 prometheus가 걸린다.
+        # ISS-0154가 app에서 겪은 함정이고, 여기서 틀리면 남의 컨테이너에 신호를 보낸다.
+        helper = '''
+scp() { :; }
+docker() {
+  printf '%s
+' "$*" >> "$OCI_DEPLOY_PATH/docker-calls"
+  case "$*" in
+    *'ps -q prometheus') printf '%s' "${PROM_CID:-}" ;;
+  esac
+}
+ssh() {
+  case "$*" in
+    *"tar -xz"*) cat > /dev/null ;;
+    *"docker compose"*) ( eval "${!#}" ) ;;
+    *) : ;;
+  esac
+}
+'''
+        self.env.update(RUNNER_TEMP=self.path.as_posix(), OCI_PORT='22', OCI_USER='deploy',
+                        OCI_HOST='server', PROM_CID='prom-123')
+        self.run_script(helper + step_script('OCI 인스턴스로 설정 전송'))
+        calls = (self.path / 'docker-calls').read_text(encoding='utf-8')
+        self.assertIn('--profile monitoring ps -q prometheus', calls)
+        self.assertNotIn('ps -q -f label=', calls)
+        self.assertNotIn('ps -q --filter label=com.docker.compose.service=prometheus', calls)
+
+    def test_deploy_continues_when_the_monitoring_stack_is_not_running(self):
+        # 개발 E2에는 관측 스택이 없다(1GB라 안 들어간다). 없다고 배포가 멈추면 안 된다.
+        helper = '''
+scp() { :; }
+docker() {
+  printf '%s
+' "$*" >> "$OCI_DEPLOY_PATH/docker-calls"
+  case "$*" in
+    *'ps -q prometheus') printf '%s' "${PROM_CID:-}" ;;
+  esac
+}
+ssh() {
+  case "$*" in
+    *"tar -xz"*) cat > /dev/null ;;
+    *"docker compose"*) ( eval "${!#}" ) ;;
+    *) : ;;
+  esac
+}
+'''
+        self.env.update(RUNNER_TEMP=self.path.as_posix(), OCI_PORT='22', OCI_USER='deploy',
+                        OCI_HOST='server', PROM_CID='')
+        result = self.run_script(helper + step_script('OCI 인스턴스로 설정 전송'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # 리로드 자체가 없는 경우에도 이 테스트의 주장(배포가 멈추지 않는다)은 성립한다.
+        # 파일 부재로 에러를 내면 주장이 흐려지므로 없으면 빈 문자열로 본다.
+        log = self.path / 'docker-calls'
+        calls = log.read_text(encoding='utf-8') if log.exists() else ''
+        self.assertNotIn('kill -s HUP', calls)
 
     def test_caddyfile_is_sent_beside_the_live_one_not_over_it(self):
         # 제자리에 덮으면, 교체 스텝이 Caddy를 재생성하기 전에 멈춘 뒤 옛 Caddy가 재시작될 때

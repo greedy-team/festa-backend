@@ -98,7 +98,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        # prometheus는 Caddy가 404로 막는다 (DEC-0214, deploy/Caddyfile).
+        # Prometheus는 Caddy를 거치지 않고 compose 네트워크로 app-<색>:8080에 직접 닿는다.
+        include: health,prometheus
   endpoint:
     health:
       show-details: never

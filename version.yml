@@ -35,13 +35,13 @@
 # - 버전은 항상 높은 버전으로 자동 동기화됩니다
 # ===================================================================
 
-version: "0.0.7"
-version_code: 7 # app build number
+version: "0.0.9"
+version_code: 9 # app build number
 project_types: ["spring"]   # 멀티타입 배열 — 첫 항목이 primary, 직접 편집 가능
 project_paths:                # 타입별 프로젝트 폴더 (레포 루트 기준 상대경로)
   spring: "."   # build.gradle
 metadata:
-  last_updated: "2026-09-17 02:31:58"
+  last_updated: "2026-09-18 12:37:47"
   last_updated_by: "htdufhc-bit"
   default_branch: "main"
   deploy_branch: "develop"

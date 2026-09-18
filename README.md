@@ -154,15 +154,18 @@
 
 ###  Repository
 
-**Frontend**  
+**Frontend**<br>
 https://github.com/greedy-team/festa-frontend
 
-**Backend**  
+**Backend**<br>
 https://github.com/greedy-team/festa-backend
 
 <br>
 
 ---
+
+<!-- AUTO-VERSION-SECTION: DO NOT EDIT MANUALLY -->
+## 최신 버전 : v0.0.9 (2026-09-18)
 
 <div align="center">
 

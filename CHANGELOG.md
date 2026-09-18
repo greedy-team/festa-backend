@@ -1,7 +1,64 @@
 # Changelog
 
-**현재 버전:** 0.0.7  
-**마지막 업데이트:** 2026-09-17T02:31:58Z  
+**현재 버전:** 0.0.9  
+**마지막 업데이트:** 2026-09-18T12:37:47Z  
+
+---
+
+## [0.0.9] - 2026-09-18
+
+**PR:** #217  
+
+**기타**
+- Merge pull request from greedy-team/chore_215_앱_메트릭을_a1_prometheus가_직접_스크랩하게_한다
+- chore : 배포가 Prometheus에 설정을 다시 읽힌다
+- chore : 패널 제목에서 설명을 빼고 description으로 옮긴다
+- chore : 커뮤니티 대시보드의 N/A를 고치고 보이는 제목을 한국어로 바꾼다
+- chore : Prometheus가 두 색을 스크랩하고 부하 테스트 대시보드를 둔다
+- chore : 앱에 /actuator/prometheus를 노출한다
+
+---
+
+## [0.0.8] - 2026-09-18
+
+**PR:** #213  
+
+**버그 수정**
+- harden performance fixture validation
+
+**개선**
+- 공개 축제 검색 host join을 제거한다
+
+**문서**
+- k6 공개 API 부하 테스트 완료 리포트
+- 공개 Festival 검색 Host JOIN 제거 완료 리포트
+
+**기타**
+- Merge pull request from greedy-team/chore_211_관측_스택_비밀을_cd가_app_env에_쓰게_한다
+- chore : 관측 스택 비밀을 CD가 app.env에 쓰게 한다
+- Merge pull request from greedy-team/chore_209_caddy에서_actuator_prometheus를_404로_차단한다
+- Merge pull request from greedy-team/chore_205_a1에_prometheus_grafana_exporter_스택을_올린다_1단계_앱_제외
+- chore : 모니터링 설정을 CD가 전송하고 job 이름 계약을 고정
+- chore : PostgreSQL 대시보드 추가 (12485, 프로비저닝용으로 가공)
+- chore : Caddyfile 테스트를 컨테이너 안에서 끝내도록 슬림화
+- chore : Caddyfile 테스트가 사이트 매칭 실패를 통과로 보지 않게 고침
+- chore : Caddy에서 /actuator/prometheus를 404로 차단
+- chore : A1에 Prometheus·Grafana·exporter 스택 추가 (1단계, 앱 제외)
+- Merge pull request from greedy-team/feat_192_154_규모_fixture의_공개_api_before_after_부하_측정을_수행한다
+- feat : 공개 API AFTER 부하 측정 검증 보강
+- feat : 규모 fixture 공개 API 전후 부하 측정 도구 보강
+- Merge pull request from greedy-team/docs_188_k6_public_api_load_test_final_report
+- Merge pull request from greedy-team/docs_183_public_festival_host_join_final_report
+- Merge pull request from greedy-team/feat_188_공개_api_부하_테스트
+- Merge pull request from greedy-team/feat_183_공개_festival_검색_불필요_host_join_제거
+- 공개 축제 조회 회귀 검증을 보강한다
+- 공개 축제 목록 검증 책임을 분리한다
+- 공개 축제 목록 조회 검증을 보강한다
+- fix : 공개 API 부하 테스트 최신 리뷰를 반영한다
+- fix : 공개 API 부하 테스트 실행 경로를 보완한다
+- fix : 공개 API 부하 테스트 리뷰를 반영한다
+- feat : k6 기반 공개 API 부하 테스트 도구 추가
+- Merge remote-tracking branch 'origin/develop' into feat_183_공개_festival_검색_불필요_host_join_제거
 
 ---
 

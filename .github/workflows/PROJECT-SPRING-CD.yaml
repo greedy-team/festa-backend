@@ -122,6 +122,10 @@ jobs:
           ADMIN_INITIAL_USERNAME: ${{ secrets.ADMIN_INITIAL_USERNAME }}
           ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
           GRAFANA_OTLP_AUTH: ${{ secrets.GRAFANA_OTLP_AUTH }}
+          # 관측 스택(monitoring 프로파일)이 쓰는 값이다. 서버에서 손으로 넣으면 이 스텝이
+          # app.env를 새로 만들어 덮어쓰므로 다음 배포에 사라진다 — 여기서 실어 보낸다.
+          PG_EXPORTER_DSN: ${{ secrets.PG_EXPORTER_DSN }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           API_DOMAINS: ${{ vars.API_DOMAINS }}
           PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
         run: |
@@ -221,6 +225,10 @@ jobs:
             write_env GRAFANA_OTLP_AUTH "$GRAFANA_OTLP_AUTH"
             write_env ADMIN_INITIAL_USERNAME "$ADMIN_INITIAL_USERNAME"
             write_env ADMIN_INITIAL_PASSWORD "$ADMIN_INITIAL_PASSWORD"
+            # compose가 둘 다 ${...:-} 로 선언해 값이 없어도 배포는 죽지 않는다(DEC-0185).
+            # 비면 postgres-exporter가 못 뜨고 Grafana는 admin/admin으로 뜬다.
+            write_env PG_EXPORTER_DSN "$PG_EXPORTER_DSN"
+            write_env GRAFANA_ADMIN_PASSWORD "$GRAFANA_ADMIN_PASSWORD"
             write_env API_DOMAINS "$API_DOMAINS"
           } > "$RUNNER_TEMP/app.env"
 
@@ -265,6 +273,42 @@ jobs:
             "$RUNNER_TEMP/Caddyfile.next" \
             deploy/switch-back.sh \
             "$OCI_USER@$OCI_HOST:$OCI_DEPLOY_PATH/"
+          # 모니터링 설정은 파일이 아니라 디렉터리다. compose의 monitoring 프로파일이
+          # ./prometheus와 ./grafana를 bind mount하므로, 이것들이 없으면 서버에서 프로파일을
+          # 켜도 컨테이너가 뜨지 못한다.
+          # scp -r는 대상 디렉터리가 이미 있으면 그 안에 한 겹 더 만든다. tar로 보내면
+          # 덮어쓰기가 결정적이고 몇 번을 보내도 같은 결과다.
+          tar -cz -C deploy prometheus grafana \
+            | ssh \
+              -i "$RUNNER_TEMP/ssh/key" \
+              -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+              -p "$OCI_PORT" \
+              "$OCI_USER@$OCI_HOST" \
+              "tar -xz -C '$OCI_DEPLOY_PATH'"
+          # 파일을 보내는 것만으로는 Prometheus가 그것을 읽지 않는다. 기동할 때 한 번 읽고
+          # 그 뒤로는 SIGHUP이나 /-/reload 때만 다시 읽는다. CD는 관측 스택을 재기동하지
+          # 않으므로(profiles: [monitoring]) 여기서 읽히지 않으면 새 스크랩 대상이 영원히
+          # 반영되지 않는다 — 배포는 성공하고 에러도 없이 화면만 조용히 빈다.
+          # 설정이 틀리면 Prometheus는 옛 설정을 그대로 유지한다(caddy reload와 같은 안전망).
+          # 관측 스택이 없는 환경(개발 E2)에서는 건너뛴다. 실패해도 배포를 멈추지 않는다.
+          ssh \
+            -i "$RUNNER_TEMP/ssh/key" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts" \
+            -p "$OCI_PORT" \
+            "$OCI_USER@$OCI_HOST" \
+            'cd "'"$OCI_DEPLOY_PATH"'" || exit 0
+             # 서비스 이름만으로 좁히면 다른 compose 프로젝트의 prometheus가 걸린다
+             # (ISS-0154가 app에서 겪은 함정이다). 배포 디렉터리에서 compose에게 물으면
+             # 프로젝트가 저절로 좁혀진다. APP_IMAGE는 compose.yaml의 :? 때문에 필요할
+             # 뿐이고 관측 서비스는 쓰지 않는다.
+             cid="$(APP_IMAGE=unused docker compose --env-file app.env --profile monitoring ps -q prometheus 2>/dev/null)"
+             if [ -z "$cid" ]; then
+               echo "prometheus가 떠 있지 않아 설정 반영을 건너뜁니다."
+             elif docker kill -s HUP "$cid" >/dev/null; then
+               echo "prometheus에 SIGHUP을 보냈습니다. 새 스크랩 설정이 반영됩니다."
+             else
+               echo "::warning::prometheus 설정 반영에 실패했습니다. A1에서 직접 SIGHUP을 보내세요."
+             fi' || echo "::warning::prometheus 설정 반영 단계를 건너뛰었습니다."
 
       - name: 컨테이너 재기동
         env:
