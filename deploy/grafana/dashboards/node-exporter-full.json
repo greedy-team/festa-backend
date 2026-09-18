@@ -1451,7 +1451,7 @@
         "type": "prometheus",
         "uid": "${ds_prometheus}"
       },
-      "description": "Per-interface network traffic (receive and transmit) in bits per second",
+      "description": "Per-interface network traffic (receive and transmit) in bits per second\n\n주의: node-exporter가 compose 네트워크 안에 있어 이 값은 컨테이너 인터페이스 통계다. 호스트 실트래픽이 아니다. CPU·메모리·디스크는 procfs를 직접 읽어 호스트 값이 정확하다.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1558,7 +1558,7 @@
           "step": 240
         }
       ],
-      "title": "네트워크 트래픽 (⚠ 컨테이너 수치)",
+      "title": "네트워크 트래픽",
       "type": "timeseries"
     },
     {
@@ -2441,7 +2441,7 @@
               "step": 240
             }
           ],
-          "title": "네트워크 — 트래픽 (⚠ 컨테이너 수치, 호스트 아님)",
+          "title": "네트워크 — 트래픽",
           "type": "timeseries"
         },
         {
@@ -6828,7 +6828,7 @@
           "type": "timeseries"
         }
       ],
-      "title": "시스템 — 프로세스 (기본 비활성 컬렉터라 빈다)",
+      "title": "시스템 — 프로세스",
       "type": "row"
     },
     {
@@ -8123,7 +8123,7 @@
           "type": "timeseries"
         }
       ],
-      "title": "하드웨어 — 기타 (VM이라 센서가 없어 빈다)",
+      "title": "하드웨어 — 기타",
       "type": "row"
     },
     {
@@ -8648,7 +8648,7 @@
           "type": "timeseries"
         }
       ],
-      "title": "systemd (컨테이너라 수집 안 됨 — 빈다)",
+      "title": "systemd",
       "type": "row"
     },
     {
@@ -11864,7 +11864,7 @@
           "type": "bargauge"
         }
       ],
-      "title": "네트워크 — 트래픽 (⚠ 컨테이너 수치, 호스트 아님)",
+      "title": "네트워크 — 트래픽",
       "type": "row"
     },
     {

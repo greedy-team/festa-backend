@@ -526,7 +526,7 @@
       ],
       "datasource": null,
       "decimals": 1,
-      "description": "Source: pg_postmaster_start_time()",
+      "description": "Source: pg_postmaster_start_time()\n\n지금은 빈다. pg_postmaster_start_time_seconds를 내는 postmaster 컬렉터가 기본 비활성이다(활성 15개 목록에 없음). postgres_exporter에 플래그를 줘야 채워진다.",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -594,7 +594,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "PostgreSQL 가동 시간 (postmaster 컬렉터 필요 — 지금은 빈다)",
+      "title": "PostgreSQL 가동 시간",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -707,7 +707,7 @@
         "#d44a3a"
       ],
       "datasource": null,
-      "description": "Statements executed per Minute.\n\nSource: pg_stat_statements.calls",
+      "description": "Statements executed per Minute.\n\nSource: pg_stat_statements.calls\n\n지금은 빈다. pg_stat_statements 확장이 설치돼 있지 않다. shared_preload_libraries 수정과 PostgreSQL 재시작이 필요하다.",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -776,7 +776,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "초당 쿼리 (pg_stat_statements 필요 — 지금은 빈다)",
+      "title": "초당 쿼리",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -888,7 +888,7 @@
         "#d44a3a"
       ],
       "datasource": null,
-      "description": "Source: pg_stat_statements.total_time / pg_stat_statements.calls",
+      "description": "Source: pg_stat_statements.total_time / pg_stat_statements.calls\n\n지금은 빈다. pg_stat_statements 확장이 설치돼 있지 않다. shared_preload_libraries 수정과 PostgreSQL 재시작이 필요하다.",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -957,7 +957,7 @@
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "평균 쿼리 실행 시간 (pg_stat_statements 필요 — 지금은 빈다)",
+      "title": "평균 쿼리 실행 시간",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
