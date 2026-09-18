@@ -25,17 +25,35 @@ It targets public read APIs only:
 
 ### A1 production controlled run
 
-A1 production is limited to the existing read-only `mixed` scenario at the `baseline` stage, exactly one manually started run at a time. The permitted rates are **1, 3, 5, and 10 RPS**, duration must be supplied explicitly and may not exceed **3 minutes**, and configured VUs may not exceed 10. There is no command that advances to the next rate automatically.
+A1 production is limited to a separately validated A1 target manifest and the existing read-only `mixed` scenario at the `baseline` stage, exactly one manually started run at a time. The permitted rates are **1, 3, 5, and 10 RPS**, duration must be supplied explicitly and may not exceed **3 minutes**, and configured VUs may not exceed 10. There is no command that advances to the next rate automatically.
+
+### Mandatory A1 target validation
+
+Do **not** use `FIXTURE=performance` on A1. Its IDs, pages, and search corpus describe the local Issue #154 synthetic fixture, not A1 data. A team member who can inspect Grafana and server state must copy `a1-manifest.example.json` to the ignored `a1-manifest.json` and enter only targets confirmed to be valid on A1. No production values are tracked in this repository.
+
+Before every A1 mixed run, validate every A1 manifest detail ID, list page, and search query/type. This profile requires the same `A1_READ_ONLY_LOAD_TEST` approval as mixed load, exactly one VU and one iteration, disallows a configured rate, duration, or VU override, and spaces requests by one second. It is validation only, not a load test.
+
+```powershell
+.\run.ps1 -Runner docker -BaseUrl 'https://api.every-festa.com' -A1ProductionLoadApproval A1_READ_ONLY_LOAD_TEST `
+  -Stage a1-manifest -Scenario fixture-manifest -Fixture a1 -A1ManifestFile .\a1-manifest.json `
+  -EnvironmentName a1-grafana
+```
+
+The command succeeds only when every target returns HTTP 200 and a normal non-empty result. Save the resulting `results\<run-id>\run-metadata.json`. A1 `mixed` refuses to start unless `-A1ManifestValidationResult` points to successful validation metadata for the identical URL and manifest SHA-256. If validation fails, changes, or cannot be observed safely, **do not run A1 mixed load**; correct or replace the A1-only manifest and validate again. `dev-api.every-festa.com` remains blocked even with this approval.
 
 Use `-BaseUrl` explicitly (an inherited `BASE_URL` is not accepted for A1), then inspect Grafana and the completed summary before a person chooses the next command:
 
 ```powershell
 .\run.ps1 -Runner docker -BaseUrl 'https://api.every-festa.com' -A1ProductionLoadApproval A1_READ_ONLY_LOAD_TEST `
-  -Stage baseline -Scenario mixed -Fixture performance -EnvironmentName a1-grafana -Rate 1 -Duration 3m `
+  -Stage baseline -Scenario mixed -Fixture a1 -A1ManifestFile .\a1-manifest.json `
+  -A1ManifestValidationResult .\results\<validated-run-id>\run-metadata.json `
+  -EnvironmentName a1-grafana -Rate 1 -Duration 3m `
   -PreAllocatedVUs 2 -MaxVUs 10
 ```
 
 Repeat the command separately with `-Rate 3`, then `5`, then `10` only after the prior run has ended and the team has reviewed Grafana. The run metadata and k6 summary record `targetEnvironment: a1-production` and `productionOptIn: true`; the approval token itself is not recorded.
+
+For A1 mixed only, `http_req_failed: rate<0.01` has `abortOnFail: true` with `delayAbortEval: 120s`. At the lowest permitted rate (1 RPS), this gives roughly 120 observations: one transient failure remains under 1%, while sustained failures trigger an automatic k6 abort instead of continuing to the duration limit. Local smoke/performance profiles retain their existing result-only thresholds.
 
 The local stack below is for smoke/contract validation only. It is not a TPS result, because its Docker Desktop hardware, direct-app route, and minimal data are different from the final environment.
 
@@ -52,6 +70,8 @@ The local stack below is for smoke/contract validation only. It is not a TPS res
 | Lineup | 300,000 |
 
 Its manifest rotates published Festival IDs `1/5001/10001/15001`, Artist IDs `1/10000/20000/30000`, Host IDs `1/7/100/200`, and list pages `0/1/100/500`. This avoids a fixed detail-ID or page-0 cache bias. Override a value with `FESTIVAL_ID`, `ARTIST_ID`, `HOST_ID`, `FESTIVAL_PAGE`, or `ARTIST_PAGE` only for an explicitly fixed comparison condition.
+
+`FIXTURE=a1` is intentionally separate: it loads the untracked A1 manifest through the wrapper and is accepted only for the A1 validation/mixed profiles above. This prevents a local synthetic fixture ID or search string from silently becoming an A1 request target.
 
 `FIXTURE=smoke` uses the isolated local seed and IDs `900001`. The local seed includes the same canonical search strings as the performance fixture but is deliberately tiny.
 

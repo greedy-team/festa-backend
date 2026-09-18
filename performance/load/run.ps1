@@ -1,11 +1,11 @@
 [CmdletBinding()]
 param(
     [string]$BaseUrl = $env:BASE_URL,
-    [ValidateSet('smoke', 'baseline', 'normal', 'stress', 'saturation')]
+    [ValidateSet('smoke', 'baseline', 'normal', 'stress', 'saturation', 'a1-manifest')]
     [string]$Stage = 'smoke',
     [ValidateSet('mixed', 'upcoming', 'recent', 'festivals', 'festival-detail', 'artists', 'artist-detail', 'search', 'host-detail', 'fixture-manifest')]
     [string]$Scenario = 'mixed',
-    [ValidateSet('performance', 'smoke')]
+    [ValidateSet('performance', 'smoke', 'a1')]
     [string]$Fixture = 'performance',
     [ValidateSet('native', 'docker')]
     [string]$Runner = 'native',
@@ -14,6 +14,8 @@ param(
     [string]$EnvironmentName = 'local',
     [ValidateSet('', 'A1_READ_ONLY_LOAD_TEST')]
     [string]$A1ProductionLoadApproval = '',
+    [string]$A1ManifestFile = '',
+    [string]$A1ManifestValidationResult = '',
     [switch]$ValidateOnly,
     [int]$Rate = 0,
     [string]$Duration = '',
@@ -42,6 +44,8 @@ if (-not $uri.IsAbsoluteUri) {
 }
 $normalizedHost = $uri.Host.TrimEnd('.').ToLowerInvariant()
 $isA1Production = $normalizedHost -eq 'api.every-festa.com'
+$a1ManifestPath = ''
+$a1ManifestSha256 = ''
 if ($normalizedHost -eq 'dev-api.every-festa.com') {
     throw 'Refusing to load test the shared development server.'
 }
@@ -52,21 +56,54 @@ if ($isA1Production) {
     if ($A1ProductionLoadApproval -ne 'A1_READ_ONLY_LOAD_TEST') {
         throw 'Refusing to load test production without A1_READ_ONLY_LOAD_TEST approval.'
     }
-    if ($Scenario -ne 'mixed' -or $Stage -ne 'baseline') {
-        throw 'A1 production load tests allow only the mixed scenario at the baseline stage.'
+    if ($Fixture -ne 'a1' -or -not $A1ManifestFile) {
+        throw 'A1 production runs require -Fixture a1 and an explicit -A1ManifestFile.'
     }
-    if ($Rate -notin @(1, 3, 5, 10)) {
-        throw 'A1 production load rate must be one of 1, 3, 5, 10 RPS.'
+    $manifestPath = Resolve-Path -LiteralPath $A1ManifestFile -ErrorAction Stop
+    try {
+        $a1Manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
+    } catch {
+        throw "A1 manifest must be valid JSON: $($_.Exception.Message)"
     }
-    if ($Duration -notmatch '^(\d+)([sm])$' -or [int]$Matches[1] -le 0) {
-        throw 'A1 production load duration must use a positive whole-second or whole-minute value.'
+    foreach ($property in @('festivalDetailIds', 'artistDetailIds', 'hostDetailIds', 'festivalPages', 'artistPages', 'searchCorpus')) {
+        if ($null -eq $a1Manifest.$property -or @($a1Manifest.$property).Count -eq 0) {
+            throw "A1 manifest '$property' must be a non-empty array."
+        }
     }
-    $durationSeconds = [int]$Matches[1] * $(if ($Matches[2] -eq 'm') { 60 } else { 1 })
-    if ($durationSeconds -gt 180) {
-        throw 'A1 production load duration must not exceed 180 seconds.'
+    if (@($a1Manifest.searchCorpus | Where-Object { -not $_.bucket -or -not $_.query -or -not $_.type }).Count -gt 0) {
+        throw 'Each A1 manifest searchCorpus entry requires bucket, query, and type.'
     }
-    if ($PreAllocatedVUs -gt 10 -or $MaxVUs -gt 10) {
-        throw 'A1 production load tests must not configure more than 10 VUs.'
+    $a1ManifestPath = $manifestPath.Path
+    $a1ManifestSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $manifestPath).Hash.ToLowerInvariant()
+    if ($Scenario -eq 'fixture-manifest') {
+        if ($Stage -ne 'a1-manifest' -or $Rate -ne 0 -or $Duration -or $PreAllocatedVUs -ne 0 -or $MaxVUs -ne 0) {
+            throw 'A1 manifest validation is fixed to the a1-manifest stage, one VU, one iteration, and no configurable rate or duration.'
+        }
+    } elseif ($Scenario -eq 'mixed' -and $Stage -eq 'baseline') {
+        if ($Rate -notin @(1, 3, 5, 10)) {
+            throw 'A1 production load rate must be one of 1, 3, 5, 10 RPS.'
+        }
+        if ($Duration -notmatch '^(\d+)([sm])$' -or [int]$Matches[1] -le 0) {
+            throw 'A1 production load duration must use a positive whole-second or whole-minute value.'
+        }
+        $durationSeconds = [int]$Matches[1] * $(if ($Matches[2] -eq 'm') { 60 } else { 1 })
+        if ($durationSeconds -gt 180) {
+            throw 'A1 production load duration must not exceed 180 seconds.'
+        }
+        if ($PreAllocatedVUs -gt 10 -or $MaxVUs -gt 10) {
+            throw 'A1 production load tests must not configure more than 10 VUs.'
+        }
+        if (-not $A1ManifestValidationResult) {
+            throw 'A1 mixed load requires -A1ManifestValidationResult from a successful A1 manifest validation.'
+        }
+        $validation = Get-Content -Raw -LiteralPath (Resolve-Path -LiteralPath $A1ManifestValidationResult -ErrorAction Stop) | ConvertFrom-Json
+        if ($validation.exitCode -ne 0 -or $validation.baseUrl.TrimEnd('/') -ne $BaseUrl.TrimEnd('/') -or
+            $validation.stage -ne 'a1-manifest' -or $validation.scenario -ne 'fixture-manifest' -or
+            $validation.fixture -ne 'a1' -or $validation.manifestSha256 -ne $a1ManifestSha256) {
+            throw 'A1 mixed load requires a successful matching A1 manifest validation result.'
+        }
+    } else {
+        throw 'A1 production runs allow only fixture-manifest/a1-manifest validation or mixed/baseline load.'
     }
 }
 if ($ValidateOnly) {
@@ -92,6 +129,7 @@ $metadata = [ordered]@{
     environment = $EnvironmentName
     targetEnvironment = if ($isA1Production) { 'a1-production' } else { $EnvironmentName }
     productionOptIn = $isA1Production
+    manifestSha256 = if ($isA1Production) { $a1ManifestSha256 } else { $null }
     gitSha = $gitSha
     imageSha = if ($ImageSha) { $ImageSha } else { $null }
     runner = $Runner
@@ -107,7 +145,11 @@ $environmentArguments = @(
     '-e', "GIT_SHA=$gitSha"
 )
 if ($isA1Production) {
-    $environmentArguments += @('-e', "A1_PRODUCTION_LOAD_APPROVAL=$A1ProductionLoadApproval")
+    $a1ManifestFileForK6 = if ($Runner -eq 'docker') { '/a1-manifest.json' } else { $a1ManifestPath }
+    $environmentArguments += @('-e', "A1_PRODUCTION_LOAD_APPROVAL=$A1ProductionLoadApproval", '-e', "A1_MANIFEST_FILE=$a1ManifestFileForK6")
+    if ($Scenario -eq 'mixed') {
+        $environmentArguments += @('-e', 'A1_MANIFEST_VALIDATION_RECEIPT=validated')
+    }
 }
 if ($ImageSha) {
     $environmentArguments += @('-e', "IMAGE_SHA=$ImageSha")
@@ -151,7 +193,8 @@ if ($Runner -eq 'native') {
     if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
         throw 'The Docker k6 user cannot write the result directory. Fix its ownership/permissions before running the load test.'
     }
-    & docker run --rm -i --add-host host.docker.internal:host-gateway -v "${loadRoot}:/scripts" -w /scripts @environmentArguments grafana/k6:0.54.0 run /scripts/scenario.js
+    $a1ManifestVolume = if ($isA1Production) { @('-v', "${a1ManifestPath}:/a1-manifest.json:ro") } else { @() }
+    & docker run --rm -i --add-host host.docker.internal:host-gateway -v "${loadRoot}:/scripts" @a1ManifestVolume -w /scripts @environmentArguments grafana/k6:0.54.0 run /scripts/scenario.js
 }
 
 $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }

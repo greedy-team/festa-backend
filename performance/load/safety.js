@@ -1,6 +1,8 @@
 export const A1_PRODUCTION_LOAD_APPROVAL = 'A1_READ_ONLY_LOAD_TEST';
 export const A1_ALLOWED_RATES = [1, 3, 5, 10];
 export const A1_MAX_DURATION_SECONDS = 180;
+export const A1_MANIFEST_STAGE = 'a1-manifest';
+export const A1_HTTP_FAILURE_ABORT_DELAY = '120s';
 
 function normalizedHost(url) {
   const authority = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]+)/i.exec(url)?.[1];
@@ -46,9 +48,18 @@ function durationSeconds(value) {
   return Number(match[1]) * (match[2] === 'm' ? 60 : 1);
 }
 
-export function assertA1ProductionProfile({ scenario, stage, rate, duration, preAllocatedVUs, maxVUs }) {
-  if (scenario !== 'mixed') {
-    throw new Error('A1 production load tests allow only the mixed read-only scenario.');
+export function assertA1ProductionProfile({ scenario, stage, fixture, rate, duration, preAllocatedVUs, maxVUs }) {
+  if (scenario === 'fixture-manifest') {
+    if (stage !== A1_MANIFEST_STAGE || fixture !== 'a1') {
+      throw new Error('A1 manifest validation requires the a1-manifest stage and the A1-only manifest.');
+    }
+    if (rate || duration || preAllocatedVUs > 1 || maxVUs > 1) {
+      throw new Error('A1 manifest validation is fixed at one VU with no configurable rate or duration.');
+    }
+    return;
+  }
+  if (scenario !== 'mixed' || fixture !== 'a1') {
+    throw new Error('A1 production load tests allow only mixed with the separately validated A1 manifest.');
   }
   if (stage !== 'baseline') {
     throw new Error('A1 production load tests must use the baseline stage.');
@@ -61,5 +72,15 @@ export function assertA1ProductionProfile({ scenario, stage, rate, duration, pre
   }
   if (preAllocatedVUs > 10 || maxVUs > 10) {
     throw new Error('A1 production load tests must not configure more than 10 VUs.');
+  }
+}
+
+export function a1HttpFailureAbortThreshold() {
+  return { threshold: 'rate<0.01', abortOnFail: true, delayAbortEval: A1_HTTP_FAILURE_ABORT_DELAY };
+}
+
+export function assertA1ManifestValidationReceipt(value, baseUrl) {
+  if (value !== 'validated') {
+    throw new Error('A1 mixed load requires a successful matching A1 manifest validation receipt.');
   }
 }

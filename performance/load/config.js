@@ -63,6 +63,42 @@ export const SEARCH_CORPUS = [
   { bucket: 'english', query: 'spring', type: 'FESTIVAL' },
 ];
 
+function requiredNonEmptyArray(manifest, name) {
+  if (!Array.isArray(manifest[name]) || manifest[name].length === 0) {
+    fail(`A1 manifest '${name}' must be a non-empty array.`);
+  }
+  return manifest[name];
+}
+
+function a1Fixture() {
+  if (!__ENV.A1_MANIFEST_FILE) {
+    fail('A1_MANIFEST_FILE is required when FIXTURE=a1. Run through run.ps1 with -A1ManifestFile.');
+  }
+  let manifest;
+  try {
+    manifest = JSON.parse(open(__ENV.A1_MANIFEST_FILE));
+  } catch (_) {
+    fail('A1_MANIFEST_FILE must contain valid JSON.');
+  }
+  const normalized = {
+    festivalDetailIds: requiredNonEmptyArray(manifest, 'festivalDetailIds'),
+    artistDetailIds: requiredNonEmptyArray(manifest, 'artistDetailIds'),
+    hostDetailIds: requiredNonEmptyArray(manifest, 'hostDetailIds'),
+    festivalPages: requiredNonEmptyArray(manifest, 'festivalPages'),
+    artistPages: requiredNonEmptyArray(manifest, 'artistPages'),
+  };
+  const searchCorpus = requiredNonEmptyArray(manifest, 'searchCorpus');
+  if (!searchCorpus.every((entry) => entry && entry.bucket && entry.query && entry.type)) {
+    fail('Every A1 manifest searchCorpus entry requires bucket, query, and type.');
+  }
+  return {
+    name: 'a1',
+    description: 'Team-maintained A1 production targets; never use the local performance fixture values.',
+    manifest: normalized,
+    searchCorpus,
+  };
+}
+
 export const responseCheckFailures = new Counter('response_check_failures');
 
 export function assertSafeTarget(url) {
@@ -87,17 +123,20 @@ export { targetEnvironment };
 
 export function selectedFixture() {
   const name = __ENV.FIXTURE || 'performance';
+  if (name === 'a1') {
+    return a1Fixture();
+  }
   const fixture = FIXTURES[name];
   if (!fixture) {
     fail(`Unknown FIXTURE '${name}'. Use one of: ${Object.keys(FIXTURES).join(', ')}`);
   }
-  return { name, ...fixture };
+  return { name, ...fixture, searchCorpus: SEARCH_CORPUS };
 }
 
-export function searchCase(iteration) {
+export function searchCase(iteration, corpus = SEARCH_CORPUS) {
   const requestedBucket = __ENV.SEARCH_BUCKET;
   const requestedType = __ENV.SEARCH_TYPE;
-  const candidates = SEARCH_CORPUS.filter((entry) =>
+  const candidates = corpus.filter((entry) =>
     (!requestedBucket || entry.bucket === requestedBucket)
     && (!requestedType || entry.type === requestedType));
 

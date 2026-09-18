@@ -1,9 +1,8 @@
 import exec from 'k6/execution';
-import { check, fail } from 'k6';
+import { check, fail, sleep } from 'k6';
 import http from 'k6/http';
 import {
   ENDPOINTS,
-  SEARCH_CORPUS,
   apiUrl,
   fixtureValue,
   getJson,
@@ -11,11 +10,18 @@ import {
   searchCase,
   selectedFixture,
 } from './config.js';
-import { assertA1ProductionProfile, isA1ProductionTarget } from './safety.js';
+import {
+  A1_MANIFEST_STAGE,
+  a1HttpFailureAbortThreshold,
+  assertA1ManifestValidationReceipt,
+  assertA1ProductionProfile,
+  isA1ProductionTarget,
+} from './safety.js';
 export { handleSummary } from './handle-summary.js';
 
 const baseUrl = requiredEnv('BASE_URL');
 const fixture = selectedFixture();
+const searchCorpus = fixture.searchCorpus;
 const scenarioName = __ENV.SCENARIO || 'mixed';
 const stage = __ENV.STAGE || __ENV.PROFILE || 'smoke';
 
@@ -34,7 +40,7 @@ const taggedMetricThresholds = Object.fromEntries([
     [`http_req_failed{endpoint:${endpoint}}`, ['rate<0.01']],
     [`response_check_failures{endpoint:${endpoint}}`, ['count>=0']],
   ]),
-  ...SEARCH_CORPUS.flatMap(({ bucket, type }) => {
+  ...searchCorpus.flatMap(({ bucket, type }) => {
     const tags = `endpoint:search,search_bucket:${bucket},search_type:${type}`;
     return [
       [`http_reqs{${tags}}`, ['count>=0']],
@@ -44,7 +50,7 @@ const taggedMetricThresholds = Object.fromEntries([
   }),
 ]);
 
-if (!stageDefaults[stage]) {
+if (!stageDefaults[stage] && stage !== A1_MANIFEST_STAGE) {
   fail(`Unknown STAGE '${stage}'. Use smoke, baseline, normal, stress, or saturation.`);
 }
 
@@ -75,11 +81,28 @@ if (isA1ProductionTarget(baseUrl)) {
   assertA1ProductionProfile({
     scenario: scenarioName,
     stage,
+    fixture: fixture.name,
     rate: Number(__ENV.RATE),
     duration: __ENV.DURATION,
     preAllocatedVUs: Number(__ENV.PRE_ALLOCATED_VUS || configured.preAllocatedVUs),
     maxVUs: Number(__ENV.MAX_VUS || configured.maxVUs),
   });
+  if (scenarioName === 'mixed') {
+    assertA1ManifestValidationReceipt(__ENV.A1_MANIFEST_VALIDATION_RECEIPT, baseUrl);
+  }
+}
+
+const thresholds = {
+  http_req_failed: ['rate<0.01'],
+  checks: ['rate>0.99'],
+  http_req_duration: ['p(99)<10000'],
+  ...taggedMetricThresholds,
+};
+
+if (isA1ProductionTarget(baseUrl) && scenarioName === 'mixed') {
+  // At the permitted 1 RPS floor, 120 seconds produces enough observations
+  // that one transient failure remains below 1%, while sustained failures abort.
+  thresholds.http_req_failed = [a1HttpFailureAbortThreshold()];
 }
 
 export const options = {
@@ -87,12 +110,7 @@ export const options = {
   discardResponseBodies: scenarioName !== 'fixture-manifest',
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'count', 'p(90)', 'p(95)', 'p(99)'],
   // These are safety/contract guards, not a final TPS acceptance criterion.
-  thresholds: {
-    http_req_failed: ['rate<0.01'],
-    checks: ['rate>0.99'],
-    http_req_duration: ['p(99)<10000'],
-    ...taggedMetricThresholds,
-  },
+  thresholds,
 };
 
 function currentIteration() {
@@ -133,7 +151,7 @@ function artistDetail(iteration = currentIteration()) {
 }
 
 function search(searchRequestOrdinal = currentIteration()) {
-  const item = searchCase(searchRequestOrdinal);
+  const item = searchCase(searchRequestOrdinal, searchCorpus);
   getJson(apiUrl(baseUrl, '/api/search', { q: item.query, type: item.type }), ENDPOINTS.search, {
     search_bucket: item.bucket,
     search_type: item.type,
@@ -159,8 +177,9 @@ function fixtureManifest() {
     const isPage = label.includes('-page-');
     const hasResult = !isPage || (Array.isArray(body?.content) && body.content.length > 0);
     check(response, { 'fixture manifest target returns a result': (res) => res.status === 200 && hasResult }, { endpoint: 'fixture_manifest', manifest_target: label });
+    if (isA1ProductionTarget(baseUrl)) sleep(1);
   });
-  SEARCH_CORPUS.forEach(({ query, type, bucket }) => {
+  searchCorpus.forEach(({ query, type, bucket }) => {
     const response = http.get(apiUrl(baseUrl, '/api/search', { q: query, type }), {
       tags: { endpoint: 'fixture_manifest', manifest_target: `search-${bucket}-${type}` },
     });
@@ -172,6 +191,7 @@ function fixtureManifest() {
     check(response, { 'fixture search corpus returns a result': () => count > 0 }, {
       endpoint: 'fixture_manifest', manifest_target: `search-${bucket}-${type}`,
     });
+    if (isA1ProductionTarget(baseUrl)) sleep(1);
   });
 }
 
