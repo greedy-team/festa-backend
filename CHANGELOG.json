@@ -1,14 +1,35 @@
 {
   "metadata": {
-    "lastUpdated": "2026-09-18T14:31:35Z",
-    "currentVersion": "0.0.10",
+    "lastUpdated": "2026-09-18T23:13:15Z",
+    "currentVersion": "0.0.11",
     "projectType": "spring",
     "projectTypes": [
       "spring"
     ],
-    "totalReleases": 9
+    "totalReleases": 10
   },
   "releases": [
+    {
+      "version": "0.0.11",
+      "project_type": "spring",
+      "project_types": [
+        "spring"
+      ],
+      "date": "2026-09-18",
+      "pr_number": 226,
+      "raw_summary": "## Summary by CodeRabbit\n\n## 릴리스 노트\n\n* **기타**\n  * Merge pull request from greedy-team/chore_224_앱_재시작을_대시보드에서_볼_수_없다\n  * chore : 에러율을 5xx 비율로 좁힌다\n  * chore : 앱 재시작을 대시보드에서 볼 수 있게 한다",
+      "parsed_changes": {
+        "기타": {
+          "title": "기타",
+          "items": [
+            "Merge pull request from greedy-team/chore_224_앱_재시작을_대시보드에서_볼_수_없다",
+            "chore : 에러율을 5xx 비율로 좁힌다",
+            "chore : 앱 재시작을 대시보드에서 볼 수 있게 한다"
+          ]
+        }
+      },
+      "parse_method": "markdown"
+    },
     {
       "version": "0.0.10",
       "project_type": "spring",
