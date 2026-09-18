@@ -8,15 +8,16 @@ It targets public read APIs only:
 | --- | --- |
 | `upcoming` | `GET /api/festivals/upcoming?limit=10` |
 | `recent` | `GET /api/festivals/recent?limit=10` |
-| `festivals` | `GET /api/festivals?page=0&size=20&sort=LATEST` |
+| `festivals` | `GET /api/festivals?page={manifest page}&size=20&sort=LATEST` |
 | `festival-detail` | `GET /api/festivals/{id}` |
 | `artists` | `GET /api/artists?page=0&size=20&sort=NAME` |
 | `artist-detail` | `GET /api/artists/{id}` |
 | `search` | `GET /api/search?q={query}&type={type}` |
 | `host-detail` | `GET /api/hosts/{id}` (optional supporting scenario) |
+| `fixture-manifest` | fixture detail IDs, list pages, and every search corpus query/type verification |
 | `mixed` | Fixed 100-slot public browse/search cycle |
 
-`mixed` is deterministic: upcoming 12%, recent 10%, Festival list 18%, Festival detail 12%, Artist list 18%, Artist detail 10%, and search 20%. It intentionally does not include a write or administrator endpoint.
+`mixed` is deterministic: upcoming 12%, recent 10%, Festival list 18%, Festival detail 12%, Artist list 18%, Artist detail 10%, and search 20%. Each endpoint has its own mixed request ordinal, so every manifest detail ID and page cycles independently even when the 100-slot mixed cycle shares a divisor with a manifest length. It intentionally does not include a write or administrator endpoint.
 
 ## Safety boundary
 
@@ -36,7 +37,7 @@ The local stack below is for smoke/contract validation only. It is not a TPS res
 | ArtistAlias | 45,000 |
 | Lineup | 300,000 |
 
-Its canonical detail IDs are Festival/Artist/Host `1`. Override them with `FESTIVAL_ID`, `ARTIST_ID`, and `HOST_ID` if a rebuilt fixture uses different IDs.
+Its manifest rotates published Festival IDs `1/5001/10001/15001`, Artist IDs `1/10000/20000/30000`, Host IDs `1/7/100/200`, and list pages `0/1/100/500`. This avoids a fixed detail-ID or page-0 cache bias. Override a value with `FESTIVAL_ID`, `ARTIST_ID`, `HOST_ID`, `FESTIVAL_PAGE`, or `ARTIST_PAGE` only for an explicitly fixed comparison condition.
 
 `FIXTURE=smoke` uses the isolated local seed and IDs `900001`. The local seed includes the same canonical search strings as the performance fixture but is deliberately tiny.
 
@@ -52,7 +53,19 @@ The 20-entry corpus advances by the ordinal of the search request, not its absol
 | Space-normalized | 3 | 15% | `서울축제`, `성능대학교` | `ALL`, `FESTIVAL`, `HOST` |
 | English | 2 | 10% | `campus`, `spring` | `ARTIST`, `FESTIVAL` |
 
-Use `-SearchBucket rare` or `-SearchType ARTIST` through the wrapper to isolate a corpus subset. The full corpus must be used for mixed/final runs.
+Use `-SearchBucket rare` or `-SearchType ARTIST` through the wrapper to isolate a corpus subset. The full corpus must be used for mixed/final runs. Run `fixture-manifest` after seeding and before each compared series; it requires every manifest target and every corpus query/type to return a result.
+
+For the #185 list comparison, preserve the historical fixed request exactly:
+
+```powershell
+.\run.ps1 -Runner docker -BaseUrl 'http://host.docker.internal:18080' -Stage baseline -Scenario festivals -Fixture performance -FestivalPage 0 -Rate 5 -Duration 3m -PreAllocatedVUs 2 -MaxVUs 2
+```
+
+While each warm-up or measured run is active, collect the existing container-level evidence into that same run directory. This adds no monitoring service and keeps raw metrics out of Git:
+
+```powershell
+.\collect-runtime-metrics.ps1 -ResultDirectory .\results\<run-id> -AppContainer <app-container> -PostgresContainer <postgres-container> -DurationSeconds 180 -IntervalSeconds 10
+```
 
 ## Load stages
 
