@@ -208,7 +208,7 @@ class ImportCommitPostgresIntegrationTest extends PostgresTestSupport {
     private StoredPreviewRow newArtist(int line) {
         return row(ImportSection.ARTISTS, line, "new", ImportPreviewAction.CREATE,
                 Map.of("name", "new", "otherNames", List.of(), "genre", "BAND",
-                        "imageUrl", "", "needsReview", false),
+                        "imageUrl", ""),
                 null, null, null, ArtistMatchStatus.NEW, false);
     }
 

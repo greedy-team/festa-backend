@@ -366,7 +366,6 @@ public class ImportPreviewService {
                     "같은 업로드에서 Artist 대표명 또는 별칭이 중복됩니다"));
         }
         enumValue(payload.get("genre"), ArtistGenre.class, "genre", errors);
-        booleanValue(payload.get("needs_review"), "needs_review", true, errors);
         url(payload.get("image_url"), "image_url", errors);
 
         List<String> inputAliases = pipeValues(payload.get("other_names"));
@@ -410,10 +409,6 @@ public class ImportPreviewService {
                         ? null : match.artist().getGenre().name()));
         normalized.put("imageUrl", keepExisting(trim(payload.get("image_url")),
                 match.artist() == null ? null : match.artist().getImageUrl()));
-        normalized.put("needsReview", match.status() == ArtistMatchStatus.NEW
-                ? true
-                : booleanValue(payload.get("needs_review"),
-                "needs_review", false, new ArrayList<>()));
         return stored(ImportSection.ARTISTS, row, name, action, normalized, policy, null,
                 match.artist() == null ? null : match.artist().getId(), null, match.status(),
                 errors, warnings, skipReason, null, List.of(), null);

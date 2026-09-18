@@ -34,8 +34,7 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             LEFT JOIN Festival f ON f = l.festival
                  AND f.publishedAt IS NOT NULL
                  AND f.endDate < CURRENT_DATE
-            WHERE (:needsReview IS NULL OR a.needsReview = :needsReview)
-              AND (:genre IS NULL OR a.genre = :genre)
+            WHERE (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
                    OR LOWER(REPLACE(a.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
@@ -46,8 +45,7 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             countQuery = """
             SELECT COUNT(a)
             FROM Artist a
-            WHERE (:needsReview IS NULL OR a.needsReview = :needsReview)
-              AND (:genre IS NULL OR a.genre = :genre)
+            WHERE (:genre IS NULL OR a.genre = :genre)
               AND (:q IS NULL
                    OR LOWER(REPLACE(a.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'
                    OR EXISTS (SELECT 1 FROM ArtistAlias al
@@ -55,7 +53,6 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
                                 AND LOWER(REPLACE(al.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')) ESCAPE '\\'))
             """)
     Page<ArtistWithAppearanceCount> findAllWithAppearanceCount(
-            @Param("needsReview") Boolean needsReview,
             @Param("genre") ArtistGenre genre,
             @Param("q") String q,
             Pageable pageable

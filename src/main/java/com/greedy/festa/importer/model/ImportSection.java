@@ -14,7 +14,7 @@ public enum ImportSection {
     LINEUPS(List.of(
             "import_key", "day", "order", "artist_raw", "artist_canonical", "revealed"),
             ImportBatchType.LINEUPS),
-    ARTISTS(List.of("name", "other_names", "genre", "image_url", "needs_review"),
+    ARTISTS(List.of("name", "other_names", "genre", "image_url"),
             ImportBatchType.ARTISTS);
 
     private final List<String> headers;

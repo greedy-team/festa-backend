@@ -52,7 +52,6 @@ public class ArtistAdminService {
                 .name(name)
                 .genre(request.genre())
                 .instagramUrl(blankToNull(request.instagramUrl()))
-                .needsReview(false)
                 .imageUrl(null).build());
 
         artistAliasRepository.saveAll(otherNames.stream()
@@ -67,7 +66,7 @@ public class ArtistAdminService {
 
     @Transactional(readOnly = true)
     public PageResponse<ArtistResponse> findAll(
-            Boolean needsReview, String q, ArtistGenre genre,
+            String q, ArtistGenre genre,
             ArtistAdminSortType sort, int page, int size
     ) {
         if (page < 0) {
@@ -80,7 +79,7 @@ public class ArtistAdminService {
                 q, 50, ArtistErrorCode.ARTIST_INVALID_QUERY);
 
         Page<ArtistWithAppearanceCount> rows = artistRepository.findAllWithAppearanceCount(
-                needsReview, genre, normalizedQuery, PageRequest.of(page, size, sort.toSort())
+                genre, normalizedQuery, PageRequest.of(page, size, sort.toSort())
         );
 
         Map<Long, List<String>> aliasesByArtistId = loadAlias(rows);
@@ -117,7 +116,7 @@ public class ArtistAdminService {
             artistAliasRepository.deleteByArtistIdAndName(id, name);
         }
 
-        artist.update(name, request.genre(), request.needsReview());
+        artist.update(name, request.genre());
         artist.changeInstagramUrl(blankToNull(request.instagramUrl()));
 
         List<String> aliasNames;

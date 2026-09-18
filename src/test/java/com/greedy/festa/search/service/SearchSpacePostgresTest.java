@@ -131,7 +131,7 @@ class SearchSpacePostgresTest extends PostgresTestSupport {
         PageRequest page = PageRequest.of(0, 1, Sort.by("id"));
         LocalDate today = LocalDate.of(2026, 8, 27);
         if (field.startsWith("ARTIST")) {
-            assertPage(artistRepository.findAllWithAppearanceCount(null, null, pattern, page)
+            assertPage(artistRepository.findAllWithAppearanceCount(null, pattern, page)
                     .map(row -> row.getArtist().getId()), expected);
             assertPage(artistRepository.findPublicByAppearances(null, pattern, today, PageRequest.of(0, 1))
                     .map(row -> row.getArtist().getId()), expected);

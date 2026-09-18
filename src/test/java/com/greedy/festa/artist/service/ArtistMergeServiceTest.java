@@ -217,25 +217,6 @@ class ArtistMergeServiceTest extends PostgresTestSupport {
     }
 
     @Test
-    void 병합_후_남은_아티스트는_검토_대기로_표시된다() {
-        Artist 아이유 = 아티스트를_넣는다("아이유");
-        Artist IU = 아티스트를_넣는다("IU");
-        라인업에_올린다(대동제, IU, 1, 1);
-        반영한다();
-
-        ArtistMergeResponse 결과 = 병합한다(아이유, true, IU);
-        반영한다();
-
-        assertSoftly(softly -> {
-            softly.assertThat(결과.needsReview()).isTrue();
-            softly.assertThat(artistRepository.findById(아이유.getId()))
-                    .get()
-                    .extracting(Artist::isNeedsReview)
-                    .isEqualTo(true);
-        });
-    }
-
-    @Test
     void 흡수_목록에_같은_id가_여러_번_와도_하나로_센다() {
         Artist 아이유 = 아티스트를_넣는다("아이유");
         Artist IU = 아티스트를_넣는다("IU");
@@ -345,7 +326,6 @@ class ArtistMergeServiceTest extends PostgresTestSupport {
 
     private Artist 아티스트를_넣는다(String 이름) {
         Artist 아티스트 = ArtistFixture.artist(이름)
-                .needsReview(false)
                 .build();
         em.persist(아티스트);
         return 아티스트;

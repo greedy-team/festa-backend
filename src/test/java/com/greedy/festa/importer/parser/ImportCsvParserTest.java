@@ -30,14 +30,14 @@ class ImportCsvParserTest {
         assertThat(ImportSection.LINEUPS.headers()).containsExactly(
                 "import_key", "day", "order", "artist_raw", "artist_canonical", "revealed");
         assertThat(ImportSection.ARTISTS.headers()).containsExactly(
-                "name", "other_names", "genre", "image_url", "needs_review");
+                "name", "other_names", "genre", "image_url");
     }
 
     @Test
     void UTF8_BOM과_quoted_comma_escaped_quote_multiline을_파싱한다() {
         String csv = "\uFEFF" + String.join(",", ImportSection.ARTISTS.headers()) + "\r\n"
-                + "\"밴드, 이름\",\"별칭 \"\"A\"\"|별칭B\",BAND,https://example.com/a.jpg,"
-                + "\"true\r\n\"";
+                + "\"밴드, 이름\",\"별칭 \"\"A\"\"|별칭B\",BAND,"
+                + "\"https://example.com/a.jpg\r\n\"";
 
         List<ParsedCsvRow> rows = parser.parse(file("artists.csv", csv), ImportSection.ARTISTS);
 
@@ -45,7 +45,8 @@ class ImportCsvParserTest {
         assertThat(rows.getFirst().line()).isEqualTo(1);
         assertThat(rows.getFirst().values().get("name")).isEqualTo("밴드, 이름");
         assertThat(rows.getFirst().values().get("other_names")).isEqualTo("별칭 \"A\"|별칭B");
-        assertThat(rows.getFirst().values().get("needs_review")).isEqualTo("true\r\n");
+        assertThat(rows.getFirst().values().get("image_url"))
+                .isEqualTo("https://example.com/a.jpg\r\n");
     }
 
     @Test

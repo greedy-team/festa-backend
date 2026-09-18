@@ -49,11 +49,11 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         em.clear();
 
         Page<ArtistWithAppearanceCount> percent = artistRepository.findAllWithAppearanceCount(
-                null, null, "\\%", PageRequest.of(0, 10, ArtistAdminSortType.NAME.toSort()));
+                null, "\\%", PageRequest.of(0, 10, ArtistAdminSortType.NAME.toSort()));
         Page<ArtistWithAppearanceCount> underscore = artistRepository.findAllWithAppearanceCount(
-                null, null, "\\_", PageRequest.of(0, 10, ArtistAdminSortType.NAME.toSort()));
+                null, "\\_", PageRequest.of(0, 10, ArtistAdminSortType.NAME.toSort()));
         Page<ArtistWithAppearanceCount> backslash = artistRepository.findAllWithAppearanceCount(
-                null, null, "\\\\", PageRequest.of(0, 10, ArtistAdminSortType.NAME.toSort()));
+                null, "\\\\", PageRequest.of(0, 10, ArtistAdminSortType.NAME.toSort()));
 
         assertThat(percent.getContent()).extracting(row -> row.getArtist().getName())
                 .containsExactly("Discount 50% Artist");
@@ -91,11 +91,11 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 장르를_주지_않으면_전체가_나온다() {
-        아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
-        아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP, false);
+        아티스트를_넣는다("잔나비", ArtistGenre.BAND);
+        아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP);
         반영한다();
 
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, null, ArtistAdminSortType.NAME);
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, ArtistAdminSortType.NAME);
 
         assertThat(결과.getContent())
                 .extracting(row -> row.getArtist().getName())
@@ -104,12 +104,12 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 장르로_거를_수_있다() {
-        아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
-        아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP, false);
+        아티스트를_넣는다("잔나비", ArtistGenre.BAND);
+        아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP);
         반영한다();
 
         Page<ArtistWithAppearanceCount> 결과 =
-                조회한다(null, ArtistGenre.BAND, null, ArtistAdminSortType.NAME);
+                조회한다(null, ArtistGenre.BAND, ArtistAdminSortType.NAME);
 
         assertThat(결과.getContent())
                 .extracting(row -> row.getArtist().getName())
@@ -118,12 +118,12 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 라인업이_없는_아티스트도_출연_0으로_나온다() {
-        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         라인업에_올린다(잔나비);
-        아티스트를_넣는다("아이유", ArtistGenre.DANCE, false);
+        아티스트를_넣는다("아이유", ArtistGenre.DANCE);
         반영한다();
 
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, null, ArtistAdminSortType.NAME);
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, ArtistAdminSortType.NAME);
 
         assertThat(결과.getContent())
                 .extracting(row -> row.getArtist().getName(), ArtistWithAppearanceCount::getAppearanceCount)
@@ -132,19 +132,19 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 출연_횟수로_정렬한다() {
-        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         라인업에_올린다(잔나비);
         라인업에_올린다(잔나비);
         라인업에_올린다(잔나비);
 
-        Artist 다듀 = 아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP, false);
+        Artist 다듀 = 아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP);
         라인업에_올린다(다듀);
 
-        아티스트를_넣는다("아이유", ArtistGenre.DANCE, false);
+        아티스트를_넣는다("아이유", ArtistGenre.DANCE);
         반영한다();
 
         Page<ArtistWithAppearanceCount> 결과 =
-                조회한다(null, null, null, ArtistAdminSortType.APPEARANCES);
+                조회한다(null, null, ArtistAdminSortType.APPEARANCES);
 
         assertThat(결과.getContent())
                 .extracting(row -> row.getArtist().getName())
@@ -153,12 +153,12 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 검색어가_별칭에도_걸린다() {
-        Artist 다듀 = 아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP, false);
+        Artist 다듀 = 아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP);
         별칭을_넣는다(다듀, "다듀");
-        아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         반영한다();
 
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다("다듀", null, null, ArtistAdminSortType.NAME);
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다("다듀", null, ArtistAdminSortType.NAME);
 
         assertThat(결과.getContent())
                 .extracting(row -> row.getArtist().getName())
@@ -167,46 +167,33 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 별칭이_여러_개_걸려도_아티스트가_중복으로_나오지_않는다() {
-        Artist 다듀 = 아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP, false);
+        Artist 다듀 = 아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP);
         별칭을_넣는다(다듀, "다듀");
         별칭을_넣는다(다듀, "다듀 형님들");
         반영한다();
 
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다("다듀", null, null, ArtistAdminSortType.NAME);
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다("다듀", null, ArtistAdminSortType.NAME);
 
         assertThat(결과.getContent()).hasSize(1);
     }
 
     @Test
-    void 검토_대기만_거를_수_있다() {
-        아티스트를_넣는다("잔나비 (밴드)", null, true);
-        아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
-        반영한다();
-
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, true, ArtistAdminSortType.NAME);
-
-        assertThat(결과.getContent())
-                .extracting(row -> row.getArtist().getName())
-                .containsExactly("잔나비 (밴드)");
-    }
-
-    @Test
     void 필터를_적용하면_전체_건수도_함께_줄어든다() {
         // countQuery를 따로 줬으므로 본 쿼리와 같은 집합을 세는지 확인해야 한다.
-        아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
-        아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP, false);
-        아티스트를_넣는다("아이유", ArtistGenre.DANCE, false);
+        아티스트를_넣는다("잔나비", ArtistGenre.BAND);
+        아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP);
+        아티스트를_넣는다("아이유", ArtistGenre.DANCE);
         반영한다();
 
         Page<ArtistWithAppearanceCount> 결과 =
-                조회한다(null, ArtistGenre.BAND, null, ArtistAdminSortType.NAME);
+                조회한다(null, ArtistGenre.BAND, ArtistAdminSortType.NAME);
 
         assertThat(결과.getTotalElements()).isEqualTo(1);
     }
 
     @Test
     void 출연_횟수를_단건으로_센다() {
-        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         라인업에_올린다(잔나비);
         라인업에_올린다(잔나비);
         반영한다();
@@ -217,14 +204,14 @@ class ArtistRepositoryTest extends PostgresTestSupport {
     @Test
     void 미발행_축제와_끝나지_않은_축제의_출연은_세지_않는다() {
         // given
-        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         라인업에_올린다(잔나비);
         라인업에_올린다(잔나비, 축제를_넣는다("미발행 축제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3), false));
         라인업에_올린다(잔나비, 축제를_넣는다("다가올 축제", LocalDate.of(2099, 5, 1), LocalDate.of(2099, 5, 3), true));
         반영한다();
 
         // when
-        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, null, ArtistAdminSortType.NAME);
+        Page<ArtistWithAppearanceCount> 결과 = 조회한다(null, null, ArtistAdminSortType.NAME);
 
         // then
         assertThat(결과.getContent())
@@ -237,7 +224,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
     void 삭제_판정은_발행_여부와_무관하게_모든_라인업을_센다() {
         // 삭제 가드는 FK 참조 유무를 묻는 것이라 미발행 축제의 출연도 막아야 한다.
         // given
-        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         라인업에_올린다(잔나비, 축제를_넣는다("미발행 축제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3), false));
         반영한다();
 
@@ -248,7 +235,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 이름_묶음으로_중복을_확인한다() {
-        아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         반영한다();
 
         assertThat(artistRepository.existsByNameIn(List.of("아이유", "잔나비"))).isTrue();
@@ -257,9 +244,9 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 아티스트_id로_별칭을_한번에_가져온다() {
-        Artist 다듀 = 아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP, false);
+        Artist 다듀 = 아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP);
         별칭을_넣는다(다듀, "다듀");
-        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Artist 잔나비 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         별칭을_넣는다(잔나비, "JANNABI");
         반영한다();
 
@@ -273,10 +260,10 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 공개_목록은_별칭_검색을_중복없이_페이지_카운트에_반영한다() {
-        Artist 다듀 = 아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP, false);
+        Artist 다듀 = 아티스트를_넣는다("다이나믹 듀오", ArtistGenre.HIPHOP);
         별칭을_넣는다(다듀, "다듀");
         별칭을_넣는다(다듀, "다이나믹");
-        아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         반영한다();
 
         Page<ArtistWithAppearanceCount> 결과 = artistRepository.findPublicByAppearances(
@@ -290,8 +277,8 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 공개_목록은_발행된_종료_축제만_집계하고_동점은_id_오름차순이다() {
-        Artist 첫째 = 아티스트를_넣는다("첫째", ArtistGenre.BAND, false);
-        Artist 둘째 = 아티스트를_넣는다("둘째", ArtistGenre.BAND, false);
+        Artist 첫째 = 아티스트를_넣는다("첫째", ArtistGenre.BAND);
+        Artist 둘째 = 아티스트를_넣는다("둘째", ArtistGenre.BAND);
         라인업에_올린다(첫째);
         Festival 미발행 = 축제를_넣는다("미발행", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 2), false);
         Festival 진행중 = 축제를_넣는다("진행중", LocalDate.of(2026, 5, 31), LocalDate.of(2026, 6, 2), true);
@@ -309,7 +296,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 공개_목록의_출연_횟수는_같은_축제의_여러_라인업을_한번만_센다() {
-        Artist 아티스트 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Artist 아티스트 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         Festival 같은축제 = 축제를_넣는다(
                 "이틀 출연 축제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3), true);
         라인업에_올린다(아티스트, 같은축제, 1);
@@ -324,8 +311,8 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 공개_목록_검색은_LIKE_와일드카드를_문자_그대로_찾는다() {
-        아티스트를_넣는다("100% 라이브", ArtistGenre.BAND, false);
-        아티스트를_넣는다("100점 라이브", ArtistGenre.BAND, false);
+        아티스트를_넣는다("100% 라이브", ArtistGenre.BAND);
+        아티스트를_넣는다("100점 라이브", ArtistGenre.BAND);
         반영한다();
 
         Page<ArtistWithAppearanceCount> 결과 = artistRepository.findPublicByName(
@@ -338,9 +325,9 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 공개_이름순은_페이지네이션_전에_적용되고_total도_전체_필터_결과다() {
-        Artist 가나다 = 아티스트를_넣는다("가나다", ArtistGenre.BAND, false);
-        Artist 라마바 = 아티스트를_넣는다("라마바", ArtistGenre.BAND, false);
-        아티스트를_넣는다("힙합", ArtistGenre.HIPHOP, false);
+        Artist 가나다 = 아티스트를_넣는다("가나다", ArtistGenre.BAND);
+        Artist 라마바 = 아티스트를_넣는다("라마바", ArtistGenre.BAND);
+        아티스트를_넣는다("힙합", ArtistGenre.HIPHOP);
         반영한다();
 
         Page<ArtistWithAppearanceCount> 첫_페이지 = artistRepository.findPublicByName(
@@ -356,7 +343,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 최근_축제_조회는_아티스트별_최신_발행_종료_축제를_먼저_준다() {
-        Artist 아티스트 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Artist 아티스트 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         Festival 예전 = 축제를_넣는다("예전 축제", LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 2), true);
         Festival 최근 = 축제를_넣는다("최근 축제", LocalDate.of(2026, 5, 10), LocalDate.of(2026, 5, 11), true);
         라인업에_올린다(아티스트, 예전);
@@ -373,7 +360,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 최근_축제는_상세_이력과_같이_시작일_내림차순으로_정한다() {
-        Artist 아티스트 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Artist 아티스트 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         Festival 먼저시작_나중종료 = 축제를_넣는다(
                 "장기 축제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 20), true);
         Festival 나중시작_먼저종료 = 축제를_넣는다(
@@ -392,7 +379,7 @@ class ArtistRepositoryTest extends PostgresTestSupport {
 
     @Test
     void 상세_라인업은_발행된_축제만_Festival과_Host를_함께_가져온다() {
-        Artist 아티스트 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND, false);
+        Artist 아티스트 = 아티스트를_넣는다("잔나비", ArtistGenre.BAND);
         Festival 발행 = 축제를_넣는다("발행 축제", LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 2), true);
         Festival 미발행 = 축제를_넣는다("미발행 축제", LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 2), false);
         라인업에_올린다(아티스트, 발행);
@@ -406,17 +393,14 @@ class ArtistRepositoryTest extends PostgresTestSupport {
         assertThat(결과.getFirst().getFestival().getHost().getName()).isEqualTo("테스트대학교");
     }
 
-    private Page<ArtistWithAppearanceCount> 조회한다(
-            String q, ArtistGenre genre, Boolean needsReview, ArtistAdminSortType sort
-    ) {
+    private Page<ArtistWithAppearanceCount> 조회한다(String q, ArtistGenre genre, ArtistAdminSortType sort) {
         return artistRepository.findAllWithAppearanceCount(
-                needsReview, genre, q, PageRequest.of(0, 10, sort.toSort()));
+                genre, q, PageRequest.of(0, 10, sort.toSort()));
     }
 
-    private Artist 아티스트를_넣는다(String 이름, ArtistGenre 장르, boolean 검토대기) {
+    private Artist 아티스트를_넣는다(String 이름, ArtistGenre 장르) {
         Artist 아티스트 = ArtistFixture.artist(이름)
                 .genre(장르)
-                .needsReview(검토대기)
                 .build();
         em.persist(아티스트);
         return 아티스트;

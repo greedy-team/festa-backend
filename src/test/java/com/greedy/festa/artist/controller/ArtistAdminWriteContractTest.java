@@ -44,10 +44,10 @@ class ArtistAdminWriteContractTest {
     private static final ArtistResponse 아티스트_응답 = new ArtistResponse(
             아티스트_id, "실리카겔", List.of("Silica Gel"), ArtistGenre.BAND,
             "https://image.example/silicagel.png", "https://instagram.com/silicagel", 3,
-            false, Instant.parse("2026-01-02T03:04:05Z"));
+            Instant.parse("2026-01-02T03:04:05Z"));
 
     private static final ArtistMergeResponse 병합_응답 = new ArtistMergeResponse(
-            아티스트_id, "실리카겔", 2, 5, 1, List.of("Silica Gel"), false);
+            아티스트_id, "실리카겔", 2, 5, 1, List.of("Silica Gel"));
 
     @Autowired
     private MockMvcTester mvc;
@@ -78,7 +78,7 @@ class ArtistAdminWriteContractTest {
         assertThat(결과).hasStatus(HttpStatus.CREATED)
                 .bodyJson().extractingPath("$").asMap()
                 .containsOnlyKeys("artistId", "name", "otherNames", "genre", "imageUrl",
-                        "instagramUrl", "appearanceCount", "needsReview", "createdAt");
+                        "instagramUrl", "appearanceCount", "createdAt");
     }
 
     @Test
@@ -119,7 +119,7 @@ class ArtistAdminWriteContractTest {
         assertThat(결과).hasStatusOk()
                 .bodyJson().extractingPath("$").asMap()
                 .containsOnlyKeys("artistId", "name", "otherNames", "genre", "imageUrl",
-                        "instagramUrl", "appearanceCount", "needsReview", "createdAt");
+                        "instagramUrl", "appearanceCount", "createdAt");
     }
 
     @Test
@@ -131,7 +131,7 @@ class ArtistAdminWriteContractTest {
         mvc.patch().uri(단건_경로, 아티스트_id)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"name":"실리카겔","otherNames":["Silica Gel"],"genre":"BAND","instagramUrl":"https://instagram.com/silicagel","needsReview":true}
+                        {"name":"실리카겔","otherNames":["Silica Gel"],"genre":"BAND","instagramUrl":"https://instagram.com/silicagel"}
                         """)
                 .exchange();
 
@@ -140,7 +140,7 @@ class ArtistAdminWriteContractTest {
         then(artistAdminService).should().update(eq(아티스트_id), 캡처.capture());
         assertThat(캡처.getValue()).isEqualTo(new ArtistUpdateRequest(
                 "실리카겔", List.of("Silica Gel"), ArtistGenre.BAND,
-                "https://instagram.com/silicagel", true));
+                "https://instagram.com/silicagel"));
     }
 
     @Test
@@ -224,7 +224,7 @@ class ArtistAdminWriteContractTest {
         assertThat(결과).hasStatusOk()
                 .bodyJson().extractingPath("$").asMap()
                 .containsOnlyKeys("targetId", "name", "mergedCount", "movedAppearances",
-                        "removedDuplicates", "otherNames", "needsReview");
+                        "removedDuplicates", "otherNames");
     }
 
     @Test

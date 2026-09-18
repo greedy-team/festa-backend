@@ -53,8 +53,6 @@ public class ArtistMergeService {
         Artist mergedArtist = artistRepository.findById(request.targetId())
                 .orElseThrow();
         addAliases(mergedArtist, absorbedNames);
-        mergedArtist.markNeedsReview();
-
         AfterCommitLogger.info(log, "아티스트 병합 - targetId={}, sourceIds={}, 옮긴 출연={}건, 제거한 중복={}건",
                 request.targetId(), sourceIds, movedAppearances, removedDuplicates);
 

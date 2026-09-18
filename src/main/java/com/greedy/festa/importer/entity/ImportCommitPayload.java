@@ -36,7 +36,6 @@ public record ImportCommitPayload(
         @JsonProperty("revealed") Boolean revealed,
         @JsonProperty("other_names") List<String> otherNames,
         @JsonProperty("genre") String genre,
-        @JsonProperty("image_url") String imageUrl,
-        @JsonProperty("needs_review") Boolean needsReview
+        @JsonProperty("image_url") String imageUrl
 ) {
 }
