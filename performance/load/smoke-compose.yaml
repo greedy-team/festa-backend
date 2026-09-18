@@ -1,0 +1,59 @@
+name: festa-load-smoke
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: festa_load_smoke
+      POSTGRES_USER: festa_load
+      POSTGRES_PASSWORD: festa-load-local-only
+    volumes:
+      - festa-load-smoke-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  app:
+    image: ${LOAD_SMOKE_APP_IMAGE:?Run smoke-up.ps1 to build the local image first.}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/festa_load_smoke
+      DB_USERNAME: festa_load
+      DB_PASSWORD: festa-load-local-only
+      JWT_SECRET: local-dev-jwt-secret
+      ADMIN_JWT_SECRET: ZmVzdGEtYWRtaW4tand0LXRlc3Qtc2VjcmV0LWtleS0zMg==
+      AES_KEY: local-dev-aes-key
+      SPRING_PROFILES_ACTIVE: development
+      MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED: "false"
+    ports:
+      - "127.0.0.1:18080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/actuator/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  seed:
+    profiles: ["seed"]
+    image: postgres:17-alpine
+    restart: "no"
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGDATABASE: festa_load_smoke
+      PGUSER: festa_load
+      PGPASSWORD: festa-load-local-only
+    volumes:
+      - ./smoke-seed.sql:/seed/smoke-seed.sql:ro
+    command: ["psql", "--set", "ON_ERROR_STOP=on", "--file", "/seed/smoke-seed.sql"]
+
+volumes:
+  festa-load-smoke-postgres:

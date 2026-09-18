@@ -1,0 +1,33 @@
+# 관측 스택의 수집 설정 (DEC-0211 / DEC-0213).
+# 이 파일이 원본이다 — Prometheus UI가 아니라 저장소가 스크랩 대상을 소유한다.
+#
+# 1단계에서는 앱을 스크랩하지 않는다. 앱은 지금도 OTLP로 Grafana Cloud에 push하고 있고,
+# /actuator/prometheus 노출과 앱 스크랩은 Caddy 차단(DEC-0214)이 먼저 머지된 뒤 별도 이슈로 한다.
+global:
+  # 현행 OTLP push의 60초보다 4배 촘촘하다. blue/green 전환처럼 수십 초 만에 끝나는
+  # 사건을 보려면 60초로는 부족하다.
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    # 개발(E2)은 이 스택을 쓰지 않는다(1GB라 안 들어간다). 이 스택의 데이터는 전부 운영이다.
+    deployment_environment_name: production
+
+scrape_configs:
+  # 자기 자신. Prometheus가 살아 있으나 이상한 경우(TSDB 쓰기 실패·WAL)를 잡는 재료다.
+  # 프로세스가 통째로 죽은 경우는 못 잡는다 — dead-man을 두지 않기로 했고(DEC-0212),
+  # 그 자리는 주 1회 사람 점검이 맡는다.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # 호스트. 커뮤니티 대시보드 1860이 job="node"를 기본값으로 기대한다.
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # 이름을 postgres-exporter로 맞춘다. 커뮤니티 대시보드 12485가
+  # job="postgres-exporter"를 하드코딩해 조회하므로, 다르면 Instance 변수가 비어
+  # 대시보드가 통째로 빈다. 1860(node)은 job 변수를 동적으로 읽어 이름에 구애받지 않는다.
+  - job_name: postgres-exporter
+    static_configs:
+      - targets: ["postgres-exporter:9187"]

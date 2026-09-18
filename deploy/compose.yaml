@@ -111,8 +111,113 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ── 관측 스택 (DEC-0211) ───────────────────────────────────────────────────
+  # 넷 다 profiles 뒤에 있다. CD는 서비스를 이름으로 지목해 띄우므로
+  # (`up -d postgres caddy`, `up -d app-<색>`) 프로파일을 켜지 않는 한 이 넷은 뜨지 않는다.
+  # 개발(E2)은 1GB라 이 스택이 들어가지 않는다 — 운영에서만 올린다:
+  #   docker compose --env-file app.env --profile monitoring up -d
+  #
+  # 어느 것도 인터넷에 열지 않는다 (DEC-0214·DEC-0215). exporter와 prometheus는
+  # compose 네트워크 안에서만 닿고, grafana만 루프백에 묶는다.
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    profiles: [monitoring]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # 시간과 크기를 둘 다 걸고 먼저 걸리는 쪽이 이긴다. 2026-09-18 실측 기준
+      # 약 17MB/일이라 180일에 3.1GB이고, `/`의 여유 43GB 중 7%다.
+      # size는 안전망이다 — 시리즈 추정이 네 배 빗나가도 오래된 것부터 지워진다.
+      - --storage.tsdb.retention.time=180d
+      - --storage.tsdb.retention.size=12GB
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 호스트를 보려면 호스트의 /proc·/sys·/ 가 필요하다. 전부 읽기 전용이다.
+  # 알려진 한계: 네트워크 인터페이스 통계는 net 네임스페이스를 따라가므로 이 컨테이너의
+  # 것이 보인다. CPU·메모리·디스크 I/O·파일시스템·load는 procfs 기반이라 호스트 값이
+  # 정확히 나온다. 네트워크까지 보려면 network_mode: host가 필요한데 그러면 포트를
+  # 호스트에 열게 되어 DEC-0214와 부딪힌다. 필요가 확인되면 따로 판단한다.
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    profiles: [monitoring]
+    restart: unless-stopped
+    pid: host
+    command:
+      - --path.rootfs=/host
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    volumes:
+      - /:/host:ro,rslave
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 앱 계정을 재사용하지 않는다 — 권한 범위와 비밀 회전 주기가 다르다.
+  # 서버에서 pg_monitor 롤을 가진 전용 계정을 만들고 app.env에 DSN을 넣는다.
+  # 값이 비면 이 컨테이너만 뜨지 못한다. :? 를 쓰지 않는 이유는 DEC-0185와 같다 —
+  # compose config는 프로파일 뒤의 서비스까지 평가하므로 CD 전체가 그 자리에서 죽는다.
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.20.1
+    profiles: [monitoring]
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: ${PG_EXPORTER_DSN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 루프백에만 묶는다 (DEC-0215). 인터넷에서 보면 존재하지 않는다.
+  # 볼 때는 노트북에서 터널을 연다: ssh -N -L 3000:127.0.0.1:3000 <user>@<A1>
+  # ⚠ GRAFANA_ADMIN_PASSWORD 를 app.env에 넣지 않으면 Grafana가 admin/admin으로 뜬다.
+  #    첫 기동 전에 반드시 넣는다 (커밋 금지).
+  grafana:
+    image: grafana/grafana:13.2.2
+    profiles: [monitoring]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # 터널로 http://localhost:3000 을 열기 때문에 root_url도 그 주소여야 한다.
+      GF_SERVER_ROOT_URL: http://localhost:3000
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   postgres-data:
+  # 관측 스택의 상태. prometheus-data가 시계열 전체이므로 이 볼륨을 지우면 과거
+  # 데이터가 사라진다(보존 180일). grafana-data는 사용자·세션만 담는다 —
+  # 대시보드와 데이터소스의 원본은 저장소의 provisioning이다(DEC-0213).
+  prometheus-data:
+  grafana-data:
   # 발급받은 인증서가 여기 남는다. 이 볼륨이 없으면 재배포마다 재발급을 시도하고,
   # develop 푸시마다 배포되므로 며칠 만에 Let's Encrypt 발급 한도에 걸린다.
   caddy-data:

@@ -133,9 +133,9 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
     @Query(value = """
         SELECT f
         FROM Festival f
-        JOIN FETCH f.host h
         WHERE f.publishedAt IS NOT NULL
-          AND (:hostId IS NULL OR h.id = :hostId)
+          AND f.host IS NOT NULL
+          AND (:hostId IS NULL OR f.host.id = :hostId)
           AND (CAST(:yearStart AS date) IS NULL
                OR (f.startDate >= :yearStart AND f.startDate < :nextYearStart))
           AND (:artistId IS NULL
@@ -151,9 +151,9 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
             countQuery = """
         SELECT COUNT(f)
         FROM Festival f
-        JOIN f.host h
         WHERE f.publishedAt IS NOT NULL
-          AND (:hostId IS NULL OR h.id = :hostId)
+          AND f.host IS NOT NULL
+          AND (:hostId IS NULL OR f.host.id = :hostId)
           AND (CAST(:yearStart AS date) IS NULL
                OR (f.startDate >= :yearStart AND f.startDate < :nextYearStart))
           AND (:artistId IS NULL

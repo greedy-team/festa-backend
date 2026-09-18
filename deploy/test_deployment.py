@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import tarfile
 import tempfile
 import textwrap
 import unittest
@@ -475,9 +476,28 @@ ssh() { bash -c "${@: -1}"; }
                         ADMIN_JWT_SECRET='test-admin-secret', ADMIN_INITIAL_USERNAME='',
                         ADMIN_INITIAL_PASSWORD='',
                         API_DOMAINS='api.every-festa.com, dev-api.every-festa.com',
-                        PUBLIC_BASE_URL='https://api.every-festa.com')
+                        PUBLIC_BASE_URL='https://api.every-festa.com',
+                        PG_EXPORTER_DSN='', GRAFANA_ADMIN_PASSWORD='')
         self.env.update(overrides)
         return self.run_script(step_script('SSH와 실행 환경 준비'))
+
+    def test_monitoring_secrets_are_written_to_app_env(self):
+        # 서버에서 손으로 넣으면 이 스텝이 app.env를 새로 만들어 덮으므로 다음 배포에 사라진다.
+        result = self.run_prepare_step(PG_EXPORTER_DSN='postgresql://m:p@postgres:5432/festa',
+                                       GRAFANA_ADMIN_PASSWORD='s3cret')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        app_env = (self.path / 'app.env').read_text(encoding='utf-8')
+        self.assertIn("PG_EXPORTER_DSN='postgresql://m:p@postgres:5432/festa'", app_env)
+        self.assertIn("GRAFANA_ADMIN_PASSWORD='s3cret'", app_env)
+
+    def test_missing_monitoring_secrets_do_not_stop_the_deploy(self):
+        # compose가 둘 다 ${...:-} 로 선언한다(DEC-0185). 비면 해당 컨테이너만 못 뜨고
+        # 배포 전체는 계속돼야 한다 — 관측 비밀 하나로 앱 배포가 막히면 안 된다.
+        result = self.run_prepare_step()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        app_env = (self.path / 'app.env').read_text(encoding='utf-8')
+        self.assertIn("PG_EXPORTER_DSN=''", app_env)
+        self.assertIn("GRAFANA_ADMIN_PASSWORD=''", app_env)
 
     def test_api_domains_is_written_to_app_env(self):
         result = self.run_prepare_step()
@@ -563,6 +583,31 @@ scp() { printf 'scp %s\\n' "$*" >> "$OCI_DEPLOY_PATH/calls"; }
         self.assertEqual(len(to_deploy_path), 1, sent)
         self.assertIn('deploy/switch-back.sh', to_deploy_path[0])
         self.assertIn('cd /opt/festa && bash switch-back.sh', (ROOT / 'deploy/README.md').read_text(encoding='utf-8'))
+
+    def test_monitoring_config_directories_are_sent(self):
+        # compose의 monitoring 프로파일이 ./prometheus와 ./grafana를 bind mount한다.
+        # CD가 보내지 않으면 서버에서 프로파일을 켜도 컨테이너가 뜨지 못한다.
+        # scp는 파일만 보내므로 디렉터리는 tar로 간다 — 받는 쪽 ssh만 골라 stdin을 받는다.
+        helper = '''
+scp() { :; }
+ssh() {
+  case "$*" in
+    *"tar -xz"*) cat > "$OCI_DEPLOY_PATH/sent.tar.gz" ;;
+    *) : ;;
+  esac
+}
+'''
+        self.env.update(RUNNER_TEMP=self.path.as_posix(), OCI_PORT='22', OCI_USER='deploy', OCI_HOST='server')
+        result = self.run_script(helper + step_script('OCI 인스턴스로 설정 전송'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with tarfile.open(self.path / 'sent.tar.gz') as sent:
+            names = sent.getnames()
+        for expected in ('prometheus/prometheus.yml',
+                         'grafana/provisioning/datasources/prometheus.yml',
+                         'grafana/provisioning/dashboards/dashboards.yml'):
+            self.assertIn(expected, names)
+        self.assertTrue([n for n in names
+                         if n.startswith('grafana/dashboards/') and n.endswith('.json')], names)
 
     def test_caddyfile_is_sent_beside_the_live_one_not_over_it(self):
         # 제자리에 덮으면, 교체 스텝이 Caddy를 재생성하기 전에 멈춘 뒤 옛 Caddy가 재시작될 때
