@@ -609,6 +609,92 @@ ssh() {
         self.assertTrue([n for n in names
                          if n.startswith('grafana/dashboards/') and n.endswith('.json')], names)
 
+    def test_prometheus_rereads_the_config_after_it_is_sent(self):
+        # 파일만 보내면 Prometheus는 읽지 않는다 — 기동할 때 한 번 읽고 그 뒤로는 SIGHUP
+        # 때만 다시 읽는다. CD는 관측 스택을 재기동하지 않으므로(profiles: [monitoring])
+        # 여기서 읽히지 않으면 새 스크랩 대상이 영원히 반영되지 않는다. 배포는 성공하고
+        # 에러도 없이 화면만 조용히 빈다 — #207에서 잡힌 job 이름 불일치와 같은 종류다.
+        helper = '''
+scp() { :; }
+docker() {
+  printf '%s
+' "$*" >> "$OCI_DEPLOY_PATH/docker-calls"
+  case "$*" in
+    *'ps -q prometheus') printf '%s' "${PROM_CID:-}" ;;
+  esac
+}
+ssh() {
+  case "$*" in
+    *"tar -xz"*) cat > /dev/null ;;
+    *"docker compose"*) ( eval "${!#}" ) ;;
+    *) : ;;
+  esac
+}
+'''
+        self.env.update(RUNNER_TEMP=self.path.as_posix(), OCI_PORT='22', OCI_USER='deploy',
+                        OCI_HOST='server', PROM_CID='prom-123')
+        result = self.run_script(helper + step_script('OCI 인스턴스로 설정 전송'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = (self.path / 'docker-calls').read_text(encoding='utf-8')
+        self.assertIn('kill -s HUP prom-123', calls)
+
+    def test_prometheus_is_found_through_compose_not_by_service_label_alone(self):
+        # 서비스 이름만으로 좁히면 다른 compose 프로젝트의 prometheus가 걸린다.
+        # ISS-0154가 app에서 겪은 함정이고, 여기서 틀리면 남의 컨테이너에 신호를 보낸다.
+        helper = '''
+scp() { :; }
+docker() {
+  printf '%s
+' "$*" >> "$OCI_DEPLOY_PATH/docker-calls"
+  case "$*" in
+    *'ps -q prometheus') printf '%s' "${PROM_CID:-}" ;;
+  esac
+}
+ssh() {
+  case "$*" in
+    *"tar -xz"*) cat > /dev/null ;;
+    *"docker compose"*) ( eval "${!#}" ) ;;
+    *) : ;;
+  esac
+}
+'''
+        self.env.update(RUNNER_TEMP=self.path.as_posix(), OCI_PORT='22', OCI_USER='deploy',
+                        OCI_HOST='server', PROM_CID='prom-123')
+        self.run_script(helper + step_script('OCI 인스턴스로 설정 전송'))
+        calls = (self.path / 'docker-calls').read_text(encoding='utf-8')
+        self.assertIn('--profile monitoring ps -q prometheus', calls)
+        self.assertNotIn('ps -q -f label=', calls)
+        self.assertNotIn('ps -q --filter label=com.docker.compose.service=prometheus', calls)
+
+    def test_deploy_continues_when_the_monitoring_stack_is_not_running(self):
+        # 개발 E2에는 관측 스택이 없다(1GB라 안 들어간다). 없다고 배포가 멈추면 안 된다.
+        helper = '''
+scp() { :; }
+docker() {
+  printf '%s
+' "$*" >> "$OCI_DEPLOY_PATH/docker-calls"
+  case "$*" in
+    *'ps -q prometheus') printf '%s' "${PROM_CID:-}" ;;
+  esac
+}
+ssh() {
+  case "$*" in
+    *"tar -xz"*) cat > /dev/null ;;
+    *"docker compose"*) ( eval "${!#}" ) ;;
+    *) : ;;
+  esac
+}
+'''
+        self.env.update(RUNNER_TEMP=self.path.as_posix(), OCI_PORT='22', OCI_USER='deploy',
+                        OCI_HOST='server', PROM_CID='')
+        result = self.run_script(helper + step_script('OCI 인스턴스로 설정 전송'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # 리로드 자체가 없는 경우에도 이 테스트의 주장(배포가 멈추지 않는다)은 성립한다.
+        # 파일 부재로 에러를 내면 주장이 흐려지므로 없으면 빈 문자열로 본다.
+        log = self.path / 'docker-calls'
+        calls = log.read_text(encoding='utf-8') if log.exists() else ''
+        self.assertNotIn('kill -s HUP', calls)
+
     def test_caddyfile_is_sent_beside_the_live_one_not_over_it(self):
         # 제자리에 덮으면, 교체 스텝이 Caddy를 재생성하기 전에 멈춘 뒤 옛 Caddy가 재시작될 때
         # upstream 마운트 없이 새 Caddyfile의 import를 못 찾아 뜨지 못한다. 적용은 교체 스텝이 한다.
