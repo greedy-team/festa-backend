@@ -118,8 +118,8 @@
     },
     {
       "type": "stat",
-      "title": "에러율",
-      "description": "에러가 하나도 없으면 분자가 빈 집합이 되어 화면이 No data가 된다 — sum(빈 집합)은 0이 아니다. or vector(0)으로 0을 만들어 둔다. 분모는 요청이 없을 때 0으로 나누지 않도록 하한을 둔다.\n\nactuator는 뺐다 — /actuator/health는 Caddy 헬스체크와 합성 체크가 상수로 때려서 섞이면 실제 API 트래픽이 가려진다. 수집은 그대로라 Explore에서는 볼 수 있다.",
+      "title": "5xx 비율",
+      "description": "서버 오류(5xx)가 전체 요청에서 차지하는 비율. 서버는 살아 있는데 오류가 나는 상황을 잡는다 (DOC-0013의 「5xx 비율」).\n\n4xx는 일부러 뺐다. 공개 도메인이라 봇·스캐너가 계속 404를 만들고, 한가할 때는 그 한 건 때문에 이 값이 100%로 튄다. 404는 「상태코드별 요청」 패널에서 본다 — 부하 테스트 중 404가 늘면 대상 ID가 실재하지 않는다는 뜻이다.\n\nactuator는 제외했다. 분모는 요청이 없을 때 0으로 나누지 않도록 하한을 두고, 분자는 5xx가 하나도 없을 때 빈 결과가 되지 않도록 vector(0)을 씌운다.",
       "id": 4,
       "datasource": {
         "type": "prometheus",
@@ -151,7 +151,7 @@
       },
       "targets": [
         {
-          "expr": "(sum(rate(http_server_requests_seconds_count{job=\"festa\",uri!~\"/actuator.*\",outcome!=\"SUCCESS\"}[1m])) or vector(0)) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"festa\",uri!~\"/actuator.*\"}[1m])), 1e-9)",
+          "expr": "(sum(rate(http_server_requests_seconds_count{job=\"festa\",uri!~\"/actuator.*\",status=~\"5..\"}[1m])) or vector(0)) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"festa\",uri!~\"/actuator.*\"}[1m])), 1e-9)",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
