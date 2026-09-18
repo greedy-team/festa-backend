@@ -175,7 +175,8 @@ function fixtureManifest() {
     const response = http.get(url, { tags: { endpoint: 'fixture_manifest', manifest_target: label } });
     const body = response.status === 200 ? JSON.parse(response.body) : null;
     const isPage = label.includes('-page-');
-    const hasResult = !isPage || (Array.isArray(body?.content) && body.content.length > 0);
+    const pageItems = body?.items ?? body?.content;
+    const hasResult = !isPage || (Array.isArray(pageItems) && pageItems.length > 0);
     check(response, { 'fixture manifest target returns a result': (res) => res.status === 200 && hasResult }, { endpoint: 'fixture_manifest', manifest_target: label });
     if (isA1ProductionTarget(baseUrl)) sleep(1);
   });
