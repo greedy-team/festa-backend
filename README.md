@@ -62,13 +62,23 @@
 
 ---
 
+## ️ System Architecture
+
+<p align="center">
+  <img src="docs/images/arch.png" width="100%" />
+</p>
+
+<br>
+
+---
+
 ## 👥 Team Members
 
 ###  Front-End Team
 
 | **홍의민** | **이규형** |
 | :---: | :---: |
-| <img src="docs/images/uimin.jpg" width="120" height="120" alt="홍의민" /> | <img src="docs/images/gyuhyeong.jpg" width="120" height="120" alt="이규형" /> |
+| <img src="docs/images/uimin.jpg" width="150" height="195" alt="홍의민" /> | <img src="docs/images/gyuhyeong.jpg" width="150" height="195" alt="이규형" /> |
 | FE Developer | FE Developer |
 | 컴퓨터공학과 | 컴퓨터공학과 |
 
@@ -78,7 +88,7 @@
 
 | **김하은** | **정명준** |
 | :---: | :---: |
-| <img src="docs/images/haeun.png" width="120" height="120" alt="김하은" /> | <img src="docs/images/myeongjun.jpg" width="120" height="120" alt="정명준" /> |
+| <img src="docs/images/haeun.png" width="150" height="195" alt="김하은" /> | <img src="docs/images/myeongjun.jpg" width="150" height="195" alt="정명준" /> |
 | BE Developer | BE Developer |
 | 영어영문학과 | 컴퓨터공학과 |
 
@@ -149,9 +159,6 @@ https://github.com/greedy-team/festa-frontend
 
 **Backend**  
 https://github.com/greedy-team/festa-backend
-
-**Crawler**  
-https://github.com/greedy-team/festa-crawler
 
 <br>
 
