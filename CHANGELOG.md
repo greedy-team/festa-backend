@@ -1,7 +1,34 @@
 # Changelog
 
-**현재 버전:** 0.0.9  
-**마지막 업데이트:** 2026-09-18T12:37:47Z  
+**현재 버전:** 0.0.10  
+**마지막 업데이트:** 2026-09-18T14:31:35Z  
+
+---
+
+## [0.0.10] - 2026-09-18
+
+**PR:** #222  
+
+**새 기능**
+- optimize upcoming festival query
+- add verified query indexes
+
+**문서**
+- 5차 데모데이 README 피드백 반영
+- 공개 API BEFORE/AFTER 최종 구현 리포트
+
+**기타**
+- Merge pull request from greedy-team/chore_219_관측_설정이_배포로_반영되지_않고_에러율_패널이_빈다
+- Merge pull request from greedy-team/docs_5차_데모데이_github_서비스_레포_readme_작성
+- chore : 관측 설정이 배포로 반영되게 하고 에러율 패널을 고친다
+- Merge branch 'develop' into docs_5차_데모데이_github_서비스_레포_readme_작성
+- Merge pull request from greedy-team/docs_192_public_api_before_after_final_report
+- Merge pull request from greedy-team/docs_193_api_tps_측정_완료_리포트
+- Merge pull request from greedy-team/feat_154_조회_쿼리_인덱스_검증
+- docs : README 디자인과 주요 기능 이미지 적용
+- docs : README 로고와 팀원 사진 연결
+- docs : GitHub 서비스 레포 README.md 작성
+- docs : API TPS 측정 완료 리포트
 
 ---
 
