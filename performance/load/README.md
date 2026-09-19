@@ -25,9 +25,9 @@ It targets public read APIs only:
 
 ### A1 production controlled run
 
-A1 production is limited to a separately validated A1 target manifest and one manually started profile at a time. `step` permits only **1, 5, 10, 25, 50, 100, or 150 RPS** for at most **3 minutes**. `deployment-experiment` permits only **50 RPS for exactly 5 minutes**. There is no command that advances to another rate or performs a deployment.
+A1 production is limited to a separately validated A1 target manifest and one manually started profile at a time. `step` permits only **1, 5, 10, 25, 50, 100, 150, 200, 250, or 300 RPS** for at most **3 minutes**. `deployment-experiment` permits only **50 RPS for exactly 5 minutes**. There is no command that advances to another rate or performs a deployment.
 
-For a mixed run, the wrapper derives VUs from the arrival-rate executor rather than accepting an arbitrary override: `preAllocatedVUs = rate` and `maxVUs = rate × 10`. A mixed iteration makes exactly one HTTP request, so this covers one second of initial concurrency and the existing 10-second p99 guard; the 150 RPS maximum is therefore 150 preallocated and 1500 maximum VUs. VUs do not raise the configured arrival rate.
+For a mixed run, the wrapper derives VUs from the arrival-rate executor rather than accepting an arbitrary override: `preAllocatedVUs = rate` and `maxVUs = rate × 10`. A mixed iteration makes exactly one HTTP request, so this covers one second of initial concurrency and the existing 10-second p99 guard; the 300 RPS maximum is therefore 300 preallocated and 3000 maximum VUs. VUs do not raise the configured arrival rate.
 
 `observation` and `deployment-recovery` are 0-RPS Grafana observation windows: 3 and 5 minutes respectively. They make no HTTP request and write only metadata. Use them for the baseline/recovery windows, not a mixed scenario with a zero rate.
 
@@ -61,7 +61,7 @@ For the separately approved deployment observation, use `-A1Profile deployment-e
 | Manual window | `A1Profile` | Rate / duration |
 | --- | --- | --- |
 | Baseline and ordinary recovery | `observation` | `0 RPS / 3m`, no HTTP request |
-| Step 1–7 | `step` | `1, 5, 10, 25, 50, 100, 150 RPS / up to 3m` |
+| Step 1–10 | `step` | `1, 5, 10, 25, 50, 100, 150, 200, 250, 300 RPS / up to 3m` |
 | Deployment experiment | `deployment-experiment` | exactly `50 RPS / 5m` |
 | Deployment recovery | `deployment-recovery` | `0 RPS / 5m`, no HTTP request |
 
