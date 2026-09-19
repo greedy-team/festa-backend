@@ -36,7 +36,7 @@ export default function () {
   assert(throws(() => assertSafeTarget('https://dev-api.every-festa.com', A1_PRODUCTION_LOAD_APPROVAL)),
     'shared development must remain blocked even with production opt-in');
 
-  [1, 5, 10, 25, 50, 100, 150].forEach((rate) => {
+  [1, 5, 10, 25, 50, 100, 150, 200, 250, 300].forEach((rate) => {
     const vus = a1MixedVUs(rate);
     assertA1ProductionProfile({
       scenario: 'mixed', stage: 'baseline', profile: 'step', fixture: 'a1', rate, duration: '3m', ...vus,
@@ -47,7 +47,10 @@ export default function () {
   })), 'A1 step rate 3 RPS must be blocked');
   assert(throws(() => assertA1ProductionProfile({
     scenario: 'mixed', stage: 'baseline', profile: 'step', fixture: 'a1', rate: 151, duration: '3m', ...a1MixedVUs(151),
-  })), 'A1 step rate above 150 RPS must be blocked');
+  })), 'A1 step rate between two allowed values must be blocked');
+  assert(throws(() => assertA1ProductionProfile({
+    scenario: 'mixed', stage: 'baseline', profile: 'step', fixture: 'a1', rate: 301, duration: '3m', ...a1MixedVUs(301),
+  })), 'A1 step rate above 300 RPS must be blocked');
   assert(throws(() => assertA1ProductionProfile({
     scenario: 'mixed', stage: 'baseline', profile: 'step', fixture: 'a1', rate: 50, duration: '5m', ...a1MixedVUs(50),
   })), 'A1 step duration above three minutes must be blocked');
@@ -60,9 +63,9 @@ export default function () {
   assert(throws(() => assertA1ProductionProfile({
     scenario: 'mixed', stage: 'baseline', profile: 'deployment-experiment', fixture: 'a1', rate: 50, duration: '3m', ...a1MixedVUs(50),
   })), 'A1 deployment experiment must require five minutes');
-  const maximumVus = a1MixedVUs(150);
-  assert(maximumVus.preAllocatedVUs === 150 && maximumVus.maxVUs === 1500,
-    'A1 maximum step VUs must cover 150 RPS at the 10-second p99 guard');
+  const maximumVus = a1MixedVUs(300);
+  assert(maximumVus.preAllocatedVUs === 300 && maximumVus.maxVUs === 3000,
+    'A1 maximum step VUs must cover 300 RPS at the 10-second p99 guard');
   assertA1ProductionProfile({
     scenario: 'fixture-manifest', stage: 'a1-manifest', fixture: 'a1', rate: 0, duration: '', preAllocatedVUs: 1, maxVUs: 1,
   });

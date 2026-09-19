@@ -90,8 +90,8 @@ if ($isA1Production) {
         }
         $isA1Observation = $true
     } elseif ($Scenario -eq 'mixed' -and $Stage -eq 'baseline' -and $A1Profile -in @('step', 'deployment-experiment')) {
-        if ($A1Profile -eq 'step' -and $Rate -notin @(1, 5, 10, 25, 50, 100, 150)) {
-            throw 'A1 step rate must be one of 1, 5, 10, 25, 50, 100, 150 RPS.'
+        if ($A1Profile -eq 'step' -and $Rate -notin @(1, 5, 10, 25, 50, 100, 150, 200, 250, 300)) {
+            throw 'A1 step rate must be one of 1, 5, 10, 25, 50, 100, 150, 200, 250, 300 RPS.'
         }
         if ($A1Profile -eq 'deployment-experiment' -and $Rate -ne 50) {
             throw 'A1 deployment experiment requires exactly 50 RPS.'
